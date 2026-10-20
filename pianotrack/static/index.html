@@ -363,7 +363,7 @@ function heatmap(days, goalSec) {
   const offset = (first.getDay() + 6) % 7;  // Monday-first rows
   const cols = Math.ceil((last.length + offset) / 7);
   const W = left + cols * (cell + gap), H = top + 7 * (cell + gap);
-  const s = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, style: `max-width:${W * 2}px;min-width:${W * 0.75}px` });
+  const s = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, style: `max-width:${Math.round(W * 1.35)}px;min-width:${W * 0.75}px` });
   ["Mon", "", "Wed", "", "Fri", "", ""].forEach((t, i) => {
     if (t) el("text", { x: 0, y: top + i * (cell + gap) + 10 }, s).textContent = t;
   });

@@ -7,6 +7,11 @@ No phone app, no cloud, no extra Python packages.
 
 ![Dashboard](docs/dashboard.png)
 
+<p>
+  <img src="docs/phone.png" alt="Dashboard on a phone, dark mode" width="260">
+  <img src="docs/session.png" alt="Session detail with replay, effort zones, dynamics and keys played" width="520">
+</p>
+
 ## What it tracks
 
 | Metric | What it means |
@@ -23,6 +28,10 @@ No phone app, no cloud, no extra Python packages.
 
 Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
+
+![Most used keys](docs/keys.png)
+
+![Session replay](docs/replay.png)
 
 **Session replay:** open any session and press play to hear it back with a grand piano
 sound while the keyboard lights up the keys as you pressed them. Sustain and soft pedal
@@ -98,6 +107,10 @@ python3 -m pianotrack replay song.mid --fifo /tmp/piano.fifo
 
 Run the tests with `python3 -m unittest discover -v tests`.
 
+The screenshots in `docs/` are generated from the simulated data with
+`tools/screenshots.mjs` (instructions at the top of that file). Regenerate them
+whenever the dashboard changes.
+
 ## Options
 
 `python3 -m pianotrack run --help`:
@@ -114,6 +127,7 @@ The daily goal is set from the dashboard.
 | Endpoint | Returns |
 |---|---|
 | `GET /api/summary` | today, week, streak, records, totals, live session, collector status |
+| `GET /api/status` | collector state: piano connected, device, last MIDI event |
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
