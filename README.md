@@ -24,6 +24,12 @@ No phone app, no cloud, no extra Python packages.
 Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
 
+**Session replay:** open any session and press play to hear it back with a grand piano
+sound while the keyboard lights up the keys as you pressed them. Sustain and soft pedal
+are honoured, playback speed goes from 0.5× to 2×, and "skip pauses" squeezes long
+silences so you hear only the playing. The piano samples ship with the app, so replay
+works without internet.
+
 Every session can be downloaded as a `.mid` file (handy for replaying what you
 played) or as a CSV of notes. `/api/sessions.csv` exports the session list.
 
@@ -113,10 +119,12 @@ The daily goal is set from the dashboard.
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
 | `GET /api/sessions?limit=50` | session list with headline metrics |
 | `GET /api/sessions/<id>` | full metrics, timeline, key histogram |
+| `GET /api/sessions/<id>/events` | the session as a time series for replay: notes `[on, off, pitch, velocity]` and pedals `[t, cc, value]`, seconds from start |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
 | `GET /api/sessions.csv` | all sessions as CSV |
 | `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5}` |
 
 ## License
 
-MIT
+Code: MIT. Piano samples in `pianotrack/static/piano/`: Salamander Grand Piano V3 by
+Alexander Holm, CC-BY 3.0 (see `ATTRIBUTION.md` there).

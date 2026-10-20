@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 import urllib.request
 
 from pianotrack import metrics, simulate
@@ -131,6 +132,9 @@ class EndToEndTest(TmpStore):
             sent = sum(1 for _, m in events if m[0] == 0x90 and m[2] > 0)
             self.assertEqual(sessions[0]["note_count"], sent)
             self.assertEqual(summary["totals"]["notes"], sent)
+            ev = json.load(urllib.request.urlopen(f"{base}/api/sessions/{sessions[0]['id']}/events"))
+            self.assertEqual(len(ev["notes"]), sent)
+            self.assertTrue(all(0 <= n[0] <= n[1] for n in ev["notes"]))
             mid = urllib.request.urlopen(f"{base}/api/sessions/{sessions[0]['id']}.mid").read()
             self.assertTrue(mid.startswith(b"MThd"))
             page = urllib.request.urlopen(base + "/").read()
@@ -163,6 +167,11 @@ class BackfillTest(TmpStore):
             for path in ("/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-512.png"):
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
+            for path in ("/replay.js", "/piano/A0.mp3", "/piano/C8.mp3", "/piano/Fs4.mp3"):
+                with urllib.request.urlopen(base + path) as r:
+                    self.assertEqual(r.status, 200)
+            with self.assertRaises(urllib.error.HTTPError):
+                urllib.request.urlopen(base + "/piano/../store.py")
             keys = json.load(urllib.request.urlopen(base + "/api/keys?days=7"))
             self.assertEqual(keys["total"], 0)
         finally:

@@ -126,6 +126,20 @@ tr.sel td { background: var(--accent-soft) !important; }
 .topkeys { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--text-2); }
 .topkeys b { color: var(--text); }
 .chip { border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+.rp-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.rp-play { width: 44px; height: 36px; font-size: 15px; background: var(--accent); color: #fff; border-color: var(--accent); }
+.rp-time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-2); min-width: 92px; }
+.rp-seek { flex: 1; min-width: 140px; accent-color: var(--accent); }
+.rp-speed { font: inherit; font-size: 13px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.rp-skip { font-size: 13px; color: var(--text-2); display: inline-flex; gap: 4px; align-items: center; }
+.rp-kbd { overflow-x: auto; }
+.rp-k.rp-w { fill: var(--key-white); stroke: var(--border); }
+.rp-k.rp-b { fill: var(--key-black); }
+.rp-k.on { fill: var(--accent); }
+.rp-status { display: flex; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); align-items: center; }
+.rp-sus, .rp-soft { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; }
+.rp-sus.on, .rp-soft.on { background: var(--accent-soft); color: var(--text); border-color: var(--accent); }
+.rp-msg { margin-left: auto; }
 footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
 footer a { color: var(--text-2); }
 .scroll-x { overflow-x: auto; }
@@ -198,6 +212,8 @@ footer a { color: var(--text-2); }
           <button id="d-close">Close</button>
         </div>
       </div>
+      <div class="sub-h" style="margin-top:0">Replay <span style="font-weight:400;color:var(--muted)">(grand piano sound, keys light up as played)</span></div>
+      <div id="replay" style="margin-bottom:18px"></div>
       <div class="dtiles" id="d-tiles"></div>
       <div class="sub-h">Intensity over the session <span style="font-weight:400;color:var(--muted)">(notes per minute)</span></div>
       <div id="d-timeline"></div>
@@ -237,6 +253,7 @@ footer a { color: var(--text-2); }
   <footer>
     <span>Data stays on this device.</span>
     <a href="/api/summary">JSON API</a>
+    <span>Piano sound: Salamander Grand Piano by Alexander Holm, CC-BY 3.0.</span>
     <span id="updated"></span>
   </footer>
 </main>
@@ -525,6 +542,7 @@ function keyboard(hist, target) {
 
 async function openSession(id) {
   selected = id;
+  if (window.replay) window.replay.load(id);
   const d = await get(`/api/sessions/${id}`), m = d.metrics;
   $("detail-card").style.display = "";
   $("d-title").textContent = `${fmtWhen(d.start)}${d.closed ? "" : " · in progress"}`;
@@ -544,7 +562,7 @@ async function openSession(id) {
   timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m.key_histogram, "d-keys");
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
 }
-$("d-close").onclick = () => { selected = null; $("detail-card").style.display = "none";
+$("d-close").onclick = () => { selected = null; if (window.replay) window.replay.stop(); $("detail-card").style.display = "none";
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.remove("sel")); };
 
 // --- main refresh ------------------------------------------------------------
@@ -657,6 +675,11 @@ async function loop() {
   setTimeout(loop, live ? 3000 : 20000);
 }
 loop();
+</script>
+<script type="module">
+import { Replay } from "/replay.js";
+window.replay = new Replay(document.getElementById("replay"));
+if (selected) window.replay.load(selected);
 </script>
 </body>
 </html>

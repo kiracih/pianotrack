@@ -17,7 +17,7 @@ from .midi import write_smf
 log = logging.getLogger(__name__)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 ASSETS = {"/manifest.webmanifest": "application/manifest+json", "/icon.svg": "image/svg+xml",
-          "/icon-180.png": "image/png", "/icon-512.png": "image/png"}
+          "/icon-180.png": "image/png", "/icon-512.png": "image/png", "/replay.js": "text/javascript; charset=utf-8"}
 SESSION_FIELDS = ["start", "end", "duration_seconds", "active_seconds", "note_count",
                   "notes_per_minute", "velocity_mean", "dynamic_range", "tempo_bpm",
                   "steadiness", "intensity", "load", "sustain_fraction", "unique_keys",
@@ -200,6 +200,18 @@ class Api:
         return {"id": s["id"], "closed": bool(s["closed"]), "source": s["source"],
                 "start": s["start"], "end": s["end"], "metrics": m}
 
+    def session_events(self, sid):
+        """The session as a compact time series for replay, times relative to start."""
+        s = self.store.session(sid)
+        if not s:
+            return None
+        t0 = s["start"]
+        notes = [[round(n["t_on"] - t0, 4), round(n["t_off"] - t0, 4), n["pitch"], n["velocity"]]
+                 for n in self.store.notes(sid)]
+        pedals = [[round(p["t"] - t0, 4), p["cc"], p["value"]] for p in self.store.pedals(sid)]
+        duration = max([n[1] for n in notes] + [p[0] for p in pedals] + [0])
+        return {"id": sid, "start": t0, "duration": duration, "notes": notes, "pedals": pedals}
+
     def session_midi(self, sid):
         s = self.store.session(sid)
         if not s:
@@ -254,8 +266,9 @@ def make_handler(api):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            for k, v in (extra or {}).items():
+            extra = dict(extra or {})
+            self.send_header("Cache-Control", extra.pop("Cache-Control", "no-store"))
+            for k, v in extra.items():
                 self.send_header(k, v)
             self.end_headers()
             self.wfile.write(body)
@@ -271,6 +284,11 @@ def make_handler(api):
                 if path in ASSETS:
                     with open(os.path.join(STATIC, path[1:]), "rb") as f:
                         return self._send(200, f.read(), ASSETS[path])
+                m = re.fullmatch(r"/piano/([A-G]s?[0-8])\.mp3", path)
+                if m and os.path.exists(os.path.join(STATIC, "piano", m.group(1) + ".mp3")):
+                    with open(os.path.join(STATIC, "piano", m.group(1) + ".mp3"), "rb") as f:
+                        return self._send(200, f.read(), "audio/mpeg",
+                                          {"Cache-Control": "public, max-age=31536000"})
                 if path == "/api/keys":
                     return self._send(200, api.keys(max(0, min(int(q.get("days", 30)), 5000))))
                 if path == "/api/summary":
@@ -288,6 +306,10 @@ def make_handler(api):
                     return self._send(200, api.store.settings())
                 if path == "/api/status":
                     return self._send(200, api.collector.status if api.collector else {})
+                m = re.fullmatch(r"/api/sessions/(\d+)/events", path)
+                if m:
+                    data = api.session_events(int(m.group(1)))
+                    return self._send(200 if data else 404, data or {"error": "not found"})
                 m = re.fullmatch(r"/api/sessions/(\d+)(\.mid|\.csv)?", path)
                 if m:
                     sid, ext = int(m.group(1)), m.group(2)
