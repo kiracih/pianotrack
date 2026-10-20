@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#1a1a19">
 <title>Piano Practice</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Piano">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root {
   color-scheme: light;
@@ -113,6 +119,13 @@ tr.sel td { background: var(--accent-soft) !important; }
 .settings { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--text-2); }
 .settings input { width: 70px; font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12px; background: var(--surface); color: var(--text-2); }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.topkeys { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--text-2); }
+.topkeys b { color: var(--text); }
+.chip { border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
 footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
 footer a { color: var(--text-2); }
 .scroll-x { overflow-x: auto; }
@@ -164,6 +177,17 @@ footer a { color: var(--text-2); }
     <section class="card span-4"><h2>Steadiness <span>0–100, higher is more even</span></h2><div id="tr-steady"></div></section>
     <section class="card span-4"><h2>Notes per minute <span>while playing</span></h2><div id="tr-npm"></div></section>
     <section class="card span-4"><h2>Dynamic range <span>velocity spread</span></h2><div id="tr-dyn"></div></section>
+
+    <section class="card span-12">
+      <h2>Most used keys
+        <span class="seg" id="key-range">
+          <button data-days="7">7 days</button><button data-days="30" class="on">30 days</button><button data-days="90">90 days</button><button data-days="0">All</button>
+        </span>
+      </h2>
+      <div class="scroll-x"><div id="all-keys"></div></div>
+      <div class="legend" id="keys-legend"></div>
+      <div class="topkeys" id="top-keys"></div>
+    </section>
 
     <section class="card span-12" id="detail-card" style="display:none">
       <div class="detail-head">
@@ -472,28 +496,31 @@ function dynamicsChart(m) {
   $("d-dyn").innerHTML = ""; $("d-dyn").appendChild(s);
 }
 
-function keyboard(m) {
-  const hist = m.key_histogram, LOW = 21;
+const KEY_SHADES = 4;
+function keyShade(c, max) { return c === 0 ? null : `var(--seq-${Math.min(KEY_SHADES, 1 + Math.floor(3.999 * Math.sqrt(c / max)))})`; }
+function keyboard(hist, target) {
+  const LOW = 21, total = hist.reduce((a, b) => a + b, 0) || 1;
   const isBlack = (p) => [1, 3, 6, 8, 10].includes(p % 12);
   const whites = []; for (let p = 21; p <= 108; p++) if (!isBlack(p)) whites.push(p);
   const ww = 12, W = whites.length * ww, H = 72, bh = 44;
   const s = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H + 16}`, style: `min-width:${W * 0.7}px` });
   const max = Math.max(...hist) || 1;
-  const shade = (c) => c === 0 ? null : `var(--seq-${Math.min(4, 1 + Math.floor(3.999 * Math.sqrt(c / max)))})`;
+  const shade = (c) => keyShade(c, max);
+  const tipFor = (p, c) => `<b>${noteName(p)}</b><br>${fmtNum(c)} notes${c ? ` · ${(100 * c / total).toFixed(1)}%` : ""}`;
   const pos = {}; whites.forEach((p, i) => pos[p] = i * ww);
   for (const p of whites) {
     const c = hist[p - LOW];
     const r = el("rect", { x: pos[p] + 0.5, y: 0, width: ww - 1, height: H, rx: 2, fill: shade(c) || "var(--key-white)", stroke: "var(--border)" }, s);
-    hover(r, `<b>${noteName(p)}</b><br>${fmtNum(c)} notes`);
-    if (p % 12 === 0) el("text", { x: pos[p] + ww / 2, y: H + 13, "text-anchor": "middle" }, s).textContent = noteName(p);
+    hover(r, tipFor(p, c));
+    if (p % 12 === 0) el("text", { x: p === 108 ? W : pos[p] + ww / 2, y: H + 13, "text-anchor": p === 108 ? "end" : "middle" }, s).textContent = noteName(p);
   }
   for (let p = 22; p <= 108; p++) {
     if (!isBlack(p)) continue;
     const c = hist[p - LOW], x = pos[p - 1] + ww - 4;
     const r = el("rect", { x, y: 0, width: 8, height: bh, rx: 1.5, fill: shade(c) || "var(--key-black)", stroke: shade(c) ? "var(--surface)" : "none" }, s);
-    hover(r, `<b>${noteName(p)}</b><br>${fmtNum(c)} notes`);
+    hover(r, tipFor(p, c));
   }
-  $("d-keys").innerHTML = ""; $("d-keys").appendChild(s);
+  $(target).innerHTML = ""; $(target).appendChild(s);
 }
 
 async function openSession(id) {
@@ -510,10 +537,11 @@ async function openSession(id) {
     tile(m.tempo_bpm ? `${m.tempo_bpm}<small>bpm</small>` : "–", "est. tempo"),
     tile(m.intensity, "intensity", `load ${m.load}`),
     tile(m.velocity_mean, "avg velocity", `range ${m.velocity_p10}–${m.velocity_p90}`),
-    tile(`${Math.round(m.sustain_fraction * 100)}<small>%</small>`, "time on sustain", `${m.sustain_presses} presses`),
+    tile(`${Math.round(m.sustain_fraction * 100)}<small>%</small>`, "time on sustain",
+      `${m.sustain_presses} presses · soft pedal ${m.soft_fraction != null ? Math.round(m.soft_fraction * 100) + "%" : (m.soft_pedal_used ? "used" : "0%")}`),
     tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys · ${Math.round(m.left_hand_share * 100)}% below middle C`),
   ].join("");
-  timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m);
+  timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m.key_histogram, "d-keys");
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
 }
 $("d-close").onclick = () => { selected = null; $("detail-card").style.display = "none";
@@ -575,11 +603,35 @@ async function refresh() {
     trendLine("tr-steady", trends, "steadiness", "", 100);
     trendLine("tr-npm", trends, "notes_per_minute", "");
     trendLine("tr-dyn", trends, "dynamic_range", "");
+    loadKeys();
   }
   lastLive = !!lv;
   $("updated").textContent = `Updated ${new Date().toLocaleTimeString()}`;
   return !!lv;
 }
+
+let keyDays = 30;
+async function loadKeys() {
+  const k = await get(`/api/keys?days=${keyDays}`);
+  const label = keyDays ? `last ${keyDays} days` : "all time";
+  if (!k.total) {
+    $("all-keys").innerHTML = `<div class="empty">No notes in the ${label} yet.</div>`;
+    $("keys-legend").innerHTML = ""; $("top-keys").innerHTML = ""; return;
+  }
+  keyboard(k.histogram, "all-keys");
+  $("keys-legend").innerHTML = `<span>${fmtNum(k.total)} notes in ${k.sessions} sessions, ${label}</span>` +
+    [1, 2, 3, 4].map((l) => `<span><i style="background:var(--seq-${l})"></i>${l === 1 ? "few" : l === 4 ? "most" : ""}</span>`).join("");
+  const ranked = k.histogram.map((c, i) => [i + 21, c]).filter(([, c]) => c).sort((a, b) => b[1] - a[1]);
+  const below = k.histogram.slice(0, 60 - 21).reduce((a, b) => a + b, 0);
+  $("top-keys").innerHTML = `<span>Top keys:</span>` + ranked.slice(0, 8).map(([p, c]) =>
+    `<span class="chip"><b>${noteName(p)}</b> ${(100 * c / k.total).toFixed(1)}%</span>`).join("") +
+    `<span class="chip">${ranked.length} of 88 keys used</span><span class="chip">${Math.round(100 * below / k.total)}% below middle C</span>`;
+}
+document.querySelectorAll("#key-range button").forEach((b) => b.onclick = () => {
+  keyDays = +b.dataset.days;
+  document.querySelectorAll("#key-range button").forEach((x) => x.classList.toggle("on", x === b));
+  loadKeys();
+});
 
 $("settings").onsubmit = async (e) => {
   e.preventDefault();

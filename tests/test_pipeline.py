@@ -64,7 +64,11 @@ class MetricsTest(unittest.TestCase):
         notes = [{"t_on": i * 0.5, "t_off": i * 0.5 + 0.4, "pitch": 60 + i % 12, "velocity": 40 + i}
                  for i in range(40)]
         m = metrics.session_metrics(notes, [{"t": 0, "cc": 64, "value": 127},
-                                            {"t": 10, "cc": 64, "value": 0}])
+                                            {"t": 10, "cc": 64, "value": 0},
+                                            {"t": 2, "cc": 67, "value": 127},
+                                            {"t": 6, "cc": 67, "value": 0}])
+        self.assertEqual(m["soft_presses"], 1)
+        self.assertAlmostEqual(m["soft_fraction"], 4 / 19.9, places=2)
         self.assertEqual(m["note_count"], 40)
         self.assertAlmostEqual(m["active_seconds"], 39 * 0.5 + 0.4, places=1)
         self.assertEqual(m["sustain_presses"], 1)
@@ -146,6 +150,24 @@ class BackfillTest(TmpStore):
         self.assertGreater(s["totals"]["notes"], 1000)
         self.assertEqual(len(api.days(30)), 30)
         self.assertTrue(api.trends(30))
+        keys = api.keys(30)
+        self.assertEqual(len(keys["histogram"]), 88)
+        self.assertEqual(keys["total"], s["totals"]["notes"])
+        self.assertEqual(api.keys(0)["total"], keys["total"])
+
+    def test_assets_served(self):
+        httpd = make_server(Api(self.store), "127.0.0.1", 0)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{httpd.server_address[1]}"
+        try:
+            for path in ("/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-512.png"):
+                with urllib.request.urlopen(base + path) as r:
+                    self.assertEqual(r.status, 200)
+            keys = json.load(urllib.request.urlopen(base + "/api/keys?days=7"))
+            self.assertEqual(keys["total"], 0)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
 
 
 if __name__ == "__main__":

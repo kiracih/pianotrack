@@ -92,11 +92,11 @@ def max_polyphony(notes):
     return best
 
 
-def pedal_metrics(pedals, start, end):
-    presses, down_time = 0, 0.0
-    down_at = None
+def _pedal_usage(pedals, cc, end):
+    """(presses, seconds held down) for one pedal controller."""
+    presses, down_time, down_at = 0, 0.0, None
     for p in pedals:
-        if p["cc"] != 64:
+        if p["cc"] != cc:
             continue
         if p["value"] >= 64 and down_at is None:
             presses += 1
@@ -106,10 +106,18 @@ def pedal_metrics(pedals, start, end):
             down_at = None
     if down_at is not None:
         down_time += max(0.0, end - down_at)
+    return presses, down_time
+
+
+def pedal_metrics(pedals, start, end):
     span = max(end - start, 1e-9)
+    presses, sustain = _pedal_usage(pedals, 64, end)
+    soft_presses, soft = _pedal_usage(pedals, 67, end)
     return {"sustain_presses": presses,
-            "sustain_fraction": round(min(down_time / span, 1.0), 3),
-            "soft_pedal_used": any(p["cc"] == 67 and p["value"] >= 64 for p in pedals)}
+            "sustain_fraction": round(min(sustain / span, 1.0), 3),
+            "soft_presses": soft_presses,
+            "soft_fraction": round(min(soft / span, 1.0), 3),
+            "soft_pedal_used": soft_presses > 0}
 
 
 def zone_for(npm):

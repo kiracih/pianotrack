@@ -16,6 +16,8 @@ from .midi import write_smf
 
 log = logging.getLogger(__name__)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+ASSETS = {"/manifest.webmanifest": "application/manifest+json", "/icon.svg": "image/svg+xml",
+          "/icon-180.png": "image/png", "/icon-512.png": "image/png"}
 SESSION_FIELDS = ["start", "end", "duration_seconds", "active_seconds", "note_count",
                   "notes_per_minute", "velocity_mean", "dynamic_range", "tempo_bpm",
                   "steadiness", "intensity", "load", "sustain_fraction", "unique_keys",
@@ -163,6 +165,23 @@ class Api:
             out.append(row)
         return out
 
+    def keys(self, n=30):
+        """Key usage summed over the last `n` days (n=0 means all time)."""
+        since = None
+        if n:
+            since = datetime.combine(date.today() - timedelta(days=n - 1),
+                                     datetime.min.time()).timestamp()
+        hist = [0] * (metrics.HIGHEST_KEY - metrics.LOWEST_KEY + 1)
+        count = 0
+        for s in self._sessions_with_metrics(since):
+            h = s["metrics"].get("key_histogram")
+            if not h:
+                continue
+            count += 1
+            for i, c in enumerate(h):
+                hist[i] += c
+        return {"days": n, "sessions": count, "total": sum(hist), "histogram": hist}
+
     def sessions(self, limit=50):
         out = []
         for s in self.store.sessions(limit=limit):
@@ -249,6 +268,11 @@ def make_handler(api):
                 if path in ("/", "/index.html"):
                     with open(os.path.join(STATIC, "index.html"), "rb") as f:
                         return self._send(200, f.read(), "text/html; charset=utf-8")
+                if path in ASSETS:
+                    with open(os.path.join(STATIC, path[1:]), "rb") as f:
+                        return self._send(200, f.read(), ASSETS[path])
+                if path == "/api/keys":
+                    return self._send(200, api.keys(max(0, min(int(q.get("days", 30)), 5000))))
                 if path == "/api/summary":
                     return self._send(200, api.summary())
                 if path == "/api/days":

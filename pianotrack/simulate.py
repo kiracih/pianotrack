@@ -81,6 +81,7 @@ def piece(rng, t, bpm, bars=24, base_vel=64, jitter=0.012):
         dyn = base_vel + 25 * phrase + rng.gauss(0, 3)
         root = 48 + [0, 5, 7, 0][bar % 4]
         events.append((t, (0xB0, 64, 90 if bar % 2 == 0 else 0)))
+        events.append((t, (0xB0, 67, 100 if phrase == 0 else 0)))  # soft pedal on quiet bars
         for b in range(4):
             for i, c in enumerate([0, 7, 4, 7]):
                 tt = t + b * beat + i * beat / 4 + rng.gauss(0, jitter)
@@ -94,6 +95,7 @@ def piece(rng, t, bpm, bars=24, base_vel=64, jitter=0.012):
         if rng.random() < 0.1:  # a stumble: hesitation then restart
             t += rng.uniform(0.8, 2.5)
     events.append((t, (0xB0, 64, 0)))
+    events.append((t, (0xB0, 67, 0)))
     return events, t
 
 

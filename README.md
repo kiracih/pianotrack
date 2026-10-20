@@ -18,8 +18,8 @@ No phone app, no cloud, no extra Python packages.
 | Intensity and load | A 0 to 100 effort figure from density and loudness, and load = active minutes × intensity / 50. |
 | Steadiness, est. tempo | How evenly notes land on a rhythmic grid (100 = metronomic; about 70 means a typical ±10 ms wobble), plus the dominant tempo. |
 | Dynamics | Mean velocity, pp to ff distribution, and dynamic range (spread between the quiet and loud 10%). |
-| Keys | 88-key heatmap, lowest and highest note, share of notes below middle C. |
-| Pedal | Sustain presses and share of time on sustain, soft pedal use. |
+| Keys | 88-key heatmap per session and across the last 7, 30 or 90 days or all time, top keys, lowest and highest note, share of notes below middle C. |
+| Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
 
 Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
@@ -60,7 +60,7 @@ python3 -m pianotrack devices      # the FP-30X should be listed
 ```
 
 Then open `http://<pi-hostname>.local:8080` (for example `http://raspberrypi.local:8080`)
-on any device on the same wifi. Add it to your phone's home screen for an app-like icon.
+on any device on the same wifi. Add it to your phone's home screen and it opens full screen with its own icon.
 
 Useful commands:
 
@@ -110,6 +110,7 @@ The daily goal is set from the dashboard.
 | `GET /api/summary` | today, week, streak, records, totals, live session, collector status |
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
+| `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
 | `GET /api/sessions?limit=50` | session list with headline metrics |
 | `GET /api/sessions/<id>` | full metrics, timeline, key histogram |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
