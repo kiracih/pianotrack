@@ -1,0 +1,20 @@
+[Unit]
+Description=Piano practice tracker (MIDI collector + dashboard)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+SupplementaryGroups=audio
+WorkingDirectory=@DIR@
+Environment=PIANOTRACK_DB=/var/lib/pianotrack/pianotrack.db
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -m pianotrack run --port @PORT@
+Restart=always
+RestartSec=3
+StateDirectory=pianotrack
+StateDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,136 @@
+"""Command line entry point: python -m pianotrack <command>."""
+
+import argparse
+import logging
+import os
+import random
+import signal
+import sys
+import threading
+import time
+
+from . import __version__, simulate
+from .collector import Collector, find_device
+from .midi import read_smf
+from .recorder import Recorder
+from .server import Api, make_server
+from .store import Store
+
+DEFAULT_DB = os.environ.get("PIANOTRACK_DB", os.path.expanduser("~/.local/share/pianotrack/pianotrack.db"))
+
+
+def _store(args):
+    os.makedirs(os.path.dirname(os.path.abspath(args.db)), exist_ok=True)
+    return Store(args.db)
+
+
+def cmd_run(args):
+    store = _store(args)
+    collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
+    api = Api(store, collector)
+    httpd = make_server(api, args.host, args.port)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    logging.info("dashboard on http://%s:%d", args.host, args.port)
+
+    stop = threading.Event()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: (collector and collector.stop(), stop.set()))
+    if collector:
+        collector.run()  # returns after stop(), closing any open session
+    else:
+        stop.wait()
+    httpd.shutdown()
+    store.close()
+
+
+def cmd_devices(args):
+    import glob
+    from .collector import card_name
+    devices = sorted(glob.glob("/dev/snd/midiC*D*"))
+    if not devices:
+        print("no raw MIDI devices found under /dev/snd (is the piano on and plugged in?)")
+    for d in devices:
+        print(f"{d}\t{card_name(d)}")
+    chosen = find_device(args.device)
+    print(f"would use: {chosen}")
+
+
+def cmd_backfill(args):
+    store = _store(args)
+    ids = simulate.backfill(store, days=args.days, seed=args.seed)
+    print(f"created {len(ids)} simulated sessions over {args.days} days in {args.db}")
+
+
+def cmd_simulate(args):
+    rng = random.Random(args.seed)
+    events = simulate.practice_session(rng, args.minutes, skill=args.skill)
+    if args.out:
+        simulate.save_mid(args.out, events)
+        print(f"wrote {args.out}")
+        return
+    print(f"streaming {args.minutes} min of practice into {args.fifo} at {args.speed}x")
+    simulate.stream_to_fifo(args.fifo, events, speed=args.speed)
+
+
+def cmd_replay(args):
+    events = read_smf(args.file)
+    if args.fifo:
+        simulate.stream_to_fifo(args.fifo, events, speed=args.speed)
+        return
+    store = _store(args)
+    rec = Recorder(store, idle_gap=args.idle_gap, source=os.path.basename(args.file))
+    t0 = args.start if args.start else time.time() - (events[-1][0] if events else 0)
+    sid = simulate.feed(rec, events, t0)
+    print(f"stored session {sid}" if sid else "too few notes, nothing stored")
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="pianotrack", description="Piano practice tracker")
+    p.add_argument("--db", default=DEFAULT_DB, help="SQLite file (default %(default)s)")
+    p.add_argument("-v", "--verbose", action="store_true")
+    p.add_argument("--version", action="version", version=__version__)
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    r = sub.add_parser("run", help="collect MIDI and serve the dashboard")
+    r.add_argument("--device", help="ALSA card name regex, or a path such as a FIFO")
+    r.add_argument("--host", default="0.0.0.0")
+    r.add_argument("--port", type=int, default=8080)
+    r.add_argument("--idle-gap", type=float, default=180.0,
+                   help="seconds of silence that end a session")
+    r.add_argument("--no-collector", action="store_true", help="dashboard only")
+    r.set_defaults(func=cmd_run)
+
+    d = sub.add_parser("devices", help="list MIDI devices")
+    d.add_argument("--device")
+    d.set_defaults(func=cmd_devices)
+
+    b = sub.add_parser("backfill", help="fill the database with simulated history")
+    b.add_argument("--days", type=int, default=30)
+    b.add_argument("--seed", type=int)
+    b.set_defaults(func=cmd_backfill)
+
+    s = sub.add_parser("simulate", help="play synthetic practice into a FIFO or .mid")
+    s.add_argument("--fifo", default="/tmp/pianotrack.fifo")
+    s.add_argument("--out", help="write a .mid file instead of streaming")
+    s.add_argument("--minutes", type=float, default=5)
+    s.add_argument("--speed", type=float, default=1.0)
+    s.add_argument("--skill", type=float, default=0.6)
+    s.add_argument("--seed", type=int)
+    s.set_defaults(func=cmd_simulate)
+
+    rp = sub.add_parser("replay", help="import a .mid file as a session, or stream it")
+    rp.add_argument("file")
+    rp.add_argument("--fifo", help="stream into this FIFO in real time instead")
+    rp.add_argument("--speed", type=float, default=1.0)
+    rp.add_argument("--start", type=float, help="unix time the session started")
+    rp.add_argument("--idle-gap", type=float, default=180.0)
+    rp.set_defaults(func=cmd_replay)
+
+    args = p.parse_args(argv)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

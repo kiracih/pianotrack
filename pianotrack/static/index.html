@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1a1a19">
+<title>Piano Practice</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f3f0;
+  --surface: #fcfcfb;
+  --border: #e4e2dc;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #8a8984;
+  --grid: #ebe9e4;
+  --accent: #2a78d6;
+  --accent-soft: #cde2fb;
+  --good: #0ca30c;
+  --good-text: #006300;
+  --live: #d03b3b;
+  --track: #e8e6e1;
+  --seq-0: #ebe9e4; --seq-1: #b7d3f6; --seq-2: #6da7ec; --seq-3: #2a78d6; --seq-4: #184f95;
+  --z-rest: #d8d6d0; --z-light: #9ec5f4; --z-moderate: #5598e7; --z-vigorous: #256abf; --z-peak: #0d366b;
+  --key-white: #ffffff; --key-black: #2c2c2a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111110; --surface: #1a1a19; --border: #2c2c2a; --text: #f0efec; --text-2: #c3c2b7;
+    --muted: #8f8e86; --grid: #2a2a28; --accent: #3987e5; --accent-soft: #1c3a5e;
+    --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --track: #2c2c2a;
+    --seq-0: #262624; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
+    --z-rest: #3a3a37; --z-light: #184f95; --z-moderate: #256abf; --z-vigorous: #3987e5; --z-peak: #9ec5f4;
+    --key-white: #d9d8d3; --key-black: #111110;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110; --surface: #1a1a19; --border: #2c2c2a; --text: #f0efec; --text-2: #c3c2b7;
+  --muted: #8f8e86; --grid: #2a2a28; --accent: #3987e5; --accent-soft: #1c3a5e;
+  --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --track: #2c2c2a;
+  --seq-0: #262624; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
+  --z-rest: #3a3a37; --z-light: #184f95; --z-moderate: #256abf; --z-vigorous: #3987e5; --z-peak: #9ec5f4;
+  --key-white: #d9d8d3; --key-black: #111110;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+main { max-width: 980px; margin: 0 auto; padding: 16px 16px 48px; }
+header { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; flex-wrap: wrap; }
+header h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; flex: 1; }
+.pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text-2); background: var(--surface); display: inline-flex; gap: 6px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--good); }
+.dot.live { background: var(--live); animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+button, .btn { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
+button:hover, .btn:hover { border-color: var(--muted); }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
+.card h2 { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 0 12px;
+  text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; gap: 8px; }
+.card h2 span { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
+.span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-7 { grid-column: span 7; }
+.span-6 { grid-column: span 6; } .span-5 { grid-column: span 5; } .span-4 { grid-column: span 4; }
+@media (max-width: 760px) { .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; } }
+.today { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.ring { position: relative; width: 160px; height: 160px; flex: none; }
+.ring .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring .big { font-size: 38px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
+.ring .sub { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex: 1; min-width: 200px; }
+.tile .v { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.tile .v small { font-size: 13px; font-weight: 500; color: var(--text-2); margin-left: 2px; }
+.tile .l { font-size: 12px; color: var(--text-2); }
+.tile .d { font-size: 12px; color: var(--muted); }
+.live-banner { display: none; border-color: var(--live); }
+.live-banner.show { display: block; }
+.live-banner .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: baseline; }
+svg { display: block; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+.axis line { stroke: var(--grid); }
+.tip { position: fixed; pointer-events: none; z-index: 10; background: var(--text); color: var(--surface);
+  font-size: 12px; padding: 6px 9px; border-radius: 6px; opacity: 0; transition: opacity .1s; white-space: nowrap; }
+.tip.show { opacity: 1; }
+.hit { fill: transparent; cursor: default; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-top: 8px; align-items: center; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--grid); }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--bg); }
+tr.sel td { background: var(--accent-soft) !important; }
+.num { text-align: right; }
+.hide-sm { }
+@media (max-width: 600px) { .hide-sm { display: none; } }
+.records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
+.detail-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.detail-head h3 { margin: 0; font-size: 17px; }
+.dtiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 600px) { .dtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sub-h { font-size: 12px; color: var(--text-2); margin: 16px 0 6px; font-weight: 600; }
+.settings { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--text-2); }
+.settings input { width: 70px; font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); }
+footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+footer a { color: var(--text-2); }
+.scroll-x { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Piano Practice</h1>
+    <span class="pill" id="status"><span class="dot"></span><span>connecting…</span></span>
+    <button id="theme" title="Toggle light/dark" aria-label="Toggle theme">◐</button>
+  </header>
+
+  <div class="grid">
+    <section class="card span-12 live-banner" id="live">
+      <h2><span style="color:var(--live);text-transform:uppercase;letter-spacing:.06em;font-weight:600">● Playing now</span><span id="live-since"></span></h2>
+      <div class="row">
+        <div class="tile"><div class="v" id="live-time">0:00</div><div class="l">active time</div></div>
+        <div class="tile"><div class="v" id="live-notes">0</div><div class="l">notes</div></div>
+        <div class="tile"><div class="v" id="live-npm">0</div><div class="l">notes / min</div></div>
+        <div class="tile"><div class="v" id="live-vel">–</div><div class="l">avg velocity</div></div>
+      </div>
+    </section>
+
+    <section class="card span-7">
+      <h2>Today <span id="today-date"></span></h2>
+      <div class="today">
+        <div class="ring" id="ring"></div>
+        <div class="tiles">
+          <div class="tile"><div class="v" id="t-streak">0<small>days</small></div><div class="l">current streak</div><div class="d" id="t-streak-best"></div></div>
+          <div class="tile"><div class="v" id="t-notes">0</div><div class="l">notes today</div></div>
+          <div class="tile"><div class="v" id="t-load">0</div><div class="l">practice load</div><div class="d">effort × time</div></div>
+          <div class="tile"><div class="v" id="t-consistency">0<small>%</small></div><div class="l">days played, last 4 weeks</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card span-5">
+      <h2>This week <span id="week-total"></span></h2>
+      <div id="week"></div>
+    </section>
+
+    <section class="card span-12">
+      <h2>Practice calendar <span>minutes per day, last 26 weeks</span></h2>
+      <div class="scroll-x"><div id="heatmap"></div></div>
+      <div class="legend" id="heat-legend"></div>
+    </section>
+
+    <section class="card span-4"><h2>Steadiness <span>0–100, higher is more even</span></h2><div id="tr-steady"></div></section>
+    <section class="card span-4"><h2>Notes per minute <span>while playing</span></h2><div id="tr-npm"></div></section>
+    <section class="card span-4"><h2>Dynamic range <span>velocity spread</span></h2><div id="tr-dyn"></div></section>
+
+    <section class="card span-12" id="detail-card" style="display:none">
+      <div class="detail-head">
+        <h3 id="d-title"></h3>
+        <div style="display:flex;gap:8px">
+          <a class="btn" id="d-mid">Download .mid</a>
+          <a class="btn" id="d-csv">Notes .csv</a>
+          <button id="d-close">Close</button>
+        </div>
+      </div>
+      <div class="dtiles" id="d-tiles"></div>
+      <div class="sub-h">Intensity over the session <span style="font-weight:400;color:var(--muted)">(notes per minute)</span></div>
+      <div id="d-timeline"></div>
+      <div class="grid" style="margin-top:4px">
+        <div class="span-6"><div class="sub-h">Time in effort zones</div><div id="d-zones"></div></div>
+        <div class="span-6"><div class="sub-h">Dynamics</div><div id="d-dyn"></div></div>
+      </div>
+      <div class="sub-h">Keys played</div>
+      <div class="scroll-x"><div id="d-keys"></div></div>
+    </section>
+
+    <section class="card span-8">
+      <h2>Recent sessions <a class="btn" href="/api/sessions.csv" style="text-transform:none;letter-spacing:0;font-weight:400">Export CSV</a></h2>
+      <div class="scroll-x">
+        <table>
+          <thead><tr><th>When</th><th class="num">Active</th><th class="num">Notes</th><th class="num hide-sm">Notes/min</th><th class="num hide-sm">Tempo</th><th class="num">Steady</th></tr></thead>
+          <tbody id="sessions"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="no-sessions" style="display:none">No sessions yet. Play something on the piano and it will show up here.</div>
+    </section>
+
+    <section class="card span-4">
+      <h2>Records</h2>
+      <div class="records" id="records"></div>
+      <h2 style="margin-top:20px">All time</h2>
+      <div class="records" id="totals"></div>
+      <h2 style="margin-top:20px">Goal</h2>
+      <form class="settings" id="settings">
+        <label>Daily goal <input type="number" id="goal" min="1" max="600"> min</label>
+        <button type="submit">Save</button>
+        <span id="saved" style="color:var(--good-text)"></span>
+      </form>
+    </section>
+  </div>
+
+  <footer>
+    <span>Data stays on this device.</span>
+    <a href="/api/summary">JSON API</a>
+    <span id="updated"></span>
+  </footer>
+</main>
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const tip = $("tip");
+let selected = null, lastLive = false;
+
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function svgRoot(w, h) { return el("svg", { viewBox: `0 0 ${w} ${h}`, width: "100%", preserveAspectRatio: "xMidYMid meet", role: "img" }); }
+function showTip(evt, html) {
+  tip.innerHTML = html; tip.classList.add("show");
+  const x = Math.min(evt.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px"; tip.style.top = (evt.clientY - tip.offsetHeight - 10) + "px";
+}
+function hideTip() { tip.classList.remove("show"); }
+function hover(node, html) {
+  node.addEventListener("mousemove", (e) => showTip(e, html));
+  node.addEventListener("mouseleave", hideTip);
+  node.addEventListener("touchstart", (e) => showTip(e.touches[0], html), { passive: true });
+}
+function fmtDur(s) {
+  s = Math.round(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+function fmtClock(s) { s = Math.round(s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+function fmtNum(n) { return (n ?? 0).toLocaleString(); }
+function fmtWhen(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  const day = d.toDateString() === now.toDateString() ? "Today"
+    : d.toDateString() === new Date(now - 864e5).toDateString() ? "Yesterday"
+    : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return `${day} ${d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+}
+const NOTE = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+const noteName = (p) => NOTE[p % 12] + (Math.floor(p / 12) - 1);
+async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error(url); return r.json(); }
+
+// --- today ring --------------------------------------------------------------
+function ring(pct, minutes, goalMin) {
+  const box = $("ring"); box.innerHTML = "";
+  const s = svgRoot(160, 160); const r = 66, c = 2 * Math.PI * r;
+  el("circle", { cx: 80, cy: 80, r, fill: "none", stroke: "var(--track)", "stroke-width": 14 }, s);
+  const p = Math.min(pct, 100) / 100;
+  if (p > 0) el("circle", { cx: 80, cy: 80, r, fill: "none", stroke: pct >= 100 ? "var(--good)" : "var(--accent)",
+    "stroke-width": 14, "stroke-linecap": "round", "stroke-dasharray": `${c * p} ${c}`, transform: "rotate(-90 80 80)" }, s);
+  box.appendChild(s);
+  const center = document.createElement("div"); center.className = "center";
+  center.innerHTML = `<div class="big">${minutes}</div><div class="sub">of ${goalMin} min goal</div>` +
+    (pct >= 100 ? `<div class="sub" style="color:var(--good-text)">✓ goal met</div>` : `<div class="sub">${pct}%</div>`);
+  box.appendChild(center);
+}
+
+// --- week bars -------------------------------------------------------------
+function weekBars(week, goalSec) {
+  const W = 360, H = 180, pad = { l: 28, r: 4, t: 10, b: 24 };
+  const s = svgRoot(W, H);
+  const maxMin = Math.max(goalSec / 60 * 1.2, ...week.map((d) => d.active_seconds / 60), 10);
+  const y = (m) => pad.t + (H - pad.t - pad.b) * (1 - m / maxMin);
+  const ticks = niceTicks(maxMin, 3);
+  const g = el("g", { class: "axis" }, s);
+  for (const t of ticks) {
+    el("line", { x1: pad.l, x2: W - pad.r, y1: y(t), y2: y(t) }, g);
+    el("text", { x: pad.l - 6, y: y(t) + 4, "text-anchor": "end" }, g).textContent = t;
+  }
+  const goalY = y(goalSec / 60);
+  el("line", { x1: pad.l, x2: W - pad.r, y1: goalY, y2: goalY, stroke: "var(--text-2)", "stroke-dasharray": "4 4", "stroke-width": 1 }, s);
+  el("text", { x: pad.l + 2, y: goalY - 5 }, s).textContent = `goal ${Math.round(goalSec / 60)}m`;
+  const bw = (W - pad.l - pad.r) / 7;
+  week.forEach((d, i) => {
+    const m = d.active_seconds / 60, x = pad.l + i * bw;
+    const dt = new Date(d.date + "T12:00:00");
+    const h = Math.max(0, y(0) - y(m));
+    if (h > 0) {
+      const bx = x + bw * 0.22, bwid = bw * 0.56, rr = Math.min(4, h, bwid / 2);
+      el("path", { d: `M${bx},${y(0)} V${y(m) + rr} q0,-${rr} ${rr},-${rr} H${bx + bwid - rr} q${rr},0 ${rr},${rr} V${y(0)} Z`,
+        fill: d.goal_met ? "var(--good)" : "var(--accent)" }, s);
+    }
+    const label = el("text", { x: x + bw / 2, y: H - 6, "text-anchor": "middle" }, s);
+    label.textContent = dt.toLocaleDateString(undefined, { weekday: "narrow" });
+    if (i === 6) label.setAttribute("style", "fill:var(--text);font-weight:600");
+    const hit = el("rect", { x, y: pad.t, width: bw, height: H - pad.t - pad.b, class: "hit" }, s);
+    hover(hit, `<b>${dt.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</b><br>${fmtDur(d.active_seconds)} · ${fmtNum(d.notes)} notes${d.goal_met ? " · goal met" : ""}`);
+  });
+  $("week").innerHTML = ""; $("week").appendChild(s);
+}
+function niceTicks(max, n) {
+  const step0 = max / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= step0);
+  const out = []; for (let v = 0; v <= max + 1e-9; v += step) out.push(+v.toFixed(6)); return out;
+}
+
+// --- calendar heatmap --------------------------------------------------------
+function heatmap(days, goalSec) {
+  const weeks = 26, cell = 13, gap = 3, top = 16, left = 24;
+  const last = days.slice(-(weeks * 7));
+  const first = new Date(last[0].date + "T12:00:00");
+  const offset = (first.getDay() + 6) % 7;  // Monday-first rows
+  const cols = Math.ceil((last.length + offset) / 7);
+  const W = left + cols * (cell + gap), H = top + 7 * (cell + gap);
+  const s = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, style: `max-width:${W * 2}px;min-width:${W * 0.75}px` });
+  ["Mon", "", "Wed", "", "Fri", "", ""].forEach((t, i) => {
+    if (t) el("text", { x: 0, y: top + i * (cell + gap) + 10 }, s).textContent = t;
+  });
+  const goalMin = goalSec / 60;
+  const level = (m) => m <= 0 ? 0 : m < goalMin * 0.33 ? 1 : m < goalMin * 0.67 ? 2 : m < goalMin ? 3 : 4;
+  let lastMonth = -1, lastLabelCol = -9;
+  last.forEach((d, i) => {
+    const idx = i + offset, col = Math.floor(idx / 7), row = idx % 7;
+    const dt = new Date(d.date + "T12:00:00");
+    if (row === 0 && dt.getMonth() !== lastMonth) {
+      lastMonth = dt.getMonth();
+      if (col - lastLabelCol < 3) return drawCell();
+      lastLabelCol = col;
+      el("text", { x: left + col * (cell + gap), y: 10 }, s).textContent = dt.toLocaleDateString(undefined, { month: "short" });
+    }
+    drawCell();
+    function drawCell() {
+      const m = d.active_seconds / 60;
+      const r = el("rect", { x: left + col * (cell + gap), y: top + row * (cell + gap), width: cell, height: cell, rx: 3,
+        fill: `var(--seq-${level(m)})` }, s);
+      hover(r, `<b>${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</b><br>${m > 0 ? fmtDur(d.active_seconds) + " · " + fmtNum(d.notes) + " notes" : "no practice"}`);
+    }
+  });
+  $("heatmap").innerHTML = ""; $("heatmap").appendChild(s);
+  const g = Math.round(goalMin);
+  $("heat-legend").innerHTML = [["0", 0], [`< ${Math.round(g / 3)}m`, 1], [`< ${Math.round(2 * g / 3)}m`, 2], [`< ${g}m`, 3], [`goal ${g}m+`, 4]]
+    .map(([t, l]) => `<span><i style="background:var(--seq-${l})"></i>${t}</span>`).join("");
+}
+
+// --- trend lines -------------------------------------------------------------
+function trendLine(target, rows, key, unit, fixedMax) {
+  const box = $(target); box.innerHTML = "";
+  const pts = rows.filter((r) => r[key] != null);
+  if (pts.length < 2) { box.innerHTML = `<div class="empty">Needs a few days of practice.</div>`; return; }
+  const W = 300, H = 140, pad = { l: 30, r: 8, t: 10, b: 20 };
+  const s = svgRoot(W, H);
+  const t0 = new Date(pts[0].date + "T12:00:00").getTime(), t1 = new Date(pts.at(-1).date + "T12:00:00").getTime();
+  const vals = pts.map((p) => p[key]);
+  const max = fixedMax ?? Math.max(...vals) * 1.15, min = fixedMax ? 0 : 0;
+  const x = (t) => pad.l + (W - pad.l - pad.r) * ((t - t0) / Math.max(t1 - t0, 1));
+  const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - (v - min) / (max - min));
+  const g = el("g", { class: "axis" }, s);
+  for (const t of niceTicks(max, 3)) {
+    el("line", { x1: pad.l, x2: W - pad.r, y1: y(t), y2: y(t) }, g);
+    el("text", { x: pad.l - 6, y: y(t) + 4, "text-anchor": "end" }, g).textContent = t;
+  }
+  const fmtD = (t) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  el("text", { x: pad.l, y: H - 4 }, s).textContent = fmtD(t0);
+  el("text", { x: W - pad.r, y: H - 4, "text-anchor": "end" }, s).textContent = fmtD(t1);
+  const xy = pts.map((p) => [x(new Date(p.date + "T12:00:00").getTime()), y(p[key])]);
+  // 7-point rolling mean as the main line; daily values as faint dots
+  const roll = xy.map((_, i) => { const w = vals.slice(Math.max(0, i - 6), i + 1); return w.reduce((a, b) => a + b, 0) / w.length; });
+  xy.forEach(([cx, cy]) => el("circle", { cx, cy, r: 2.5, fill: "var(--accent)", opacity: 0.3 }, s));
+  el("path", { d: xy.map(([cx], i) => `${i ? "L" : "M"}${cx.toFixed(1)},${y(roll[i]).toFixed(1)}`).join(""),
+    fill: "none", stroke: "var(--accent)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+  const lastXY = [xy.at(-1)[0], y(roll.at(-1))];
+  el("circle", { cx: lastXY[0], cy: lastXY[1], r: 4, fill: "var(--accent)", stroke: "var(--surface)", "stroke-width": 2 }, s);
+  // crosshair hover
+  const cross = el("line", { y1: pad.t, y2: H - pad.b, stroke: "var(--muted)", "stroke-width": 1, opacity: 0 }, s);
+  const hit = el("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: H - pad.t - pad.b, class: "hit" }, s);
+  const onMove = (e) => {
+    const r = s.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
+    let best = 0; xy.forEach(([cx], i) => { if (Math.abs(cx - px) < Math.abs(xy[best][0] - px)) best = i; });
+    cross.setAttribute("x1", xy[best][0]); cross.setAttribute("x2", xy[best][0]); cross.setAttribute("opacity", 1);
+    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that day · 7-day avg ${roll[best].toFixed(0)}${unit}`);
+  };
+  hit.addEventListener("mousemove", onMove);
+  hit.addEventListener("touchmove", (e) => onMove(e.touches[0]), { passive: true });
+  hit.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); hideTip(); });
+  box.appendChild(s);
+  const first = roll[Math.min(6, roll.length - 1)], lastV = roll.at(-1);
+  const diff = lastV - first;
+  const note = document.createElement("div"); note.className = "legend";
+  note.textContent = `Now ${lastV.toFixed(0)}${unit} (7-day avg), ${diff >= 0 ? "up" : "down"} ${Math.abs(diff).toFixed(0)}${unit} over the period.`;
+  box.appendChild(note);
+}
+
+// --- session detail ----------------------------------------------------------
+function tile(v, l, d = "") { return `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`; }
+
+function timelineChart(m) {
+  const tl = m.timeline, pts = tl.points;
+  const W = 900, H = 160, pad = { l: 34, r: 4, t: 8, b: 20 };
+  const s = svgRoot(W, H);
+  const max = Math.max(...pts.map((p) => p.npm), 60) * 1.1;
+  const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / max);
+  const g = el("g", { class: "axis" }, s);
+  for (const t of niceTicks(max, 3)) {
+    el("line", { x1: pad.l, x2: W - pad.r, y1: y(t), y2: y(t) }, g);
+    el("text", { x: pad.l - 6, y: y(t) + 4, "text-anchor": "end" }, g).textContent = t;
+  }
+  const bw = (W - pad.l - pad.r) / pts.length;
+  const zoneColor = (npm) => npm >= 400 ? "peak" : npm >= 240 ? "vigorous" : npm >= 120 ? "moderate" : npm >= 30 ? "light" : "rest";
+  pts.forEach((p, i) => {
+    const x = pad.l + i * bw, h = y(0) - y(p.npm);
+    if (h > 0.5) {
+      const wid = Math.max(bw - 2, 1), rr = Math.min(3, h, wid / 2);
+      el("path", { d: `M${x + 1},${y(0)} V${y(p.npm) + rr} q0,-${rr} ${rr},-${rr} H${x + 1 + wid - rr} q${rr},0 ${rr},${rr} V${y(0)} Z`,
+        fill: `var(--z-${zoneColor(p.npm)})` }, s);
+    }
+    const hit = el("rect", { x, y: pad.t, width: bw, height: H - pad.t - pad.b, class: "hit" }, s);
+    hover(hit, `<b>${fmtClock(p.t)}–${fmtClock(p.t + tl.bucket_seconds)}</b><br>${p.npm} notes/min${p.velocity ? " · velocity " + p.velocity : ""}`);
+  });
+  const total = pts.length * tl.bucket_seconds;
+  for (let k = 0; k <= 4; k++) {
+    el("text", { x: pad.l + (W - pad.l - pad.r) * k / 4, y: H - 4, "text-anchor": k === 0 ? "start" : k === 4 ? "end" : "middle" }, s)
+      .textContent = fmtClock(total * k / 4);
+  }
+  $("d-timeline").innerHTML = ""; $("d-timeline").appendChild(s);
+}
+
+function zonesChart(m) {
+  const z = m.timeline.zone_seconds, names = ["Rest", "Light", "Moderate", "Vigorous", "Peak"];
+  const ranges = { Rest: "<30", Light: "30–120", Moderate: "120–240", Vigorous: "240–400", Peak: "400+" };
+  const total = names.reduce((a, n) => a + (z[n] || 0), 0) || 1;
+  const W = 420, rowH = 24, H = names.length * rowH;
+  const s = svgRoot(W, H), lw = 74, vw = 70;
+  names.forEach((n, i) => {
+    const v = z[n] || 0, w = (W - lw - vw) * v / total, yy = i * rowH;
+    el("text", { x: 0, y: yy + 16, style: "fill:var(--text-2)" }, s).textContent = n;
+    el("rect", { x: lw, y: yy + 6, width: W - lw - vw, height: 12, rx: 3, fill: "var(--track)" }, s);
+    if (w > 0) el("rect", { x: lw, y: yy + 6, width: Math.max(w, 3), height: 12, rx: 3, fill: `var(--z-${n.toLowerCase()})` }, s);
+    el("text", { x: W, y: yy + 16, "text-anchor": "end", style: "fill:var(--text)" }, s).textContent = `${fmtDur(v)} · ${Math.round(100 * v / total)}%`;
+    const hit = el("rect", { x: 0, y: yy, width: W, height: rowH, class: "hit" }, s);
+    hover(hit, `<b>${n}</b> (${ranges[n]} notes/min)<br>${fmtDur(v)}`);
+  });
+  $("d-zones").innerHTML = ""; $("d-zones").appendChild(s);
+}
+
+function dynamicsChart(m) {
+  const names = ["pp", "p", "mp", "mf", "f", "ff"], d = m.dynamics;
+  const total = names.reduce((a, n) => a + d[n], 0) || 1;
+  const W = 420, H = 120, pad = { b: 20, t: 16 };
+  const s = svgRoot(W, H), bw = W / names.length;
+  const max = Math.max(...names.map((n) => d[n])) || 1;
+  names.forEach((n, i) => {
+    const h = (H - pad.b - pad.t) * d[n] / max, x = i * bw + bw * 0.2, wid = bw * 0.6;
+    if (h > 0) {
+      const rr = Math.min(4, h, wid / 2), y0 = H - pad.b;
+      el("path", { d: `M${x},${y0} V${y0 - h + rr} q0,-${rr} ${rr},-${rr} H${x + wid - rr} q${rr},0 ${rr},${rr} V${y0} Z`, fill: "var(--accent)" }, s);
+    }
+    el("text", { x: i * bw + bw / 2, y: H - 4, "text-anchor": "middle", style: "fill:var(--text-2);font-style:italic;font-weight:600" }, s).textContent = n;
+    el("text", { x: i * bw + bw / 2, y: H - pad.b - h - 4, "text-anchor": "middle" }, s).textContent = `${Math.round(100 * d[n] / total)}%`;
+    const hit = el("rect", { x: i * bw, y: 0, width: bw, height: H, class: "hit" }, s);
+    hover(hit, `<b>${n}</b><br>${fmtNum(d[n])} notes (${Math.round(100 * d[n] / total)}%)`);
+  });
+  $("d-dyn").innerHTML = ""; $("d-dyn").appendChild(s);
+}
+
+function keyboard(m) {
+  const hist = m.key_histogram, LOW = 21;
+  const isBlack = (p) => [1, 3, 6, 8, 10].includes(p % 12);
+  const whites = []; for (let p = 21; p <= 108; p++) if (!isBlack(p)) whites.push(p);
+  const ww = 12, W = whites.length * ww, H = 72, bh = 44;
+  const s = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H + 16}`, style: `min-width:${W * 0.7}px` });
+  const max = Math.max(...hist) || 1;
+  const shade = (c) => c === 0 ? null : `var(--seq-${Math.min(4, 1 + Math.floor(3.999 * Math.sqrt(c / max)))})`;
+  const pos = {}; whites.forEach((p, i) => pos[p] = i * ww);
+  for (const p of whites) {
+    const c = hist[p - LOW];
+    const r = el("rect", { x: pos[p] + 0.5, y: 0, width: ww - 1, height: H, rx: 2, fill: shade(c) || "var(--key-white)", stroke: "var(--border)" }, s);
+    hover(r, `<b>${noteName(p)}</b><br>${fmtNum(c)} notes`);
+    if (p % 12 === 0) el("text", { x: pos[p] + ww / 2, y: H + 13, "text-anchor": "middle" }, s).textContent = noteName(p);
+  }
+  for (let p = 22; p <= 108; p++) {
+    if (!isBlack(p)) continue;
+    const c = hist[p - LOW], x = pos[p - 1] + ww - 4;
+    const r = el("rect", { x, y: 0, width: 8, height: bh, rx: 1.5, fill: shade(c) || "var(--key-black)", stroke: shade(c) ? "var(--surface)" : "none" }, s);
+    hover(r, `<b>${noteName(p)}</b><br>${fmtNum(c)} notes`);
+  }
+  $("d-keys").innerHTML = ""; $("d-keys").appendChild(s);
+}
+
+async function openSession(id) {
+  selected = id;
+  const d = await get(`/api/sessions/${id}`), m = d.metrics;
+  $("detail-card").style.display = "";
+  $("d-title").textContent = `${fmtWhen(d.start)}${d.closed ? "" : " · in progress"}`;
+  $("d-mid").href = `/api/sessions/${id}.mid`; $("d-csv").href = `/api/sessions/${id}.csv`;
+  if (!m.note_count) { $("d-tiles").innerHTML = `<div class="empty">No notes yet.</div>`; return; }
+  $("d-tiles").innerHTML = [
+    tile(fmtDur(m.active_seconds), "active time", `${fmtDur(m.duration_seconds)} total`),
+    tile(fmtNum(m.note_count), "notes", `${m.notes_per_minute} per minute`),
+    tile(m.steadiness ?? "–", "steadiness", m.timing_error_ms != null ? `±${m.timing_error_ms} ms timing` : "not enough rhythm"),
+    tile(m.tempo_bpm ? `${m.tempo_bpm}<small>bpm</small>` : "–", "est. tempo"),
+    tile(m.intensity, "intensity", `load ${m.load}`),
+    tile(m.velocity_mean, "avg velocity", `range ${m.velocity_p10}–${m.velocity_p90}`),
+    tile(`${Math.round(m.sustain_fraction * 100)}<small>%</small>`, "time on sustain", `${m.sustain_presses} presses`),
+    tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys · ${Math.round(m.left_hand_share * 100)}% below middle C`),
+  ].join("");
+  timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m);
+  document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
+}
+$("d-close").onclick = () => { selected = null; $("detail-card").style.display = "none";
+  document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.remove("sel")); };
+
+// --- main refresh ------------------------------------------------------------
+async function refresh() {
+  const [sum, sessions] = await Promise.all([get("/api/summary"), get("/api/sessions?limit=15")]);
+  const st = $("status"), c = sum.collector;
+  if (sum.live) st.innerHTML = `<span class="dot live"></span><span>Recording</span>`;
+  else if (!c) st.innerHTML = `<span class="dot"></span><span>Dashboard only</span>`;
+  else if (c.connected) st.innerHTML = `<span class="dot on"></span><span>${c.name || "Piano"} connected</span>`;
+  else st.innerHTML = `<span class="dot"></span><span>Piano off</span>`;
+
+  const lv = sum.live;
+  $("live").classList.toggle("show", !!lv);
+  if (lv) {
+    $("live-since").textContent = `started ${new Date(lv.start * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
+    $("live-time").textContent = fmtClock(lv.active_seconds);
+    $("live-notes").textContent = fmtNum(lv.note_count);
+    $("live-npm").textContent = Math.round(lv.notes_per_minute || 0);
+    $("live-vel").textContent = lv.velocity_mean != null ? Math.round(lv.velocity_mean) : "–";
+  }
+
+  const t = sum.today, goalMin = sum.settings.daily_goal_minutes;
+  $("today-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+  ring(t.goal_pct, Math.round(t.active_seconds / 60), goalMin);
+  $("t-streak").innerHTML = `${sum.streak.current}<small>${sum.streak.current === 1 ? "day" : "days"}</small>`;
+  $("t-streak-best").textContent = `best ${sum.streak.longest}`;
+  $("t-notes").textContent = fmtNum(t.notes);
+  $("t-load").textContent = t.load;
+  $("t-consistency").innerHTML = `${sum.consistency_28d}<small>%</small>`;
+  const diff = sum.week_total_seconds - sum.prev_week_total_seconds;
+  $("week-total").textContent = `${fmtDur(sum.week_total_seconds)} · ${diff >= 0 ? "+" : "−"}${fmtDur(Math.abs(diff))} vs last week`;
+  weekBars(sum.week, t.goal_seconds);
+  if (document.activeElement !== $("goal")) $("goal").value = goalMin;
+
+  const r = sum.records, rec = [];
+  if (r.longest_session) rec.push(tile(fmtDur(r.longest_session.active_seconds), "longest session"));
+  if (r.best_day) rec.push(tile(fmtDur(r.best_day.active_seconds), "best day", new Date(r.best_day.date + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })));
+  if (r.most_notes) rec.push(tile(fmtNum(r.most_notes.note_count), "most notes"));
+  if (r.steadiest) rec.push(tile(r.steadiest.steadiness, "steadiest"));
+  $("records").innerHTML = rec.join("") || `<div class="empty">Records appear after your first session.</div>`;
+  $("totals").innerHTML = tile(fmtDur(sum.totals.active_seconds), "practiced") + tile(fmtNum(sum.totals.sessions), "sessions") +
+    tile(fmtNum(sum.totals.notes), "notes") + tile(sum.streak.longest, "longest streak");
+
+  $("no-sessions").style.display = sessions.length ? "none" : "";
+  $("sessions").innerHTML = sessions.map((s) => `<tr data-id="${s.id}" class="${s.id === selected ? "sel" : ""}">
+    <td>${fmtWhen(s.start)}${s.closed ? "" : ` <span style="color:var(--live)">●</span>`}</td>
+    <td class="num">${fmtDur(s.active_seconds)}</td><td class="num">${fmtNum(s.note_count)}</td>
+    <td class="num hide-sm">${s.notes_per_minute ?? "–"}</td><td class="num hide-sm">${s.tempo_bpm ?? "–"}</td>
+    <td class="num">${s.steadiness ?? "–"}</td></tr>`).join("");
+  document.querySelectorAll("#sessions tr").forEach((tr) => tr.onclick = () => openSession(+tr.dataset.id));
+
+  if (selected && lv && lv.session_id === selected) openSession(selected);
+  if (!lastLive || !lv) {
+    const [days, trends] = await Promise.all([get("/api/days?days=182"), get("/api/trends?days=60")]);
+    heatmap(days, t.goal_seconds);
+    trendLine("tr-steady", trends, "steadiness", "", 100);
+    trendLine("tr-npm", trends, "notes_per_minute", "");
+    trendLine("tr-dyn", trends, "dynamic_range", "");
+  }
+  lastLive = !!lv;
+  $("updated").textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  return !!lv;
+}
+
+$("settings").onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ daily_goal_minutes: +$("goal").value }) });
+  $("saved").textContent = r.ok ? "Saved" : "Invalid";
+  setTimeout(() => $("saved").textContent = "", 2000);
+  lastLive = false; refresh();
+};
+
+$("theme").onclick = () => {
+  const cur = document.documentElement.dataset.theme ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) {}
+};
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+async function loop() {
+  let live = false;
+  try { live = await refresh(); } catch (e) { $("status").innerHTML = `<span class="dot"></span><span>Offline</span>`; }
+  setTimeout(loop, live ? 3000 : 20000);
+}
+loop();
+</script>
+</body>
+</html>
