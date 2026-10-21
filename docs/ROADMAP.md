@@ -23,7 +23,12 @@ downloadable in one tap, so a dead SD card or a bad update never costs me data.
 
 **Acceptance criteria**
 - A nightly copy of the database is made with SQLite's online backup (consistent
-  while the collector writes), kept as 7 daily + 4 weekly files next to the DB.
+  while the collector writes), kept as 7 daily + 4 weekly files.
+- The copies go to a backup folder set with `--backup-dir` that is meant to be off
+  the SD card (a USB stick, or a share on another machine). Copies kept on the SD
+  card only undo bad updates or a corrupted database, not a dead card, so the
+  dashboard warns while no off-card folder is set. *Owner decision: USB stick or
+  the Mac.*
 - `GET /api/backup` downloads a consistent copy of the database; it is home
   network only, like the password setting.
 - A "Download backup" link in the dashboard's settings area.
@@ -33,7 +38,7 @@ downloadable in one tap, so a dead SD card or a bad update never costs me data.
   than 2 days is shown as a warning.
 - README (features, API table, CLI) and screenshots updated; tests pass.
 
-**Out of scope.** Cloud upload, syncing to the Mac, encrypting backups.
+**Out of scope.** Cloud upload, two-way sync, encrypting backups.
 
 **How we'll know.** A backup file exists every morning; the owner downloads one
 and it opens.
@@ -124,7 +129,8 @@ more than once a week.
 ## Later
 
 - **Browser mode (Web MIDI)**: same dashboard, capture from a Chrome/Edge tab, no
-  Pi. First step toward a product others can try (see the "beyond the Pi" analysis).
+  Pi. First step toward a product others can try (see the
+  [Pianotrack beyond the Pi](https://claude.ai/artifact/3tuwsgPuDxTURj3R45KrAs) analysis).
 - **Teacher/parent share link**: read-only weekly view for a teacher.
 - **Summary scales with history**: `/api/summary` recomputes over 400 days of
   sessions on every load; cache daily totals before it gets slow on the Pi.
