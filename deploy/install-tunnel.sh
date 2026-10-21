@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Make the dashboard reachable from anywhere through a Cloudflare Protected
-# Quick Tunnel. Only the given emails can sign in.
-# Usage: ./deploy/install-tunnel.sh you@example.com [other@example.com ...] [--port 8080]
+# Make the dashboard reachable from anywhere through a Cloudflare Quick Tunnel.
+# Visitors sign in with the dashboard password, set on the dashboard at home.
+# Emails are optional: they add Cloudflare's email-code gate in front, which is
+# currently broken by cloudflared issue #1752 (login expires after seconds).
+# Usage: ./deploy/install-tunnel.sh [you@example.com ...] [--port 8080]
 set -euo pipefail
 
 PORT=8080
@@ -13,10 +15,6 @@ while [ $# -gt 0 ]; do
         *) echo "not an email: $1" >&2; exit 1 ;;
     esac
 done
-if [ ${#EMAILS[@]} -eq 0 ]; then
-    echo "usage: $0 you@example.com [more emails] [--port 8080]" >&2
-    exit 1
-fi
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 RUN_USER="${SUDO_USER:-$USER}"
@@ -29,14 +27,18 @@ if ! command -v cloudflared >/dev/null; then
         sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
     sudo apt-get update -qq && sudo apt-get install -y -qq cloudflared
 fi
-if ! cloudflared tunnel --help 2>&1 | grep -q -- --allowed-mail; then
+if [ ${#EMAILS[@]} -gt 0 ] && ! cloudflared tunnel --help 2>&1 | grep -q -- --allowed-mail; then
     echo "cloudflared $(cloudflared --version) has no --allowed-mail; 2026.9.3 or newer is needed" >&2
     echo "try: sudo apt-get update && sudo apt-get install --only-upgrade cloudflared" >&2
     exit 1
 fi
 
 sudo mkdir -p /etc/pianotrack
-printf '%s\n' "${EMAILS[@]}" | sudo tee /etc/pianotrack/allowed-emails >/dev/null
+if [ ${#EMAILS[@]} -gt 0 ]; then
+    printf '%s\n' "${EMAILS[@]}" | sudo tee /etc/pianotrack/allowed-emails >/dev/null
+else
+    : | sudo tee /etc/pianotrack/allowed-emails >/dev/null
+fi
 sed -e "s|@USER@|$RUN_USER|" -e "s|@DIR@|$DIR|" -e "s|@PORT@|$PORT|" \
     "$DIR/deploy/pianotrack-tunnel.service" | sudo tee /etc/systemd/system/pianotrack-tunnel.service >/dev/null
 sudo systemctl daemon-reload
@@ -47,7 +49,8 @@ echo "Waiting for the tunnel URL..."
 for _ in $(seq 30); do
     if [ -s /var/lib/pianotrack/tunnel-url ]; then
         echo "Dashboard from anywhere: $(cat /var/lib/pianotrack/tunnel-url)"
-        echo "Allowed to sign in: ${EMAILS[*]}"
+        if [ ${#EMAILS[@]} -gt 0 ]; then echo "Cloudflare email gate for: ${EMAILS[*]}"; fi
+        echo "Visitors need the dashboard password. Set it at home: dashboard > Remote access."
         exit 0
     fi
     sleep 1

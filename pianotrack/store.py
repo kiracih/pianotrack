@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS pedals (
 );
 CREATE INDEX IF NOT EXISTS pedals_session ON pedals(session_id, t);
 CREATE INDEX IF NOT EXISTS sessions_start ON sessions(start);
+CREATE TABLE IF NOT EXISTS secrets (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -159,3 +163,12 @@ class Store:
         self._x("INSERT INTO settings(key, value) VALUES (?, ?)"
                 " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key, json.dumps(value)))
+
+    # Kept apart from settings so they never appear in /api/settings.
+    def secret(self, key):
+        rows = self._q("SELECT value FROM secrets WHERE key=?", (key,))
+        return rows[0]["value"] if rows else None
+
+    def set_secret(self, key, value):
+        self._x("INSERT INTO secrets(key, value) VALUES (?, ?)"
+                " ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))

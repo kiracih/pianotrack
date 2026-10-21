@@ -3,6 +3,7 @@
 // Samples are the Salamander Grand Piano (CC-BY 3.0), one every minor third,
 // served by the Pi itself so replay works without internet access.
 
+(() => {
 const SAMPLE_NAMES = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"];
 const LOWEST = 21, HIGHEST = 108;
 const PAUSE_LIMIT = 3.0;   // "skip pauses" squeezes silences longer than this...
@@ -16,22 +17,35 @@ class PianoSampler {
     this.loading = null;
   }
 
+  unlock() {
+    // Must run synchronously inside the click: Safari only starts audio from a user gesture.
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.out = this.ctx.createGain();
+      this.out.gain.value = 0.8;
+      const comp = this.ctx.createDynamicsCompressor();
+      this.out.connect(comp).connect(this.ctx.destination);
+    }
+    if (this.ctx.state !== "running") this.ctx.resume();
+  }
+
   load() {
     if (this.loading) return this.loading;
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    this.out = this.ctx.createGain();
-    this.out.gain.value = 0.8;
-    const comp = this.ctx.createDynamicsCompressor();
-    this.out.connect(comp).connect(this.ctx.destination);
+    this.unlock();
     const jobs = [];
     for (let p = LOWEST; p <= HIGHEST; p += 3) {
       const name = SAMPLE_NAMES[p % 12] + (Math.floor(p / 12) - 1);
-      jobs.push(fetch(`/piano/${name}.mp3`)
-        .then((r) => r.arrayBuffer())
+      jobs.push(fetch(`/piano/${name}.mp3`, { credentials: "same-origin" })
+        .then((r) => {
+          // Behind a login wall an expired session returns an HTML sign-in page instead.
+          const type = r.headers.get("content-type") || "";
+          if (!r.ok || !type.startsWith("audio/")) throw new Error(`piano sample ${name}: HTTP ${r.status} ${type}`);
+          return r.arrayBuffer();
+        })
         .then((b) => new Promise((ok, bad) => this.ctx.decodeAudioData(b, ok, bad)))
         .then((buf) => { this.buffers[p] = buf; }));
     }
-    this.loading = Promise.all(jobs);
+    this.loading = Promise.all(jobs).catch((e) => { this.loading = null; throw e; });
     return this.loading;
   }
 
@@ -122,7 +136,7 @@ function prepare(data, skipPauses) {
 
 const piano = new PianoSampler();
 
-export class Replay {
+class Replay {
   constructor(root) {
     this.root = root;
     this.data = null;
@@ -205,9 +219,14 @@ export class Replay {
 
   async play() {
     if (!this.prep || !this.prep.notes.length) return;
-    if (!piano.ctx || !Object.keys(piano.buffers).length) {
+    piano.unlock();
+    if (Object.keys(piano.buffers).length < 30) {
       this.$(".rp-msg").textContent = "Loading piano…";
-      try { await piano.load(); } catch (e) { this.$(".rp-msg").textContent = "Could not load piano sound"; return; }
+      try { await piano.load(); } catch (e) {
+        console.error(e);
+        this.$(".rp-msg").textContent = "Could not load the piano sound. Reload the page and try again.";
+        return;
+      }
       this.$(".rp-msg").textContent = "";
     }
     await piano.ctx.resume();
@@ -298,3 +317,8 @@ export class Replay {
       this.$(".rp-seek").value = this.prep.duration ? Math.round(1000 * t / this.prep.duration) : 0;
   }
 }
+
+// Loaded as a classic script: module scripts are fetched as CORS requests with an
+// Origin header, which Cloudflare Access sends to its sign-in page instead.
+window.Replay = Replay;
+})();

@@ -96,23 +96,38 @@ open a raw MIDI port at a time, so stop anything else reading the piano.
 ## Reach it from outside your home
 
 `deploy/install-tunnel.sh` publishes the dashboard through a Cloudflare
-[Protected Quick Tunnel](https://blog.cloudflare.com/protected-quick-tunnels/). No
-Cloudflare account, domain or router change is needed, and only the emails you list
-can get in: Cloudflare emails them a one-time code at sign-in.
+[Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/): no
+Cloudflare account, domain or router change needed.
 
 ```bash
-./deploy/install-tunnel.sh you@example.com          # more emails can follow
+./deploy/install-tunnel.sh
 ```
 
-It installs `cloudflared` (2026.9.3 or newer) if missing, writes the allow list to
-`/etc/pianotrack/allowed-emails`, and runs the `pianotrack-tunnel` service at boot.
-The link is a random `https://….trycloudflare.com` address that **changes whenever the
-tunnel restarts** (for example after a reboot). The dashboard shows the current one in
-its footer when you open it at home, and `cat /var/lib/pianotrack/tunnel-url` prints it.
-Sign-ins last about 4 hours. For a permanent address, use a named Cloudflare Tunnel
-with your own domain and Cloudflare Access instead.
+Then open the dashboard at home and set a password under **Remote access**. Until a
+password exists, anything coming through the tunnel is refused. Visitors through the
+tunnel see a sign-in page once per device and stay signed in for 30 days; on the home
+network no password is asked. Five wrong attempts lock that visitor out for 15 minutes,
+and setting a new password signs every device out. The password can only be set or
+changed from the home network.
 
-To stop it: `sudo systemctl disable --now pianotrack-tunnel`.
+<img src="docs/login.png" alt="Sign-in page shown to visitors through the tunnel" width="260">
+
+How it tells the two apart: cloudflared adds Cloudflare headers (`Cf-Ray`,
+`Cf-Connecting-Ip`) to every request it forwards, and direct requests on the home
+network don't have them.
+
+The link is a random `https://….trycloudflare.com` address that **changes whenever the
+tunnel restarts** (for example after a reboot). The dashboard footer shows the current
+one when you open it at home, and `cat /var/lib/pianotrack/tunnel-url` prints it.
+
+Cloudflare's own email-code gate ([Protected Quick
+Tunnels](https://blog.cloudflare.com/protected-quick-tunnels/)) can be added in front by
+passing emails: `./deploy/install-tunnel.sh you@example.com`. As of October 2026 it signs
+you out about 10 seconds after login, which breaks every button on the dashboard
+([cloudflared#1752](https://github.com/cloudflare/cloudflared/issues/1752)), so it is
+off by default.
+
+To stop remote access: `sudo systemctl disable --now pianotrack-tunnel`.
 
 ## Try it without a piano
 
@@ -153,6 +168,9 @@ The daily goal is set from the dashboard.
 |---|---|
 | `GET /api/summary` | today, week, streak, records, totals, live session, collector status |
 | `GET /api/status` | collector state: piano connected, device, last MIDI event |
+| `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
+| `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
+| `GET /login`, `POST /login`, `GET /logout` | sign-in page for tunnel visitors |
 | `GET /api/tunnel` | `{"url": ...}` the current remote link, or null when no tunnel runs |
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |

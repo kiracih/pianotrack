@@ -7,7 +7,7 @@
 <title>Piano Practice</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-180.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Piano">
@@ -247,6 +247,15 @@ footer a { color: var(--text-2); }
         <button type="submit">Save</button>
         <span id="saved" style="color:var(--good-text)"></span>
       </form>
+      <div id="remote-box" style="display:none">
+        <h2 style="margin-top:20px">Remote access</h2>
+        <div class="legend" id="pw-status" style="margin:0 0 8px"></div>
+        <form class="settings" id="pw-form">
+          <input type="password" id="pw" minlength="8" autocomplete="new-password" placeholder="New password" aria-label="New password" style="width:170px">
+          <button type="submit">Set</button>
+          <span id="pw-msg"></span>
+        </form>
+      </div>
     </section>
   </div>
 
@@ -300,7 +309,12 @@ function fmtWhen(ts) {
 }
 const NOTE = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
 const noteName = (p) => NOTE[p % 12] + (Math.floor(p / 12) - 1);
-async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error(url); return r.json(); }
+async function get(url) {
+  const r = await fetch(url);
+  if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname); throw new Error("sign in"); }
+  if (!r.ok) throw new Error(url);
+  return r.json();
+}
 
 // --- today ring --------------------------------------------------------------
 function ring(pct, minutes, goalMin) {
@@ -629,6 +643,30 @@ async function refresh() {
   return !!lv;
 }
 
+async function showAuth() {
+  try {
+    const a = await get("/api/auth");
+    if (a.remote) {
+      $("remote-link").innerHTML = `<a href="/logout">Sign out</a>`;
+      return;
+    }
+    $("remote-box").style.display = "";
+    $("pw-status").textContent = a.password_set
+      ? "Password set. Visitors through the remote link must enter it once per device (30 days)."
+      : "No password yet, so the remote link is locked. Set one to use the dashboard away from home.";
+  } catch (e) { /* older server */ }
+}
+showAuth();
+$("pw-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/password", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: $("pw").value }) });
+  const body = await r.json().catch(() => ({}));
+  $("pw-msg").textContent = r.ok ? "Saved" : (body.error || "Could not save");
+  $("pw-msg").style.color = r.ok ? "var(--good-text)" : "var(--live)";
+  if (r.ok) { $("pw").value = ""; showAuth(); }
+};
+
 let keyDays = 30;
 async function loadKeys() {
   const k = await get(`/api/keys?days=${keyDays}`);
@@ -673,8 +711,8 @@ try { const t = localStorage.getItem("theme"); if (t) document.documentElement.d
 async function showTunnel() {
   try {
     const { url } = await get("/api/tunnel");
-    $("remote-link").innerHTML = url && !location.href.startsWith(url)
-      ? `Away from home: <a href="${url}">${url.replace("https://", "")}</a>` : "";
+    if (url && !location.href.startsWith(url))
+      $("remote-link").innerHTML = `Away from home: <a href="${url}">${url.replace("https://", "")}</a>`;
   } catch (e) { /* older server */ }
 }
 showTunnel(); setInterval(showTunnel, 60000);
@@ -686,8 +724,8 @@ async function loop() {
 }
 loop();
 </script>
-<script type="module">
-import { Replay } from "/replay.js";
+<script src="/replay.js"></script>
+<script>
 window.replay = new Replay(document.getElementById("replay"));
 if (selected) window.replay.load(selected);
 </script>

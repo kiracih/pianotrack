@@ -9,9 +9,10 @@ import re
 import time
 from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from html import escape
+from urllib.parse import parse_qs, quote, urlparse
 
-from . import metrics
+from . import auth as authmod, metrics
 from .midi import write_smf
 
 log = logging.getLogger(__name__)
@@ -262,7 +263,14 @@ class Api:
         return self.store.settings()
 
 
+def _safe_next(target):
+    """Only allow redirects to a path on this site after login."""
+    return target if target.startswith("/") and not target.startswith("//") else "/"
+
+
 def make_handler(api):
+    auth = authmod.Auth(api.store)
+
     class Handler(BaseHTTPRequestHandler):
         server_version = "pianotrack"
 
@@ -282,11 +290,46 @@ def make_handler(api):
             self.end_headers()
             self.wfile.write(body)
 
+        def _login_page(self, code, nxt="/", error=""):
+            page = (authmod.LOGIN_PAGE.replace("{next}", escape(nxt, quote=True))
+                    .replace("{error}", f'<div class="err">{escape(error)}</div>' if error else ""))
+            return self._send(code, page, "text/html; charset=utf-8",
+                              {"X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer"})
+
+        def _allowed(self, path):
+            """Gate for requests that came through the tunnel. Sends the refusal itself."""
+            if not authmod.via_tunnel(self.headers):
+                return True
+            if path in ("/login", "/icon.svg"):
+                return True
+            if not auth.password_set:
+                self._send(403, "Remote access is locked until a password is set on the "
+                                "dashboard at home (Settings, Remote access).",
+                           "text/plain; charset=utf-8")
+                return False
+            if auth.valid_session(authmod.read_cookie(self.headers)):
+                return True
+            if path.startswith("/api/"):
+                self._send(401, {"error": "sign in required", "login": "/login"})
+            else:
+                self._send(303, b"", "text/plain", {"Location": "/login?next=" + quote(self.path)})
+            return False
+
         def do_GET(self):
             url = urlparse(self.path)
             q = {k: v[0] for k, v in parse_qs(url.query).items()}
             path = url.path
+            if not self._allowed(path):
+                return
             try:
+                if path == "/login":
+                    return self._login_page(200, _safe_next(q.get("next", "/")))
+                if path == "/logout":
+                    return self._send(303, b"", "text/plain", {
+                        "Location": "/login", "Set-Cookie": authmod.Auth.clear_cookie_header()})
+                if path == "/api/auth":
+                    return self._send(200, {"password_set": auth.password_set,
+                                            "remote": authmod.via_tunnel(self.headers)})
                 if path in ("/", "/index.html"):
                     with open(os.path.join(STATIC, "index.html"), "rb") as f:
                         return self._send(200, f.read(), "text/html; charset=utf-8")
@@ -341,14 +384,40 @@ def make_handler(api):
                 return self._send(500, {"error": str(e)})
 
         def do_POST(self):
-            if urlparse(self.path).path != "/api/settings":
-                return self._send(404, {"error": "not found"})
+            path = urlparse(self.path).path
+            n = min(int(self.headers.get("Content-Length", 0) or 0), 64 * 1024)
+            body = self.rfile.read(n)
+            if path == "/login":
+                return self._login(body)
+            if not self._allowed(path):
+                return
             try:
-                n = int(self.headers.get("Content-Length", 0))
-                data = json.loads(self.rfile.read(n) or b"{}")
-                return self._send(200, api.update_settings(data))
+                data = json.loads(body or b"{}")
+                if path == "/api/settings":
+                    return self._send(200, api.update_settings(data))
+                if path == "/api/password":
+                    if authmod.via_tunnel(self.headers):
+                        return self._send(403, {"error": "the password can only be changed at home"})
+                    auth.set_password(str(data.get("password", "")))
+                    return self._send(200, {"password_set": True})
+                return self._send(404, {"error": "not found"})
             except (ValueError, TypeError) as e:
                 return self._send(400, {"error": str(e)})
+
+        def _login(self, body):
+            form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}
+            nxt = _safe_next(form.get("next", "/"))
+            client = authmod.client_id(self.headers, self.client_address[0])
+            if not auth.password_set:
+                return self._login_page(403, nxt, "No password has been set yet. Set one on the dashboard at home.")
+            if auth.blocked(client):
+                return self._login_page(429, nxt, "Too many wrong attempts. Try again in 15 minutes.")
+            if not auth.check_password(form.get("password", "")):
+                auth.record_failure(client)
+                time.sleep(1)
+                return self._login_page(401, nxt, "Wrong password.")
+            return self._send(303, b"", "text/plain", {
+                "Location": nxt, "Set-Cookie": auth.cookie_header(auth.new_session())})
 
     return Handler
 

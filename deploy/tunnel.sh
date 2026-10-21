@@ -1,7 +1,9 @@
 #!/bin/sh
-# Runs a Cloudflare Protected Quick Tunnel to the dashboard and records its
-# public URL so the dashboard can show it. Only the emails listed in
-# /etc/pianotrack/allowed-emails can sign in (Cloudflare sends them a code).
+# Runs a Cloudflare Quick Tunnel to the dashboard and records its public URL so
+# the dashboard can show it. Visitors must sign in with the dashboard password
+# (the server refuses tunnel traffic until one is set). If emails are listed in
+# /etc/pianotrack/allowed-emails, Cloudflare's email-code gate is added in front;
+# note cloudflared issue #1752, which currently expires that login after seconds.
 set -eu
 
 EMAILS_FILE="${EMAILS_FILE:-/etc/pianotrack/allowed-emails}"
@@ -9,13 +11,11 @@ URL_FILE="${URL_FILE:-/var/lib/pianotrack/tunnel-url}"
 PORT="${PORT:-8080}"
 
 set --
-while read -r email; do
-    case "$email" in ''|'#'*) continue ;; esac
-    set -- "$@" --allowed-mail "$email"
-done < "$EMAILS_FILE"
-if [ "$#" -eq 0 ]; then
-    echo "no allowed emails in $EMAILS_FILE; refusing to start a public tunnel" >&2
-    exit 1
+if [ -f "$EMAILS_FILE" ]; then
+    while read -r email; do
+        case "$email" in ''|'#'*) continue ;; esac
+        set -- "$@" --allowed-mail "$email"
+    done < "$EMAILS_FILE"
 fi
 
 rm -f "$URL_FILE"
