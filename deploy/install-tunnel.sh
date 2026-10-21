@@ -43,7 +43,10 @@ sed -e "s|@USER@|$RUN_USER|" -e "s|@DIR@|$DIR|" -e "s|@PORT@|$PORT|" \
     "$DIR/deploy/pianotrack-tunnel.service" | sudo tee /etc/systemd/system/pianotrack-tunnel.service >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable pianotrack-tunnel >/dev/null
-sudo systemctl restart pianotrack-tunnel
+# Stop first and clear the old URL so we don't report the previous tunnel's address.
+sudo systemctl stop pianotrack-tunnel
+sudo rm -f /var/lib/pianotrack/tunnel-url
+sudo systemctl start pianotrack-tunnel
 
 echo "Waiting for the tunnel URL..."
 for _ in $(seq 30); do
