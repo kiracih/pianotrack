@@ -46,6 +46,22 @@ played) or as a CSV of notes. `/api/sessions.csv` exports the session list.
 be pulled onto a Mac automatically, downloaded from the dashboard, and restored with one
 command. See [Backups](#backups).
 
+**Pieces (trial, report only):** `python3 -m pianotrack pieces` looks through your
+history and groups the stretches of playing that are the same piece, even with wrong
+notes, restarts, slow tempos or a different key. It only prints a report: nothing is
+stored, and sessions, replay, `.mid` and `.csv` stay exactly as recorded. A Pieces
+view on the dashboard comes only if the report matches what you really played. See
+[docs/pieces-matcher.md](docs/pieces-matcher.md) for how it works and how well it does.
+On simulated beginner practice the report starts like this:
+
+```
+$ python3 -m pianotrack --db /var/lib/pianotrack/pianotrack.db pieces
+piece        time  segs  sess  first       last        opening notes
+Piece A       89m    78    31  2025-12-03  2026-01-01  E5 D#5 E5 D#5 E5 B4 D5 C5
+Piece B       80m    88    31  2025-12-04  2026-01-01  E5 E5 F5 F5 G5 G5 F5 E5
+...
+```
+
 ## How it works
 
 ```
@@ -61,6 +77,9 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
   3 minutes of silence. Sessions with fewer than 8 notes are discarded. Notes are
   written in batches every 2 s to spare the SD card.
 * **Metrics** (`metrics.py`) are computed when a session closes and stored with it.
+* **Pieces** (`pieces.py`) cuts sessions into segments at pauses of 3.5 s, takes the
+  melody (top voice), and matches segments by shared runs of pitch intervals. Report
+  only for now; it reads the database and never writes to it.
 * **Server** (`server.py`) serves the dashboard and a JSON API on port 8080.
 * **Backups** (`backup.py`) copy the database every night (see below).
 
@@ -192,6 +211,14 @@ python3 -m pianotrack --db /tmp/demo.db run --no-collector
 python3 -m pianotrack --db /tmp/demo.db run --device /tmp/piano.fifo --idle-gap 20 &
 python3 -m pianotrack simulate --fifo /tmp/piano.fifo --minutes 3 --speed 2
 
+# a learner's practice: 4 short pieces with 10-15% wrong or missed notes, restarts
+# and 50-100% tempo, then the pieces report on it
+python3 -m pianotrack --db /tmp/beginner.db backfill --days 30 --beginner
+python3 -m pianotrack --db /tmp/beginner.db pieces --sessions
+
+# score the pieces matcher against simulated beginner practice (exit code 1 on fail)
+python3 -m pianotrack pieces --check --seed 1
+
 # import or stream an existing .mid file
 python3 -m pianotrack --db /tmp/demo.db replay song.mid
 python3 -m pianotrack replay song.mid --fifo /tmp/piano.fifo
@@ -219,6 +246,16 @@ replaces the database with a backup, and `devices`, `backfill`, `simulate`, `rep
 (see above).
 
 The daily goal is set from the dashboard.
+
+`python3 -m pianotrack pieces --help` (read-only report):
+
+* `--days N` only the last N days (default: all history)
+* `--sessions` also list every segment with the piece it matched
+* `--check` run on simulated beginner practice instead of the database and print
+  the right/wrong rates; `--seed` picks the simulation
+
+`backfill` and `simulate` take `--beginner` to play the simulator's small repertoire
+the way a learner does.
 
 ## API
 

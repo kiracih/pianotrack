@@ -58,6 +58,11 @@ and it opens.
 
 ### 2. Pieces: know what you practised (practice insight, M) · approved 2026-10-21 as a trial
 
+**Status 2026-10-21:** step 1 built (`python3 -m pianotrack pieces`, report only).
+On simulated beginner practice it passes the gate on 10 of 10 runs (95 to 98% right,
+at most 2.4% wrong); see [pieces-matcher.md](pieces-matcher.md). Waiting for the owner
+to check the report against their real history before step 2.
+
 **Problem.** Every session is anonymous ("Today 19:05, 22 min"). The owner can't
 see how long they've spent on a given piece or whether it is getting steadier
 and faster, which is the question a teacher asks every week. The market scan

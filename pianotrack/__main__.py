@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 
-from . import __version__, backup, simulate
+from . import __version__, backup, pieces, simulate
 from .collector import Collector, find_device
 from .midi import read_smf
 from .recorder import Recorder
@@ -62,13 +62,13 @@ def cmd_devices(args):
 
 def cmd_backfill(args):
     store = _store(args)
-    ids = simulate.backfill(store, days=args.days, seed=args.seed)
+    ids = simulate.backfill(store, days=args.days, seed=args.seed, beginner=args.beginner)
     print(f"created {len(ids)} simulated sessions over {args.days} days in {args.db}")
 
 
 def cmd_simulate(args):
     rng = random.Random(args.seed)
-    events = simulate.practice_session(rng, args.minutes, skill=args.skill)
+    events = simulate.practice_session(rng, args.minutes, skill=args.skill, beginner=args.beginner)
     if args.out:
         simulate.save_mid(args.out, events)
         print(f"wrote {args.out}")
@@ -112,6 +112,38 @@ def cmd_restore(args):
     print(f"restored {sessions} sessions from {args.file} into {args.db}")
 
 
+def cmd_pieces(args):
+    if args.check:
+        from datetime import datetime
+        logging.getLogger("pianotrack.recorder").setLevel(logging.WARNING)
+        store, log, days = Store(":memory:"), [], args.days or 30
+        simulate.backfill(store, days=days, seed=args.seed, beginner=True, log=log,
+                          now=datetime(2026, 1, 1, 22))
+        matcher, segs = pieces.group(store)
+        print(pieces.format_report(matcher, segs))
+        r = pieces.evaluate(matcher, segs, log, simulate.REPERTOIRE)
+        ok = r["right"] >= 0.9 and r["wrong"] < 0.05
+        print(f"\nsimulated beginner, {days} days, seed {args.seed}: "
+              f"{r['piece_segments']} piece segments, {r['right']:.1%} on the right piece, "
+              f"{r['wrong']:.1%} of all segments on a wrong one; groups per piece "
+              f"{r['groups_per_piece']}. Gate (>= 90% right, < 5% wrong): {'PASS' if ok else 'FAIL'}")
+        return 0 if ok else 1
+    if not os.path.exists(args.db):
+        sys.exit(f"no database at {args.db}")
+    store = Store(args.db)  # only read: grouping is computed, never stored
+    since = time.time() - args.days * 86400 if args.days else None
+    matcher, segs = pieces.group(store, since=since)
+    print(pieces.format_report(matcher, segs))
+    if args.sessions:
+        labels = {r["index"]: r["label"] for r in pieces.pieces_report(matcher)}
+        print()
+        for s in segs:
+            when = time.strftime("%Y-%m-%d %H:%M", time.localtime(s["start"]))
+            print(f"session {s['session']:>5}  {when}  {(s['end'] - s['start']) / 60:5.1f} min  "
+                  f"{labels.get(s['piece'], '-')}")
+    store.close()
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pianotrack", description="Piano practice tracker")
     p.add_argument("--db", default=DEFAULT_DB, help="SQLite file (default %(default)s)")
@@ -149,6 +181,8 @@ def main(argv=None):
     b = sub.add_parser("backfill", help="fill the database with simulated history")
     b.add_argument("--days", type=int, default=30)
     b.add_argument("--seed", type=int)
+    b.add_argument("--beginner", action="store_true",
+                   help="play a fixed repertoire with a learner's mistakes")
     b.set_defaults(func=cmd_backfill)
 
     s = sub.add_parser("simulate", help="play synthetic practice into a FIFO or .mid")
@@ -158,7 +192,18 @@ def main(argv=None):
     s.add_argument("--speed", type=float, default=1.0)
     s.add_argument("--skill", type=float, default=0.6)
     s.add_argument("--seed", type=int)
+    s.add_argument("--beginner", action="store_true",
+                   help="play a fixed repertoire with a learner's mistakes")
     s.set_defaults(func=cmd_simulate)
+
+    pc = sub.add_parser("pieces", help="report which sessions played the same piece (read-only)")
+    pc.add_argument("--report", action="store_true", help="the default; kept for clarity")
+    pc.add_argument("--days", type=int, default=0, help="only the last N days (0: all)")
+    pc.add_argument("--sessions", action="store_true", help="also list every segment")
+    pc.add_argument("--check", action="store_true",
+                    help="score the matcher on simulated beginner practice instead of the database")
+    pc.add_argument("--seed", type=int, default=1, help="simulation seed for --check")
+    pc.set_defaults(func=cmd_pieces)
 
     rp = sub.add_parser("replay", help="import a .mid file as a session, or stream it")
     rp.add_argument("file")
@@ -171,7 +216,7 @@ def main(argv=None):
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    args.func(args)
+    return args.func(args)
 
 
 if __name__ == "__main__":
