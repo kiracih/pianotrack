@@ -11,7 +11,7 @@ Last review: 2026-10-21 (first run). Owner decisions recorded the same day.
 
 At most three. Owner approved #1 and #2 on 2026-10-21.
 
-### 1. Practice history backup (bug risk, S) · approved 2026-10-21
+### 1. Practice history backup (bug risk, S) · approved and built 2026-10-21, deploying
 
 **Problem.** All practice history lives in one SQLite file on the Pi's SD card. SD
 cards fail, and there is no copy anywhere, so one bad card loses months of
