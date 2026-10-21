@@ -9,9 +9,9 @@ Last review: 2026-10-21 (first run). Owner decisions recorded the same day.
 
 ## Now
 
-At most three. Owner approved #1 and #2 on 2026-10-21.
+At most three. Owner approved #1 and #2 on 2026-10-21; #1 shipped the same day.
 
-### 1. Practice history backup (bug risk, S) · approved and built 2026-10-21, deploying
+### 1. Practice history backup (bug risk, S) · shipped 2026-10-21 (see Done)
 
 **Problem.** All practice history lives in one SQLite file on the Pi's SD card. SD
 cards fail, and there is no copy anywhere, so one bad card loses months of
@@ -169,3 +169,5 @@ more than once a week.
 - 2026-10-21: Boot waits for network time (no RTC on the Pi).
 - 2026-10-21: Remote access through a Cloudflare Quick Tunnel.
 - 2026-10-21: Password login for tunnel visitors; replay fixed behind Cloudflare.
+- 2026-10-21: Nightly backups with Mac copy (launchd agent pulls on login, wake and
+  hourly), Download backup, Back up now, restore. Live on the Pi; first Mac pull verified.
