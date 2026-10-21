@@ -5,13 +5,13 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 (an evening), M (a few days), L (a week or more). Nothing here is built until the
 owner says so.
 
-Last review: 2026-10-21 (first run).
+Last review: 2026-10-21 (first run). Owner decisions recorded the same day.
 
 ## Now
 
-At most three. Waiting for the owner to pick which ones to build.
+At most three. Owner approved #1 and #2 on 2026-10-21.
 
-### 1. Practice history backup (bug risk, S)
+### 1. Practice history backup (bug risk, S) · approved 2026-10-21
 
 **Problem.** All practice history lives in one SQLite file on the Pi's SD card. SD
 cards fail, and there is no copy anywhere, so one bad card loses months of
@@ -43,44 +43,30 @@ downloadable in one tap, so a dead SD card or a bad update never costs me data.
 **How we'll know.** A backup file exists every morning; the owner downloads one
 and it opens.
 
-### 2. Days follow your clock (bug, S)
-
-**Problem.** "Today", the goal ring, streaks and the calendar are split at
-midnight in the **Pi's** time zone (`date.today()` in `server.py` and
-`metrics.local_day`), while session times are shown in the **browser's** time
-zone. A Pi left on the default UTC puts a 01:00 session in Istanbul on the
-previous day, can break a streak, and resets the goal ring at 03:00 local time.
-Not yet checked on the owner's Pi (`timedatectl` will tell).
-
-**User story.** As a pianist who sometimes practises late, I want a session to
-count for the day it happened on my clock, so my streak and ring are right.
-
-**Acceptance criteria**
-- `deploy/install.sh` warns when the Pi's time zone is UTC and prints the
-  `sudo timedatectl set-timezone …` command.
-- The dashboard shows a one-line warning when the browser's UTC offset differs
-  from the server's (the API reports the server's zone and offset).
-- A test runs daily totals and streaks under two `TZ` settings and checks that a
-  session at 23:30 and one at 00:30 land on different days in local time.
-- README updated (install section).
-
-**Out of scope.** Per-user time zones, travel.
-
-**How we'll know.** The owner's late sessions show on the right day; the
-warning is never shown on the owner's own setup after the fix.
-
-### 3. Pieces: know what you practised (practice insight, M)
+### 2. Pieces: know what you practised (practice insight, M) · approved 2026-10-21 as a trial
 
 **Problem.** Every session is anonymous ("Today 19:05, 22 min"). The owner can't
 see how long they've spent on a given piece or whether it is getting steadier
 and faster, which is the question a teacher asks every week. The market scan
 found this ("compare repeated passages over time") is what no tracker does well.
 
-**User story.** As a pianist learning a piece, I want sessions grouped by piece
-with tempo and steadiness over time, so I can see the piece improve without
-logging anything.
+**User story.** As a beginner to early-intermediate pianist learning a piece, I
+want sessions grouped by piece with tempo and steadiness over time, so I can see
+the piece improve without logging anything, even while I still make plenty of
+mistakes.
+
+**Main risk.** The owner plays with wrong notes, hesitations, restarts and slow
+tempos. Matching must survive that, so it is built in two steps: first the
+matcher alone, measured on simulated beginner playing and then on the owner's real
+sessions; the Pieces view only follows if the matcher holds up.
 
 **Acceptance criteria**
+- **Step 1 gate:** a matcher report (CLI, e.g. `python3 -m pianotrack pieces
+  --report`) groups existing sessions without changing anything stored. With the
+  simulator's beginner mode (10 to 15% wrong or missed notes, stops and restarts
+  from a few bars back, 50 to 100% tempo) at least 9 in 10 segments land on the
+  right piece and fewer than 1 in 20 on a wrong one. Then the owner checks it on
+  their real history before step 2 starts.
 - When a session closes, its melody is fingerprinted (pitch-interval n-grams of
   the top voice, transposition-insensitive) and matched against earlier sessions;
   sessions that share enough material are grouped as one piece, automatically.
@@ -94,6 +80,9 @@ logging anything.
 - Simulator gains 3 to 4 repeating "pieces" so tests and screenshots show real
   grouping; a test checks the same piece played transposed or 20% faster still
   matches, and two different pieces don't.
+- Session replay, `.mid` and `.csv` downloads stay exactly as they are: the raw
+  session is never cut, merged or changed by piece grouping. Pieces only add
+  links from a session to the pieces found in it.
 - README (features, metrics, API) and screenshots updated.
 
 **Out of scope.** Recognising published pieces by title, sheet music, accuracy
@@ -139,6 +128,10 @@ more than once a week.
 - **Android app / plug-in box / pricing**: only after browser mode shows demand.
 
 ## Decided and rejected
+
+- 2026-10-21: **Days follow your clock: no action.** Day boundaries use the Pi's
+  time zone while times show in the browser's; the owner always plays in one zone
+  (UTC+3), so this is parked. Revisit if the owner travels or ships to others.
 
 - 2026-10-21: **Keep the random trycloudflare link** rather than buy a domain for a
   named tunnel (owner's choice). Revisit only if the owner asks.
