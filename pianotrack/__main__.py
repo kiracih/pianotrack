@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 
-from . import __version__, simulate
+from . import __version__, backup, simulate
 from .collector import Collector, find_device
 from .midi import read_smf
 from .recorder import Recorder
@@ -17,6 +17,7 @@ from .server import Api, make_server
 from .store import Store
 
 DEFAULT_DB = os.environ.get("PIANOTRACK_DB", os.path.expanduser("~/.local/share/pianotrack/pianotrack.db"))
+DEFAULT_BACKUP_DIR = os.environ.get("PIANOTRACK_BACKUP_DIR") or None
 
 
 def _store(args):
@@ -27,12 +28,16 @@ def _store(args):
 def cmd_run(args):
     store = _store(args)
     collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
-    api = Api(store, collector)
+    backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
+    api = Api(store, collector, backups)
     httpd = make_server(api, args.host, args.port)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     logging.info("dashboard on http://%s:%d", args.host, args.port)
 
     stop = threading.Event()
+    if backups:
+        threading.Thread(target=backups.loop, args=(stop,), daemon=True).start()
+        logging.info("nightly backups at %s into %s", args.backup_time, backups.dir)
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda *_: (collector and collector.stop(), stop.set()))
     if collector:
@@ -84,6 +89,29 @@ def cmd_replay(args):
     print(f"stored session {sid}" if sid else "too few notes, nothing stored")
 
 
+def cmd_backup(args):
+    b = backup.Backups(args.db, args.backup_dir)
+    try:
+        path = b.run()
+    except Exception as e:
+        sys.exit(f"backup failed: {e}")
+    st = b.status()
+    print(f"wrote {path} ({st['daily']} daily, {st['weekly']} weekly copies in {b.dir})")
+    if not st["off_card"]:
+        print("note: this folder is on the same disk as the database; use --backup-dir "
+              "on a USB stick or another machine so a dead SD card does not take both")
+
+
+def cmd_restore(args):
+    try:
+        sessions, saved = backup.restore(args.file, args.db, force=args.force)
+    except ValueError as e:
+        sys.exit(f"restore refused: {e}")
+    if saved:
+        print(f"previous database kept as {saved}")
+    print(f"restored {sessions} sessions from {args.file} into {args.db}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pianotrack", description="Piano practice tracker")
     p.add_argument("--db", default=DEFAULT_DB, help="SQLite file (default %(default)s)")
@@ -98,7 +126,21 @@ def main(argv=None):
     r.add_argument("--idle-gap", type=float, default=180.0,
                    help="seconds of silence that end a session")
     r.add_argument("--no-collector", action="store_true", help="dashboard only")
+    r.add_argument("--backup-dir", default=DEFAULT_BACKUP_DIR,
+                   help="folder for nightly copies, ideally off the SD card "
+                        "(default: backups/ next to the database)")
+    r.add_argument("--backup-time", default="03:30", help="local time of the nightly copy (HH:MM)")
+    r.add_argument("--no-backup", action="store_true", help="no nightly copies")
     r.set_defaults(func=cmd_run)
+
+    bk = sub.add_parser("backup", help="copy the database into the backup folder now")
+    bk.add_argument("--backup-dir", default=DEFAULT_BACKUP_DIR)
+    bk.set_defaults(func=cmd_backup)
+
+    rs = sub.add_parser("restore", help="replace the database with a backup copy")
+    rs.add_argument("file", help="a backup .db file")
+    rs.add_argument("--force", action="store_true", help="replace a database that has sessions")
+    rs.set_defaults(func=cmd_restore)
 
     d = sub.add_parser("devices", help="list MIDI devices")
     d.add_argument("--device")

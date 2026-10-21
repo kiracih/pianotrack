@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Installed by deploy/mac/install.sh; @SCRIPT@, @PI@ and @LOG@ are filled in there. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pianotrack.backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>@SCRIPT@</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PIANOTRACK_PI</key>
+    <string>@PI@</string>
+  </dict>
+  <!-- At login, then hourly. launchd runs a missed interval when the Mac wakes. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>StandardOutPath</key>
+  <string>@LOG@</string>
+  <key>StandardErrorPath</key>
+  <string>@LOG@</string>
+</dict>
+</plist>

@@ -6,13 +6,15 @@ import json
 import logging
 import os
 import re
+import shutil
+import tempfile
 import time
 from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from html import escape
 from urllib.parse import parse_qs, quote, urlparse
 
-from . import auth as authmod, metrics
+from . import auth as authmod, backup as backupmod, metrics
 from .midi import write_smf
 
 log = logging.getLogger(__name__)
@@ -28,9 +30,10 @@ SESSION_FIELDS = ["start", "end", "duration_seconds", "active_seconds", "note_co
 class Api:
     """Pure functions over the store, kept apart from HTTP for testing."""
 
-    def __init__(self, store, collector=None):
+    def __init__(self, store, collector=None, backups=None):
         self.store = store
         self.collector = collector
+        self.backups = backups
         self._live_cache = {}
 
     def _metrics(self, s):
@@ -358,6 +361,10 @@ def make_handler(api):
                     return self._send(200, api.store.settings())
                 if path == "/api/tunnel":
                     return self._send(200, {"url": api.tunnel_url()})
+                if path == "/api/backups":
+                    return self._send(200, api.backups.status() if api.backups else {})
+                if path == "/api/backup":
+                    return self._send_backup()
                 if path == "/api/status":
                     return self._send(200, api.collector.status if api.collector else {})
                 m = re.fullmatch(r"/api/sessions/(\d+)/events", path)
@@ -400,9 +407,35 @@ def make_handler(api):
                         return self._send(403, {"error": "the password can only be changed at home"})
                     auth.set_password(str(data.get("password", "")))
                     return self._send(200, {"password_set": True})
+                if path == "/api/backup":
+                    if authmod.via_tunnel(self.headers):
+                        return self._send(403, {"error": "backups can only be made at home"})
+                    if not api.backups:
+                        return self._send(404, {"error": "backups are off"})
+                    try:
+                        api.backups.run()
+                    except Exception:
+                        pass  # the status carries the error
+                    return self._send(200, api.backups.status())
                 return self._send(404, {"error": "not found"})
             except (ValueError, TypeError) as e:
                 return self._send(400, {"error": str(e)})
+
+        def _send_backup(self):
+            """Stream a fresh, consistent copy of the database (home network only)."""
+            if authmod.via_tunnel(self.headers):
+                return self._send(403, {"error": "backups can only be downloaded at home"})
+            with tempfile.TemporaryDirectory() as tmp:
+                path = backupmod.snapshot(api.store.path, os.path.join(tmp, "pianotrack.db"))
+                name = f"pianotrack-{datetime.now():%Y-%m-%d-%H%M}.db"
+                self.send_response(200)
+                self.send_header("Content-Type", "application/vnd.sqlite3")
+                self.send_header("Content-Length", str(os.path.getsize(path)))
+                self.send_header("Content-Disposition", f"attachment; filename={name}")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                with open(path, "rb") as f:
+                    shutil.copyfileobj(f, self.wfile)
 
         def _login(self, body):
             form = {k: v[0] for k, v in parse_qs(body.decode("utf-8", "replace")).items()}

@@ -6,6 +6,7 @@
 //
 // Pass a Chromium path as the second argument if Playwright's own browser is not installed.
 import { chromium } from "playwright";
+import { existsSync, writeFileSync } from "node:fs";
 
 const base = process.argv[2] || "http://localhost:8099";
 const executablePath = process.argv[3] || process.env.CHROMIUM_PATH || undefined;
@@ -31,6 +32,17 @@ await page.screenshot({ path: out + "dashboard.png", fullPage: true, clip: await
   return { x: 0, y: 0, width: 1100, height: r.bottom + window.scrollY + 16 };
 }) });
 await (await card(page, "#all-keys")).screenshot({ path: out + "keys.png" });
+
+// Backup box after a fresh backup. For the demo, pretend a Mac has pulled a copy
+// (deploy/mac/pull-backup.sh leaves this mark on the Pi).
+await page.click("#bk-now");
+await page.waitForFunction(() => document.querySelector("#bk-msg").textContent === "Done");
+const bk = await (await page.request.get(base + "/api/backups")).json();
+if (existsSync(bk.dir) && !bk.offsite) writeFileSync(bk.dir + "/offsite", `halils-mac ${bk.files[0].name}\n`);
+await page.evaluate(() => showBackup());
+await page.waitForFunction(() => document.querySelector("#bk-status").textContent.includes("copied"));
+await page.evaluate(() => { document.querySelector("#bk-msg").textContent = ""; });
+await (await page.$("#backup-box")).screenshot({ path: out + "backup.png" });
 
 // Session detail with replay mid-playback.
 await page.click("#sessions tr:nth-child(2)");
