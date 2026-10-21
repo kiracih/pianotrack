@@ -182,6 +182,11 @@ The daily goal is set from the dashboard.
 | `GET /api/sessions.csv` | all sessions as CSV |
 | `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5}` |
 
+## Roadmap
+
+What's planned next, and ideas already decided against, are in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## License
 
 Code: MIT. Piano samples in `pianotrack/static/piano/`: Salamander Grand Piano V3 by
