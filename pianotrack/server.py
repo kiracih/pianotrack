@@ -165,6 +165,15 @@ class Api:
             out.append(row)
         return out
 
+    def tunnel_url(self):
+        """Public URL of the Cloudflare tunnel, written next to the database by deploy/tunnel.sh."""
+        path = os.path.join(os.path.dirname(os.path.abspath(self.store.path)), "tunnel-url")
+        try:
+            with open(path) as f:
+                return f.read().strip() or None
+        except OSError:
+            return None
+
     def keys(self, n=30):
         """Key usage summed over the last `n` days (n=0 means all time)."""
         since = None
@@ -304,6 +313,8 @@ def make_handler(api):
                                       {"Content-Disposition": "attachment; filename=sessions.csv"})
                 if path == "/api/settings":
                     return self._send(200, api.store.settings())
+                if path == "/api/tunnel":
+                    return self._send(200, {"url": api.tunnel_url()})
                 if path == "/api/status":
                     return self._send(200, api.collector.status if api.collector else {})
                 m = re.fullmatch(r"/api/sessions/(\d+)/events", path)

@@ -251,6 +251,7 @@ footer a { color: var(--text-2); }
   </div>
 
   <footer>
+    <span id="remote-link"></span>
     <span>Data stays on this device.</span>
     <a href="/api/summary">JSON API</a>
     <span>Piano sound: Salamander Grand Piano by Alexander Holm, CC-BY 3.0.</span>
@@ -668,6 +669,15 @@ $("theme").onclick = () => {
   try { localStorage.setItem("theme", next); } catch (e) {}
 };
 try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+async function showTunnel() {
+  try {
+    const { url } = await get("/api/tunnel");
+    $("remote-link").innerHTML = url && !location.href.startsWith(url)
+      ? `Away from home: <a href="${url}">${url.replace("https://", "")}</a>` : "";
+  } catch (e) { /* older server */ }
+}
+showTunnel(); setInterval(showTunnel, 60000);
 
 async function loop() {
   let live = false;

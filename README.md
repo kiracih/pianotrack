@@ -93,6 +93,27 @@ If `devices` shows nothing, check `aconnect -l` and `cat /proc/asound/cards`. Th
 FP-30X needs to be connected with its **USB to Host** port. Only one program can
 open a raw MIDI port at a time, so stop anything else reading the piano.
 
+## Reach it from outside your home
+
+`deploy/install-tunnel.sh` publishes the dashboard through a Cloudflare
+[Protected Quick Tunnel](https://blog.cloudflare.com/protected-quick-tunnels/). No
+Cloudflare account, domain or router change is needed, and only the emails you list
+can get in: Cloudflare emails them a one-time code at sign-in.
+
+```bash
+./deploy/install-tunnel.sh you@example.com          # more emails can follow
+```
+
+It installs `cloudflared` (2026.9.3 or newer) if missing, writes the allow list to
+`/etc/pianotrack/allowed-emails`, and runs the `pianotrack-tunnel` service at boot.
+The link is a random `https://….trycloudflare.com` address that **changes whenever the
+tunnel restarts** (for example after a reboot). The dashboard shows the current one in
+its footer when you open it at home, and `cat /var/lib/pianotrack/tunnel-url` prints it.
+Sign-ins last about 4 hours. For a permanent address, use a named Cloudflare Tunnel
+with your own domain and Cloudflare Access instead.
+
+To stop it: `sudo systemctl disable --now pianotrack-tunnel`.
+
 ## Try it without a piano
 
 ```bash
@@ -132,6 +153,7 @@ The daily goal is set from the dashboard.
 |---|---|
 | `GET /api/summary` | today, week, streak, records, totals, live session, collector status |
 | `GET /api/status` | collector state: piano connected, device, last MIDI event |
+| `GET /api/tunnel` | `{"url": ...}` the current remote link, or null when no tunnel runs |
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |

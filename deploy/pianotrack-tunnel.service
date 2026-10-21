@@ -1,0 +1,17 @@
+[Unit]
+Description=Cloudflare Protected Quick Tunnel to the piano dashboard
+After=network-online.target pianotrack.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Environment=PORT=@PORT@
+ExecStart=@DIR@/deploy/tunnel.sh
+Restart=always
+RestartSec=10
+StateDirectory=pianotrack
+StateDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

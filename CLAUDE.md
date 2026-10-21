@@ -21,3 +21,4 @@ Headless piano practice tracker for a Raspberry Pi (Roland FP-30X over USB). Pur
 - `metrics.py` computes per-session and daily metrics; `server.py` serves the API and `static/`.
 - `static/index.html` is the dashboard; `static/replay.js` the replay player; `static/piano/` Salamander samples (CC-BY 3.0, keep ATTRIBUTION.md).
 - `simulate.py` produces synthetic practice for tests and demos.
+- `deploy/` holds install.sh + pianotrack.service, and install-tunnel.sh + tunnel.sh + pianotrack-tunnel.service for the Cloudflare Protected Quick Tunnel.

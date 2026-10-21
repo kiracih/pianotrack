@@ -172,6 +172,11 @@ class BackfillTest(TmpStore):
                     self.assertEqual(r.status, 200)
             with self.assertRaises(urllib.error.HTTPError):
                 urllib.request.urlopen(base + "/piano/../store.py")
+            self.assertIsNone(json.load(urllib.request.urlopen(base + "/api/tunnel"))["url"])
+            with open(os.path.join(self.dir.name, "tunnel-url"), "w") as f:
+                f.write("https://abc.trycloudflare.com\n")
+            self.assertEqual(json.load(urllib.request.urlopen(base + "/api/tunnel"))["url"],
+                             "https://abc.trycloudflare.com")
             keys = json.load(urllib.request.urlopen(base + "/api/keys?days=7"))
             self.assertEqual(keys["total"], 0)
         finally:
