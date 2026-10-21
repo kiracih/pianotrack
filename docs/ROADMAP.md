@@ -24,11 +24,22 @@ downloadable in one tap, so a dead SD card or a bad update never costs me data.
 **Acceptance criteria**
 - A nightly copy of the database is made with SQLite's online backup (consistent
   while the collector writes), kept as 7 daily + 4 weekly files.
-- The copies go to a backup folder set with `--backup-dir` that is meant to be off
-  the SD card (a USB stick, or a share on another machine). Copies kept on the SD
-  card only undo bad updates or a corrupted database, not a dead card, so the
-  dashboard warns while no off-card folder is set. *Owner decision: USB stick or
-  the Mac.*
+- The rotated copies live on the Pi (`--backup-dir`). On their own they only undo
+  bad updates or a corrupted database, not a dead card, so the off-card copy is
+  the owner's Mac (owner decision 2026-10-21):
+  - A small script plus a launchd agent in `deploy/mac/` pulls the newest backup
+    from the Pi over the existing SSH key into a folder on the Mac (default
+    `~/Backups/pianotrack/`), keeping the same 7 daily + 4 weekly rotation.
+  - The agent runs at login, on wake and every hour. When the Mac is asleep, away
+    from home or the Pi is unreachable, it does nothing and quietly tries again on
+    the next run, so a missed night is caught up as soon as the Mac is back.
+  - Each pull is checked (SQLite `PRAGMA integrity_check`) before replacing
+    anything; a failed check keeps the previous copies.
+  - The Mac reports each good pull to the Pi (or the Pi notes the file being
+    read), so the dashboard shows "last copied to Mac" and warns when the Mac
+    hasn't picked up a backup for 3 days.
+  - Installing the agent on the Mac is a separate step that waits for the owner's
+    go-ahead.
 - `GET /api/backup` downloads a consistent copy of the database; it is home
   network only, like the password setting.
 - A "Download backup" link in the dashboard's settings area.
@@ -38,7 +49,9 @@ downloadable in one tap, so a dead SD card or a bad update never costs me data.
   than 2 days is shown as a warning.
 - README (features, API table, CLI) and screenshots updated; tests pass.
 
-**Out of scope.** Cloud upload, two-way sync, encrypting backups.
+**Out of scope.** Cloud upload for now (Google Drive through rclone, encrypted, is
+the planned follow-up if the Mac copy isn't enough), two-way sync, encrypting
+backups.
 
 **How we'll know.** A backup file exists every morning; the owner downloads one
 and it opens.
