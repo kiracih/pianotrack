@@ -11,7 +11,7 @@ python3 -m pianotrack --db /var/lib/pianotrack/pianotrack.db pieces --sessions #
 python3 -m pianotrack pieces --check --seed 1                                 # score it on simulated practice
 ```
 
-The report only reads the database. Nothing is stored, and sessions, replay,
+The report opens the database read-only, so SQLite refuses any write. Nothing is stored, and sessions, replay,
 `.mid` and `.csv` downloads are untouched.
 
 ## How it works (`pianotrack/pieces.py`)

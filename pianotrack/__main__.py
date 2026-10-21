@@ -130,7 +130,7 @@ def cmd_pieces(args):
         return 0 if ok else 1
     if not os.path.exists(args.db):
         sys.exit(f"no database at {args.db}")
-    store = Store(args.db)  # only read: grouping is computed, never stored
+    store = Store(args.db, readonly=True)  # grouping is computed, never stored
     since = time.time() - args.days * 86400 if args.days else None
     matcher, segs = pieces.group(store, since=since)
     print(pieces.format_report(matcher, segs))

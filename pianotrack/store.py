@@ -1,8 +1,10 @@
 """SQLite storage for sessions, notes and pedal events."""
 
 import json
+import os
 import sqlite3
 import threading
+import urllib.parse
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
@@ -51,9 +53,14 @@ DEFAULT_SETTINGS = {
 class Store:
     """Thin wrapper over one SQLite file. Safe to share across threads."""
 
-    def __init__(self, path):
+    def __init__(self, path, readonly=False):
         self.path = path
         self._lock = threading.RLock()
+        if readonly:  # for reports: SQLite itself refuses any write
+            uri = "file:" + urllib.parse.quote(os.path.abspath(path)) + "?mode=ro"
+            self._db = sqlite3.connect(uri, uri=True, check_same_thread=False)
+            self._db.row_factory = sqlite3.Row
+            return
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA journal_mode=WAL")

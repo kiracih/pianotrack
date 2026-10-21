@@ -97,5 +97,30 @@ class SimulatorTest(unittest.TestCase):
         self.assertGreater(t, t_clean * 0.9)
 
 
+
+class ReadOnlyTest(unittest.TestCase):
+    def test_report_cannot_write_the_live_database(self):
+        import contextlib
+        import io
+        import os
+        import sqlite3
+        import tempfile
+        from pianotrack.__main__ import main
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "live.db")
+            live = Store(path)  # the running service keeps its connection open
+            simulate.backfill(live, days=2, seed=1, beginner=True, now=datetime(2026, 1, 1, 22))
+            before = live.sessions()
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                main(["--db", path, "pieces", "--sessions"])
+            self.assertIn("segments in", out.getvalue())
+            ro = Store(path, readonly=True)
+            with self.assertRaises(sqlite3.OperationalError):
+                ro.set_setting("daily_goal_minutes", 1)
+            ro.close()
+            self.assertEqual(live.sessions(), before)
+            live.close()
+
+
 if __name__ == "__main__":
     unittest.main()

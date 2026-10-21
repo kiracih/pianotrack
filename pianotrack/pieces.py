@@ -202,11 +202,11 @@ def group(store, since=None):
 
 
 def pieces_report(matcher):
-    """Groups heard three or more times in two or more sessions, most practised first."""
+    """Groups heard three or more times, most practised first."""
     rows = []
     for index, p in matcher.groups():
         segs = p["segments"]
-        if len(segs) < 3 or len({s["session"] for s in segs}) < 2:
+        if len(segs) < 3:
             continue
         rows.append({
             "segments": len(segs),
@@ -228,7 +228,7 @@ def format_report(matcher, segs):
     rows = pieces_report(matcher)
     day = lambda t: datetime.fromtimestamp(t).strftime("%Y-%m-%d")
     lines = [f"{len(segs)} segments in {len({s['session'] for s in segs})} sessions; "
-             f"{len(rows)} pieces heard 3+ times in 2+ sessions; "
+             f"{len(rows)} pieces heard 3+ times; "
              f"{sum(1 for _, p in matcher.groups() if len(p['segments']) == 1)} segments matched nothing.",
              "Short scale or arpeggio groups can show up too; naming them comes later.", ""]
     if rows:

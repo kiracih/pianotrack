@@ -79,7 +79,7 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
 * **Metrics** (`metrics.py`) are computed when a session closes and stored with it.
 * **Pieces** (`pieces.py`) cuts sessions into segments at pauses of 3.5 s, takes the
   melody (top voice), and matches segments by shared runs of pitch intervals. Report
-  only for now; it reads the database and never writes to it.
+  only for now; it opens the database read-only. Pieces heard 3+ times are listed.
 * **Server** (`server.py`) serves the dashboard and a JSON API on port 8080.
 * **Backups** (`backup.py`) copy the database every night (see below).
 
