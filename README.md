@@ -42,6 +42,10 @@ works without internet.
 Every session can be downloaded as a `.mid` file (handy for replaying what you
 played) or as a CSV of notes. `/api/sessions.csv` exports the session list.
 
+**Backups:** the whole history is copied every night (7 daily and 4 weekly copies), can
+be pulled onto a Mac automatically, downloaded from the dashboard, and restored with one
+command. See [Backups](#backups).
+
 ## How it works
 
 ```
@@ -58,8 +62,9 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
   written in batches every 2 s to spare the SD card.
 * **Metrics** (`metrics.py`) are computed when a session closes and stored with it.
 * **Server** (`server.py`) serves the dashboard and a JSON API on port 8080.
+* **Backups** (`backup.py`) copy the database every night (see below).
 
-Data never leaves the Pi. The SQLite file lives at `/var/lib/pianotrack/pianotrack.db`
+Data never leaves your home. The SQLite file lives at `/var/lib/pianotrack/pianotrack.db`
 when installed as a service.
 
 ## Install on the Raspberry Pi
@@ -129,6 +134,53 @@ off by default.
 
 To stop remote access: `sudo systemctl disable --now pianotrack-tunnel`.
 
+## Backups
+
+Every night at 03:30 (or within a few minutes of starting, if the last copy is more
+than a day old) the Pi copies the database with SQLite's online backup, which is
+consistent even while you play. Each copy passes an integrity check before it is put
+in place. The backup folder keeps **7 daily and 4 weekly** copies
+(`daily-2026-10-21.db`, `weekly-2026-W43.db`); by default it is
+`/var/lib/pianotrack/backups`, set with `--backup-dir` or `PIANOTRACK_BACKUP_DIR`.
+
+<img src="docs/backup.png" alt="Backup box in the dashboard: last backup, last copy to the Mac, download button" width="380">
+
+The **Backup** box on the dashboard shows when the last copy was made, with a warning
+when it is more than 2 days old or the last attempt failed. At home it also has
+**Download backup** (a fresh copy, `GET /api/backup`) and **Back up now**. Neither works
+through the remote link.
+
+**Copy to a Mac.** Copies on the Pi undo a bad update or a damaged database, but not a
+dead SD card. `deploy/mac/` pulls the newest backup onto a Mac over the SSH key you
+already use for the Pi:
+
+```bash
+./deploy/mac/install.sh raspberry@192.168.1.108    # run on the Mac
+```
+
+This installs a launchd agent that runs at login, when the Mac wakes and every hour.
+If the Pi can't be reached (Mac away from home, Pi off) it does nothing and tries again
+next time, so a missed night is caught up as soon as both are home. Each copy is checked
+with `PRAGMA integrity_check` before it replaces anything, and the Mac keeps its own 7
+daily and 4 weekly copies in `~/Backups/pianotrack/`. After each copy the Mac leaves a
+note on the Pi, so the dashboard shows "Last copied to <Mac>" and warns when that is more
+than 3 days old. Log: `~/Library/Logs/pianotrack-backup.log`. Remove with
+`launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.pianotrack.backup.plist`.
+Alternatively, point `--backup-dir` at a USB stick.
+
+**Restore.** Stop the service, restore, start it again:
+
+```bash
+sudo systemctl stop pianotrack
+python3 -m pianotrack --db /var/lib/pianotrack/pianotrack.db restore --force ~/daily-2026-10-21.db
+sudo systemctl start pianotrack
+```
+
+`restore` checks the backup first, refuses to overwrite a database that has sessions
+unless you pass `--force`, and keeps the replaced one as
+`pianotrack.db.before-restore-<time>`. On a fresh SD card, install as usual, then restore
+into the empty database. `python3 -m pianotrack backup` makes a copy by hand.
+
 ## Try it without a piano
 
 ```bash
@@ -159,6 +211,12 @@ whenever the dashboard changes.
 * `--port` (8080), `--host` (0.0.0.0)
 * `--idle-gap` seconds of silence that end a session (180)
 * `--db` or `PIANOTRACK_DB` for the database path
+* `--backup-dir` or `PIANOTRACK_BACKUP_DIR` folder for the nightly copies (default `backups/` next to the database)
+* `--backup-time` local time of the nightly copy (03:30), `--no-backup` to turn copies off
+
+Other commands: `backup [--backup-dir DIR]` copies the database now, `restore FILE [--force]`
+replaces the database with a backup, and `devices`, `backfill`, `simulate`, `replay`
+(see above).
 
 The daily goal is set from the dashboard.
 
@@ -171,6 +229,9 @@ The daily goal is set from the dashboard.
 | `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
 | `GET /login`, `POST /login`, `GET /logout` | sign-in page for tunnel visitors |
+| `GET /api/backup` | a fresh, consistent copy of the database as a `.db` file (home network only) |
+| `POST /api/backup` | make a backup into the backup folder now (home network only); returns the status below |
+| `GET /api/backups` | backup folder, last backup time, `stale` (over 2 days), daily/weekly counts, last error, and `offsite`: when and by which machine the last copy was pulled (`offsite_stale` after 3 days) |
 | `GET /api/tunnel` | `{"url": ...}` the current remote link, or null when no tunnel runs |
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |

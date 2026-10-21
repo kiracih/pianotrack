@@ -27,6 +27,7 @@
   --good: #0ca30c;
   --good-text: #006300;
   --live: #d03b3b;
+  --warn-text: #8a5300;
   --track: #e8e6e1;
   --seq-0: #ebe9e4; --seq-1: #b7d3f6; --seq-2: #6da7ec; --seq-3: #2a78d6; --seq-4: #184f95;
   --z-rest: #d8d6d0; --z-light: #9ec5f4; --z-moderate: #5598e7; --z-vigorous: #256abf; --z-peak: #0d366b;
@@ -37,7 +38,7 @@
     color-scheme: dark;
     --bg: #111110; --surface: #1a1a19; --border: #2c2c2a; --text: #f0efec; --text-2: #c3c2b7;
     --muted: #8f8e86; --grid: #2a2a28; --accent: #3987e5; --accent-soft: #1c3a5e;
-    --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --track: #2c2c2a;
+    --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --warn-text: #e3a43c; --track: #2c2c2a;
     --seq-0: #262624; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
     --z-rest: #3a3a37; --z-light: #184f95; --z-moderate: #256abf; --z-vigorous: #3987e5; --z-peak: #9ec5f4;
     --key-white: #d9d8d3; --key-black: #111110;
@@ -47,7 +48,7 @@
   color-scheme: dark;
   --bg: #111110; --surface: #1a1a19; --border: #2c2c2a; --text: #f0efec; --text-2: #c3c2b7;
   --muted: #8f8e86; --grid: #2a2a28; --accent: #3987e5; --accent-soft: #1c3a5e;
-  --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --track: #2c2c2a;
+  --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --warn-text: #e3a43c; --track: #2c2c2a;
   --seq-0: #262624; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
   --z-rest: #3a3a37; --z-light: #184f95; --z-moderate: #256abf; --z-vigorous: #3987e5; --z-peak: #9ec5f4;
   --key-white: #d9d8d3; --key-black: #111110;
@@ -255,6 +256,15 @@ footer a { color: var(--text-2); }
           <button type="submit">Set</button>
           <span id="pw-msg"></span>
         </form>
+      </div>
+      <div id="backup-box" style="display:none">
+        <h2 style="margin-top:20px">Backup</h2>
+        <div class="legend" id="bk-status" style="margin:0 0 8px;display:block"></div>
+        <div class="settings" id="bk-actions">
+          <a class="btn" href="/api/backup" download>Download backup</a>
+          <button type="button" id="bk-now">Back up now</button>
+          <span id="bk-msg"></span>
+        </div>
       </div>
     </section>
   </div>
@@ -657,6 +667,46 @@ async function showAuth() {
   } catch (e) { /* older server */ }
 }
 showAuth();
+
+async function showBackup() {
+  let b, a;
+  try { [b, a] = await Promise.all([get("/api/backups"), get("/api/auth")]); } catch (e) { return; }
+  if (!b.dir) return;  // backups switched off
+  $("backup-box").style.display = "";
+  $("bk-actions").style.display = a.remote ? "none" : "";
+  const lines = [];
+  const warn = (t) => `<div style="color:var(--warn-text);margin-top:4px">⚠ ${t}</div>`;
+  if (b.last_backup) {
+    const copies = `${b.daily} daily, ${b.weekly} weekly`;
+    lines.push(b.stale ? warn(`Last backup: ${fmtWhen(b.last_backup)}, over 2 days ago.`)
+                       : `<div>Last backup: ${fmtWhen(b.last_backup)} · ${copies} copies, nightly at ${b.at}</div>`);
+  } else {
+    lines.push(warn(`No backup yet. The first one is made within a few minutes of starting.`));
+  }
+  if (b.error) lines.push(warn(`Last attempt failed: ${escapeHtml(b.error)}`));
+  const o = b.offsite;
+  if (o) {
+    const where = `to ${escapeHtml(o.host || "another computer")}`;
+    lines.push(b.offsite_stale ? warn(`Last copied ${where}: ${fmtWhen(o.time)}, over 3 days ago.`)
+                               : `<div>Last copied ${where}: ${fmtWhen(o.time)}</div>`);
+  } else if (!b.off_card) {
+    lines.push(warn(`Copies are only on the Pi's SD card. Set up the Mac copy (deploy/mac) so a dead card can't take your history.`));
+  }
+  $("bk-status").innerHTML = lines.join("");
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`); }
+showBackup(); setInterval(showBackup, 300000);
+$("bk-now").onclick = async () => {
+  $("bk-msg").textContent = "Backing up…"; $("bk-msg").style.color = "";
+  const r = await fetch("/api/backup", { method: "POST" });
+  const body = await r.json().catch(() => ({}));
+  const ok = r.ok && !body.error;
+  $("bk-msg").textContent = ok ? "Done" : (body.error || "Failed");
+  $("bk-msg").style.color = ok ? "var(--good-text)" : "var(--live)";
+  setTimeout(() => $("bk-msg").textContent = "", 3000);
+  showBackup();
+};
+
 $("pw-form").onsubmit = async (e) => {
   e.preventDefault();
   const r = await fetch("/api/password", { method: "POST", headers: { "Content-Type": "application/json" },
