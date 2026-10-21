@@ -77,6 +77,10 @@ python3 -m pianotrack devices      # the FP-30X should be listed
 Then open `http://<pi-hostname>.local:8080` (for example `http://raspberrypi.local:8080`)
 on any device on the same wifi. Add it to your phone's home screen and it opens full screen with its own icon.
 
+The service waits for the clock to sync over the network before it starts, because
+the Pi has no battery-backed clock and session times would otherwise be wrong just
+after boot.
+
 Useful commands:
 
 ```bash
