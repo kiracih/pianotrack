@@ -12,7 +12,7 @@ Environment=PIANOTRACK_DB=/var/lib/pianotrack/pianotrack.db
 Environment=PYTHONUNBUFFERED=1
 # The Pi has no hardware clock: wait (up to 90 s) for network time so session
 # timestamps are right, but start anyway if the Pi is offline.
-ExecStartPre=-/bin/sh -c 'for i in $(seq 90); do [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ] && exit 0; sleep 1; done'
+ExecStartPre=-/bin/sh -c 'for i in $$(seq 90); do [ "$$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ] && exit 0; sleep 1; done'
 TimeoutStartSec=120
 ExecStart=/usr/bin/python3 -m pianotrack run --port @PORT@
 Restart=always
