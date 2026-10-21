@@ -112,6 +112,13 @@ tr.sel td { background: var(--accent-soft) !important; }
 @media (max-width: 600px) { .hide-sm { display: none; } }
 .records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
+.muted-s { color: var(--muted); font-size: 12px; }
+.spark { display: inline-flex; align-items: center; gap: 6px; }
+.spark b { font-weight: 500; font-size: 13px; }
+#pieces tr[data-key] { cursor: pointer; }
+#pieces button { padding: 4px 9px; font-size: 12px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
 .detail-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .detail-head h3 { margin: 0; font-size: 17px; }
 .dtiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -193,6 +200,18 @@ footer a { color: var(--text-2); }
     <section class="card span-4"><h2>Notes per minute <span>while playing</span></h2><div id="tr-npm"></div></section>
     <section class="card span-4"><h2>Dynamic range <span>velocity spread</span></h2><div id="tr-dyn"></div></section>
 
+    <section class="card span-12" id="pieces-card">
+      <h2>Pieces <span>found from what you play, wrong notes and all · trial</span></h2>
+      <div class="scroll-x">
+        <table id="pieces-table">
+          <thead><tr><th>Piece</th><th class="num">Time</th><th class="num hide-sm">Sessions</th><th>Last played</th><th>Tempo</th><th>Steadiness</th><th></th></tr></thead>
+          <tbody id="pieces"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="no-pieces" style="display:none">Pieces appear once you have played the same music three times. Nothing to log: they are found from your playing.</div>
+      <div class="legend">Tap a piece for its tempo and steadiness per session. Name it once and the name sticks. Scales and exercises can show up as pieces too.</div>
+    </section>
+
     <section class="card span-12">
       <h2>Most used keys
         <span class="seg" id="key-range">
@@ -216,6 +235,7 @@ footer a { color: var(--text-2); }
       <div class="sub-h" style="margin-top:0">Replay <span style="font-weight:400;color:var(--muted)">(grand piano sound, keys light up as played)</span></div>
       <div id="replay" style="margin-bottom:18px"></div>
       <div class="dtiles" id="d-tiles"></div>
+      <div class="legend" id="d-pieces"></div>
       <div class="sub-h">Intensity over the session <span style="font-weight:400;color:var(--muted)">(notes per minute)</span></div>
       <div id="d-timeline"></div>
       <div class="grid" style="margin-top:4px">
@@ -419,10 +439,10 @@ function heatmap(days, goalSec) {
 }
 
 // --- trend lines -------------------------------------------------------------
-function trendLine(target, rows, key, unit, fixedMax) {
+function trendLine(target, rows, key, unit, fixedMax, per = "day") {
   const box = $(target); box.innerHTML = "";
   const pts = rows.filter((r) => r[key] != null);
-  if (pts.length < 2) { box.innerHTML = `<div class="empty">Needs a few days of practice.</div>`; return; }
+  if (pts.length < 2) { box.innerHTML = `<div class="empty">Needs a few ${per === "day" ? "days of practice" : "more sessions"}.</div>`; return; }
   const W = 300, H = 140, pad = { l: 30, r: 8, t: 10, b: 20 };
   const s = svgRoot(W, H);
   const t0 = new Date(pts[0].date + "T12:00:00").getTime(), t1 = new Date(pts.at(-1).date + "T12:00:00").getTime();
@@ -453,7 +473,7 @@ function trendLine(target, rows, key, unit, fixedMax) {
     const r = s.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
     let best = 0; xy.forEach(([cx], i) => { if (Math.abs(cx - px) < Math.abs(xy[best][0] - px)) best = i; });
     cross.setAttribute("x1", xy[best][0]); cross.setAttribute("x2", xy[best][0]); cross.setAttribute("opacity", 1);
-    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that day · 7-day avg ${roll[best].toFixed(0)}${unit}`);
+    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that ${per} · 7-${per} avg ${roll[best].toFixed(0)}${unit}`);
   };
   hit.addEventListener("mousemove", onMove);
   hit.addEventListener("touchmove", (e) => onMove(e.touches[0]), { passive: true });
@@ -462,8 +482,65 @@ function trendLine(target, rows, key, unit, fixedMax) {
   const first = roll[Math.min(6, roll.length - 1)], lastV = roll.at(-1);
   const diff = lastV - first;
   const note = document.createElement("div"); note.className = "legend";
-  note.textContent = `Now ${lastV.toFixed(0)}${unit} (7-day avg), ${diff >= 0 ? "up" : "down"} ${Math.abs(diff).toFixed(0)}${unit} over the period.`;
+  note.textContent = `Now ${lastV.toFixed(0)}${unit} (7-${per} avg), ${diff >= 0 ? "up" : "down"} ${Math.abs(diff).toFixed(0)}${unit} over the period.`;
   box.appendChild(note);
+}
+
+// --- pieces ------------------------------------------------------------------
+function spark(vals, max) {
+  const pts = vals.map((v, i) => [i, v]).filter(([, v]) => v != null);
+  if (pts.length < 2) return `<span class="muted-s">${pts.length ? pts[0][1] : "–"}</span>`;
+  const W = 90, H = 26, hi = max ?? Math.max(...pts.map(([, v]) => v)) * 1.1, n = vals.length - 1 || 1;
+  const xy = pts.map(([i, v]) => [2 + (W - 4) * i / n, H - 2 - (H - 4) * v / hi]);
+  const d = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join("");
+  const [lx, ly] = xy.at(-1);
+  return `<span class="spark"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>` +
+    `<circle cx="${lx}" cy="${ly}" r="2.5" fill="var(--accent)"/></svg><b>${pts.at(-1)[1]}</b></span>`;
+}
+let pieceOpen = null;
+async function loadPieces() {
+  let rows;
+  try { rows = await get("/api/pieces"); } catch (e) { return; }
+  $("no-pieces").style.display = rows.length ? "none" : "";
+  $("pieces-table").style.display = rows.length ? "" : "none";
+  $("pieces").innerHTML = rows.map((p) => {
+    const h = p.history;
+    const main = `<tr data-key="${p.key}" class="${p.key === pieceOpen ? "sel" : ""}">
+      <td><b>${escapeHtml(p.label)}</b><div class="muted-s">${p.opening.notes.map(noteName).join(" ")}</div></td>
+      <td class="num">${fmtDur(p.active_seconds)}</td><td class="num hide-sm">${p.sessions}</td>
+      <td>${fmtWhen(p.last)}</td>
+      <td>${spark(h.slice(-20).map((x) => x.tempo_bpm))}</td><td>${spark(h.slice(-20).map((x) => x.steadiness), 100)}</td>
+      <td class="num" style="white-space:nowrap"><button class="pc-listen" title="Hear its most played phrase in the replay">▶ Listen</button>
+        <button class="pc-name">${p.name ? "Rename" : "Name"}</button></td></tr>`;
+    const more = p.key === pieceOpen ? `<tr class="pc-more"><td colspan="7"><div class="grid2">
+      <div><div class="sub-h">Tempo per session (bpm)</div><div id="pc-tempo"></div></div>
+      <div><div class="sub-h">Steadiness per session</div><div id="pc-steady"></div></div></div></td></tr>` : "";
+    return main + more;
+  }).join("");
+  document.querySelectorAll("#pieces tr[data-key]").forEach((tr) => {
+    const p = rows.find((r) => r.key === tr.dataset.key);
+    tr.onclick = () => { pieceOpen = pieceOpen === p.key ? null : p.key; loadPieces(); };
+    tr.querySelector(".pc-listen").onclick = async (e) => {
+      e.stopPropagation();
+      await openSession(p.opening.session);
+      $("detail-card").scrollIntoView({ behavior: "smooth" });
+      if (window.replay) window.replay.jump(p.opening.session, p.opening.offset);
+    };
+    tr.querySelector(".pc-name").onclick = async (e) => {
+      e.stopPropagation();
+      const name = prompt(p.name ? "Rename this piece (leave empty to forget the name)" : "Name this piece", p.name || "");
+      if (name === null) return;
+      await fetch("/api/pieces/name", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: p.key, name }) });
+      loadPieces();
+    };
+  });
+  const open = rows.find((r) => r.key === pieceOpen);
+  if (open) {
+    const pts = open.history.map((x) => ({ ...x, date: new Date(x.start * 1000).toLocaleDateString("sv") }));
+    trendLine("pc-tempo", pts, "tempo_bpm", "", undefined, "session");
+    trendLine("pc-steady", pts, "steadiness", "", 100, "session");
+  }
 }
 
 // --- session detail ----------------------------------------------------------
@@ -584,6 +661,8 @@ async function openSession(id) {
       `${m.sustain_presses} presses · soft pedal ${m.soft_fraction != null ? Math.round(m.soft_fraction * 100) + "%" : (m.soft_pedal_used ? "used" : "0%")}`),
     tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys · ${Math.round(m.left_hand_share * 100)}% below middle C`),
   ].join("");
+  $("d-pieces").innerHTML = (d.pieces || []).length
+    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}`).join(" · ") : "";
   timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m.key_histogram, "d-keys");
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
 }
@@ -647,6 +726,7 @@ async function refresh() {
     trendLine("tr-npm", trends, "notes_per_minute", "");
     trendLine("tr-dyn", trends, "dynamic_range", "");
     loadKeys();
+    loadPieces();
   }
   lastLive = !!lv;
   $("updated").textContent = `Updated ${new Date().toLocaleTimeString()}`;

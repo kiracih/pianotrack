@@ -8,13 +8,14 @@ import os
 import re
 import shutil
 import tempfile
+import threading
 import time
 from datetime import date, datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from html import escape
 from urllib.parse import parse_qs, quote, urlparse
 
-from . import auth as authmod, backup as backupmod, metrics
+from . import auth as authmod, backup as backupmod, metrics, pieces as piecesmod
 from .midi import write_smf
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ class Api:
         self.collector = collector
         self.backups = backups
         self._live_cache = {}
+        self._segments = {}  # closed session id -> its piece segments (closed sessions never change)
+        self._pieces_cache = None
+        self._pieces_lock = threading.Lock()
 
     def _metrics(self, s):
         if s["metrics"] and s["closed"]:
@@ -210,8 +214,53 @@ class Api:
         if not s:
             return None
         m = self._metrics(s)
+        found = []
+        if s["closed"]:
+            for r in self._pieces()[1]:
+                for h in r["history"]:
+                    if h["session"] == sid:
+                        found.append({"key": r["key"], "label": r["label"],
+                                      "active_seconds": h["active_seconds"]})
         return {"id": s["id"], "closed": bool(s["closed"]), "source": s["source"],
-                "start": s["start"], "end": s["end"], "metrics": m}
+                "start": s["start"], "end": s["end"], "metrics": m, "pieces": found}
+
+    def _pieces(self):
+        """(matcher, view) over all closed sessions, recomputed when they or names change."""
+        with self._pieces_lock:
+            closed = self.store.sessions(closed_only=True)
+            named = self.store.piece_names()
+            key = (tuple(sorted(s["id"] for s in closed)), tuple((n[0], n[1]) for n in named))
+            if self._pieces_cache and self._pieces_cache[0] == key:
+                return self._pieces_cache[1]
+            ids = set(key[0])
+            self._segments = {k: v for k, v in self._segments.items() if k in ids}
+            matcher, _ = piecesmod.group(self.store, cache=self._segments)
+            view = piecesmod.pieces_view(matcher, named, {s["id"]: s["start"] for s in closed})
+            self._pieces_cache = (key, (matcher, view))
+            return matcher, view
+
+    def pieces(self):
+        """Pieces found in the practice history, most recently played first."""
+        return [{k: v for k, v in r.items() if not k.startswith("_")} for r in self._pieces()[1]]
+
+    def name_piece(self, data):
+        """Give a piece a name (an empty name forgets it). Changes no recordings."""
+        key, name = str(data.get("key", "")), " ".join(str(data.get("name", "")).split())[:80]
+        matcher, view = self._pieces()
+        row = next((r for r in view if key in r["_keys"]), None)
+        if row is None:
+            raise ValueError("no such piece")
+        if row["_name_id"] is not None:
+            if name:
+                self.store.save_piece_name(name, None, nid=row["_name_id"])
+            else:
+                self.store.delete_piece_name(row["_name_id"])
+        elif name:
+            grams = set()
+            for i in row["_groups"]:
+                grams |= matcher.core(matcher.pieces[i])
+            self.store.save_piece_name(name, grams)
+        return self.pieces()
 
     def session_events(self, sid):
         """The session as a compact time series for replay, times relative to start."""
@@ -367,6 +416,8 @@ def make_handler(api):
                     return self._send_backup()
                 if path == "/api/status":
                     return self._send(200, api.collector.status if api.collector else {})
+                if path == "/api/pieces":
+                    return self._send(200, api.pieces())
                 m = re.fullmatch(r"/api/sessions/(\d+)/events", path)
                 if m:
                     data = api.session_events(int(m.group(1)))
@@ -402,6 +453,8 @@ def make_handler(api):
                 data = json.loads(body or b"{}")
                 if path == "/api/settings":
                     return self._send(200, api.update_settings(data))
+                if path == "/api/pieces/name":
+                    return self._send(200, api.name_piece(data))
                 if path == "/api/password":
                     if authmod.via_tunnel(self.headers):
                         return self._send(403, {"error": "the password can only be changed at home"})

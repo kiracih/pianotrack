@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS secrets (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS piece_names (
+    id    INTEGER PRIMARY KEY,
+    name  TEXT NOT NULL,
+    grams TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -170,6 +175,22 @@ class Store:
         self._x("INSERT INTO settings(key, value) VALUES (?, ?)"
                 " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (key, json.dumps(value)))
+
+    # Names the owner gave to pieces, with the n-grams that identify the music.
+    # Grouping itself is never stored; it is recomputed from the raw notes.
+    def piece_names(self):
+        return [(r["id"], r["name"], {tuple(g) for g in json.loads(r["grams"])})
+                for r in self._q("SELECT id, name, grams FROM piece_names")]
+
+    def save_piece_name(self, name, grams, nid=None):
+        if nid is not None:
+            self._x("UPDATE piece_names SET name=? WHERE id=?", (name, nid))
+            return nid
+        return self._x("INSERT INTO piece_names(name, grams) VALUES (?, ?)",
+                       (name, json.dumps(sorted(grams))))
+
+    def delete_piece_name(self, nid):
+        self._x("DELETE FROM piece_names WHERE id=?", (nid,))
 
     # Kept apart from settings so they never appear in /api/settings.
     def secret(self, key):

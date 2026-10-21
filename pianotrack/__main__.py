@@ -30,6 +30,7 @@ def cmd_run(args):
     collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
     backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
     api = Api(store, collector, backups)
+    threading.Thread(target=api.pieces, daemon=True).start()  # first pieces pass is slow
     httpd = make_server(api, args.host, args.port)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     logging.info("dashboard on http://%s:%d", args.host, args.port)

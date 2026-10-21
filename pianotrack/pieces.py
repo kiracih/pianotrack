@@ -10,7 +10,9 @@ Beginners play wrong notes, miss notes and restart, so a segment only needs a
 share of its n-grams to match, not all of them.
 """
 
-from collections import Counter
+from collections import Counter, defaultdict
+
+from . import metrics
 
 GAP = 3.5  # seconds of silence that end a segment
 MAX_SEGMENT = 240.0  # longer stretches are cut into segments of this length
@@ -31,19 +33,18 @@ def top_voice(notes):
     far below the notes either side of them.
     """
     out = []
+    recent = []  # earlier notes that may still cover the current one
     for i, n in enumerate(notes):
         t, p = n["t_on"], n["pitch"]
+        recent = [o for o in recent if o["t_off"] > t - 0.15 or t - o["t_on"] < CHORD]
         covered = False
-        j = i - 1
-        while j >= 0 and notes[j]["t_on"] > t - 8.0:
-            o = notes[j]
+        for o in recent:
             # An octave or more below a note just let go is the other hand
             # showing through a legato gap, not the melody.
             held = o["t_off"] > t + 0.02 or (o["pitch"] - p >= 12 and o["t_off"] > t - 0.15)
             if o["pitch"] > p and (held or t - o["t_on"] < CHORD):
                 covered = True
                 break
-            j -= 1
         k = i + 1
         while not covered and k < len(notes) and notes[k]["t_on"] - t < CHORD:
             if notes[k]["pitch"] > p:
@@ -51,6 +52,7 @@ def top_voice(notes):
             k += 1
         if not covered:
             out.append(n)
+        recent.append(n)
     keep = []
     for i, n in enumerate(out):
         prev = out[i - 1]["pitch"] if i else None
@@ -108,21 +110,28 @@ class Matcher:
         self.core_after = CORE_AFTER if core_after is None else core_after
         self.merge = merge
         self.pieces = []  # {"grams": Counter, "segments": [...]}, None once merged away
+        self.index = defaultdict(set)  # n-gram -> pieces that contain it
 
     def core(self, piece):
         """A piece's n-grams, minus one-off slips once it has been heard enough."""
         grams = piece["grams"]
         if len(piece["segments"]) < self.core_after:
             return grams.keys()
-        return {g for g, c in grams.items() if c >= 2}
+        if piece.get("core") is None:
+            piece["core"] = {g for g, c in grams.items() if c >= 2}
+        return piece["core"]
 
     def add(self, seg):
         """Assign a segment (dict with "fp") to a piece; returns its index or None."""
         fp = seg["fp"]
         if not fp:
             return None
+        candidates = Counter(i for g in fp for i in self.index.get(g, ()))
         hits = []
-        for i, p in self.groups():
+        for i, n in candidates.items():
+            if n < self.min_hits:
+                continue
+            p = self.pieces[i]
             common = fp & self.core(p)
             score = len(common) / len(fp)
             if len(common) >= self.min_hits and score >= self.match:
@@ -130,11 +139,16 @@ class Matcher:
         if not hits:
             self.pieces.append({"grams": Counter(fp), "segments": [seg]})
             seg["piece"] = len(self.pieces) - 1
+            for g in fp:
+                self.index[g].add(seg["piece"])
             return seg["piece"]
         best = max(hits)[1]
         piece = self.pieces[best]
         piece["segments"].append(seg)
         piece["grams"].update(fp)
+        piece["core"] = None
+        for g in fp:
+            self.index[g].add(best)
         seg["piece"] = best
         if self.merge:
             best = self._consolidate(best)
@@ -160,6 +174,10 @@ class Matcher:
                 keep, gone = (i, j) if len(piece["segments"]) >= len(other["segments"]) else (j, i)
                 k, g = self.pieces[keep], self.pieces[gone]
                 k["grams"].update(g["grams"])
+                k["core"] = None
+                for x in g["grams"]:
+                    self.index[x].discard(gone)
+                    self.index[x].add(keep)
                 k["segments"] = sorted(k["segments"] + g["segments"], key=lambda s: s["start"])
                 for s in g["segments"]:
                     s["piece"] = keep
@@ -184,18 +202,33 @@ def session_segments(store, sid):
             "start": seg[0]["t_on"],
             "end": max(n["t_off"] for n in seg),
             "notes": len(seg),
+            "active": metrics.active_seconds(seg),
+            **{k: v for k, v in metrics.tempo_metrics([n["t_on"] for n in seg]).items()
+               if k in ("tempo_bpm", "steadiness")},
             "opening": pitches[:8],
+            "melody": [(n["t_on"], n["pitch"]) for n in melody],
             "fp": fingerprint(pitches),
         })
     return out
 
 
-def group(store, since=None):
-    """Match every closed session's segments, oldest first. Changes nothing."""
+def group(store, since=None, cache=None):
+    """Match every closed session's segments, oldest first. Changes nothing.
+
+    `cache` (session id -> segments) saves re-reading sessions that are closed
+    and so can no longer change.
+    """
     matcher = Matcher()
     segs = []
     for s in sorted(store.sessions(since=since, closed_only=True), key=lambda s: s["start"]):
-        for seg in session_segments(store, s["id"]):
+        if cache is None:
+            found = session_segments(store, s["id"])
+        else:
+            if s["id"] not in cache:
+                cache[s["id"]] = session_segments(store, s["id"])
+            found = cache[s["id"]]
+        for seg in found:
+            seg.pop("piece", None)
             matcher.add(seg)
             segs.append(seg)
     return matcher, segs
@@ -217,9 +250,130 @@ def pieces_report(matcher):
             "opening": segs[0]["opening"],
             "index": index,
         })
+    for i, r in enumerate(sorted(rows, key=lambda r: r["first"])):
+        r["label"] = _label(i)  # letters in the order pieces were first played
     rows.sort(key=lambda r: -r["seconds"])
+    return rows
+
+
+def _label(i):
+    return "Piece " + (chr(65 + i) if i < 26 else str(i + 1))
+
+
+def _key(piece):
+    first = min(piece["segments"], key=lambda s: s["start"])
+    return f"{first['session']}-{int(first['start'])}"
+
+
+def resolve_names(matcher, named, min_overlap=0.5, min_share=0.3):
+    """Map group index -> (name id, name) for groups that match a named piece.
+
+    `named` holds (id, name, grams) rows saved when the owner named a group.
+    Grouping is recomputed from scratch, so names follow the music: a group
+    takes a name when most of its n-grams belong to the named piece and it
+    holds a fair share of that piece (so a short scale group inside it
+    doesn't take its name).
+    """
+    out = {}
+    for index, p in matcher.groups():
+        if len(p["segments"]) < 3:
+            continue
+        core = matcher.core(p)
+        best, score = None, min_overlap
+        for nid, name, grams in named:
+            if not core or not grams:
+                continue
+            common = len(core & grams)
+            o = common / len(core)
+            if o >= score and common >= min_share * len(grams):
+                best, score = (nid, name), o
+        if best:
+            out[index] = best
+    return out
+
+
+def _motif(segs, rep, n=6):
+    """The phrase of n melody notes found in the most plays of a piece (exact
+    keys: a phrase you would recognise), and a play to hear it in: the best
+    play `rep` if it has it, else the latest play that does."""
+    counts = Counter()
+    for s in segs:
+        p = [x[1] for x in s.get("melody", ())]
+        counts.update({tuple(p[i:i + n]) for i in range(len(p) - n + 1)
+                       if len(set(p[i:i + n])) >= 3})
+    if not counts:
+        return tuple(rep["opening"][:n]), rep, rep["start"]
+    motif = counts.most_common(1)[0][0]
+    for s in [rep] + segs[::-1]:
+        m = s.get("melody", ())
+        for i in range(len(m) - n + 1):
+            if tuple(x[1] for x in m[i:i + n]) == motif:
+                return motif, s, m[i][0]
+    return motif, rep, rep["start"]
+
+
+def pieces_view(matcher, named=(), session_starts=None):
+    """Pieces for the dashboard: groups heard three or more times, plus their
+    named matches merged under one name, most recently played first."""
+    names = resolve_names(matcher, named)
+    groups = {}
+    for index, p in matcher.groups():
+        if len(p["segments"]) < 3:
+            continue
+        nid = names.get(index, (None, None))[0]
+        g = groups.setdefault(("n", nid) if nid else ("g", index),
+                              {"segments": [], "keys": [], "name": names.get(index, (None, None))[1],
+                               "name_id": nid})
+        g["segments"] += p["segments"]
+        g["keys"].append(_key(p))
+        core = matcher.core(p)
+        best = max(p["segments"], key=lambda s: len(s["fp"] & core))
+        if g.get("rep") is None or len(best["fp"] & core) > g["rep_score"]:
+            g["rep"], g["rep_score"] = best, len(best["fp"] & core)
+    rows = []
+    for g in groups.values():
+        segs = sorted(g["segments"], key=lambda s: s["start"])
+        per = {}
+        for s in segs:
+            h = per.setdefault(s["session"], {"session": s["session"], "start": s["start"],
+                                              "active_seconds": 0.0, "_t": [0.0, 0.0], "_s": [0.0, 0.0]})
+            h["active_seconds"] += s["active"]
+            if s.get("tempo_bpm"):
+                h["_t"][0] += s["tempo_bpm"] * s["active"]
+                h["_t"][1] += s["active"]
+            if s.get("steadiness") is not None:
+                h["_s"][0] += s["steadiness"] * s["active"]
+                h["_s"][1] += s["active"]
+        history = []
+        for h in sorted(per.values(), key=lambda h: h["start"]):
+            t, st = h.pop("_t"), h.pop("_s")
+            h["tempo_bpm"] = round(t[0] / t[1]) if t[1] else None
+            h["steadiness"] = round(st[0] / st[1]) if st[1] else None
+            h["active_seconds"] = round(h["active_seconds"])
+            history.append(h)
+        first = segs[0]
+        motif, rep, at = _motif(segs, g["rep"])
+        t0 = (session_starts or {}).get(rep["session"], rep["start"])
+        rows.append({
+            "key": g["keys"][0],
+            "name": g["name"],
+            "active_seconds": round(sum(s["active"] for s in segs)),
+            "segments": len(segs),
+            "sessions": len(per),
+            "first": first["start"],
+            "last": segs[-1]["start"],
+            # Its most played phrase, and where to hear it, to recognise it by ear.
+            "opening": {"session": rep["session"], "offset": round(max(at - 1.0, rep["start"]) - t0, 2),
+                        "notes": list(motif)},
+            "history": history,
+            "_groups": [i for i, p in matcher.groups() if _key(p) in g["keys"]],
+            "_keys": g["keys"],
+            "_name_id": g["name_id"],
+        })
+    rows.sort(key=lambda r: r["first"])
     for i, r in enumerate(rows):
-        r["label"] = "Piece " + (chr(65 + i) if i < 26 else str(i + 1))
+        r["label"] = r["name"] or _label(i)
+    rows.sort(key=lambda r: -r["last"])
     return rows
 
 

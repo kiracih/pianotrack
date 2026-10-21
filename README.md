@@ -25,6 +25,7 @@ No phone app, no cloud, no extra Python packages.
 | Dynamics | Mean velocity, pp to ff distribution, and dynamic range (spread between the quiet and loud 10%). |
 | Keys | 88-key heatmap per session and across the last 7, 30 or 90 days or all time, top keys, lowest and highest note, share of notes below middle C. |
 | Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
+| Pieces | Per piece: active time, sessions, last played, and per-session tempo and steadiness (active-time weighted over the stretches of that piece). |
 
 Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
@@ -46,21 +47,20 @@ played) or as a CSV of notes. `/api/sessions.csv` exports the session list.
 be pulled onto a Mac automatically, downloaded from the dashboard, and restored with one
 command. See [Backups](#backups).
 
-**Pieces (trial, report only):** `python3 -m pianotrack pieces` looks through your
-history and groups the stretches of playing that are the same piece, even with wrong
-notes, restarts, slow tempos or a different key. It only prints a report: nothing is
-stored, and sessions, replay, `.mid` and `.csv` stay exactly as recorded. A Pieces
-view on the dashboard comes only if the report matches what you really played. See
-[docs/pieces-matcher.md](docs/pieces-matcher.md) for how it works and how well it does.
-On simulated beginner practice the report starts like this:
+![Pieces](docs/pieces.png)
 
-```
-$ python3 -m pianotrack --db /var/lib/pianotrack/pianotrack.db pieces
-piece        time  segs  sess  first       last        opening notes
-Piece A       89m    78    31  2025-12-03  2026-01-01  E5 D#5 E5 D#5 E5 B4 D5 C5
-Piece B       80m    88    31  2025-12-04  2026-01-01  E5 E5 F5 F5 G5 G5 F5 E5
-...
-```
+**Pieces (trial):** the dashboard groups the stretches of playing that are the same
+piece, found from the notes alone, with wrong notes, restarts, slow tempos and all.
+Nothing to log. Each piece shows its total time, sessions and when you last played it,
+and its tempo and steadiness per session (tap a piece for the charts). Pieces show as
+"Piece A, B…" with their most played phrase; **Listen** jumps the replay to that phrase
+so you can recognise it, and **Name** names it once ("Chopin waltz"). The name follows
+the music into later sessions. A session's detail lists the pieces played in it.
+Grouping never changes your recordings: replay, `.mid` and `.csv` stay exactly as
+recorded; only the names you give are stored. Scales and exercises can show up as
+pieces too. See [docs/pieces-matcher.md](docs/pieces-matcher.md) for how matching works
+and how well it does. `python3 -m pianotrack pieces` prints the same grouping as a
+read-only report.
 
 ## How it works
 
@@ -78,8 +78,8 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
   written in batches every 2 s to spare the SD card.
 * **Metrics** (`metrics.py`) are computed when a session closes and stored with it.
 * **Pieces** (`pieces.py`) cuts sessions into segments at pauses of 3.5 s, takes the
-  melody (top voice), and matches segments by shared runs of pitch intervals. Report
-  only for now; it opens the database read-only. Pieces heard 3+ times are listed.
+  melody (top voice), and matches segments by shared runs of pitch intervals. Pieces heard
+  3+ times are listed, recomputed from the raw notes after each new session.
 * **Server** (`server.py`) serves the dashboard and a JSON API on port 8080.
 * **Backups** (`backup.py`) copy the database every night (see below).
 
@@ -203,8 +203,9 @@ into the empty database. `python3 -m pianotrack backup` makes a copy by hand.
 ## Try it without a piano
 
 ```bash
-# 60 days of realistic simulated history, then the dashboard
-python3 -m pianotrack --db /tmp/demo.db backfill --days 60
+# 60 days of simulated history (--beginner plays a small repertoire with a learner's
+# mistakes, so Pieces has something to find), then the dashboard
+python3 -m pianotrack --db /tmp/demo.db backfill --days 60 --beginner
 python3 -m pianotrack --db /tmp/demo.db run --no-collector
 
 # full pipeline: the collector reads a FIFO that the simulator plays into
@@ -274,10 +275,12 @@ the way a learner does.
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
 | `GET /api/sessions?limit=50` | session list with headline metrics |
-| `GET /api/sessions/<id>` | full metrics, timeline, key histogram |
+| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, and the pieces played in it |
 | `GET /api/sessions/<id>/events` | the session as a time series for replay: notes `[on, off, pitch, velocity]` and pedals `[t, cc, value]`, seconds from start |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
 | `GET /api/sessions.csv` | all sessions as CSV |
+| `GET /api/pieces` | pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`active_seconds`, `tempo_bpm`, `steadiness`) |
+| `POST /api/pieces/name` | `{"key": "...", "name": "..."}` names a piece (empty name forgets it); returns the pieces |
 | `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5}` |
 
 ## Roadmap

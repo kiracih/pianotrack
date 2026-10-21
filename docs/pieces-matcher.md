@@ -1,9 +1,10 @@
-# Pieces matcher (step 1 of Pieces, trial)
+# Pieces matcher (trial)
 
 The goal of Pieces is to see time, tempo and steadiness per piece without logging
-anything. Step 1 is only the matcher and a report, to find out whether a
-beginner's playing (wrong notes, restarts, slow tempos) can be grouped reliably
-before any dashboard work starts.
+anything. Step 1 was the matcher and a report, to find out whether a beginner's
+playing (wrong notes, restarts, slow tempos) can be grouped reliably. On the
+owner's first real session it found the Chopin waltz played last (2026-10-21), and
+step 2, the Pieces view on the dashboard, followed. Both use the same matcher.
 
 ```
 python3 -m pianotrack --db /var/lib/pianotrack/pianotrack.db pieces            # report
@@ -11,8 +12,10 @@ python3 -m pianotrack --db /var/lib/pianotrack/pianotrack.db pieces --sessions #
 python3 -m pianotrack pieces --check --seed 1                                 # score it on simulated practice
 ```
 
-The report opens the database read-only, so SQLite refuses any write. Nothing is stored, and sessions, replay,
-`.mid` and `.csv` downloads are untouched.
+The report opens the database read-only, so SQLite refuses any write. The dashboard
+stores only the names you give pieces (with the n-grams that identify each named
+piece, so the name follows the music); grouping is recomputed from the raw notes, and
+sessions, replay, `.mid` and `.csv` downloads are untouched.
 
 ## How it works (`pianotrack/pieces.py`)
 

@@ -122,5 +122,39 @@ class ReadOnlyTest(unittest.TestCase):
             live.close()
 
 
+
+class PiecesApiTest(unittest.TestCase):
+    def test_view_names_stick_and_recordings_are_untouched(self):
+        from pianotrack.server import Api
+        store = Store(":memory:")
+        simulate.backfill(store, days=20, seed=2, beginner=True, now=datetime(2026, 1, 1, 22))
+        api = Api(store)
+        notes_before = {s["id"]: store.notes(s["id"]) for s in store.sessions()}
+        view = api.pieces()
+        self.assertGreaterEqual(len(view), len(simulate.REPERTOIRE))
+        top = max(view, key=lambda r: r["active_seconds"])
+        self.assertTrue(all(h["active_seconds"] > 0 for h in top["history"]))
+        self.assertIn(top["label"], [r["label"] for r in view])
+
+        view = api.name_piece({"key": top["key"], "name": "  My   waltz "})
+        named = [r for r in view if r["name"]]
+        self.assertEqual([r["label"] for r in named], ["My waltz"])
+        sid = named[0]["history"][-1]["session"]
+        self.assertIn("My waltz", [p["label"] for p in api.session(sid)["pieces"]])
+
+        # More practice later: the name follows the music into new sessions.
+        simulate.backfill(store, days=10, seed=9, beginner=True, now=datetime(2026, 1, 12, 22))
+        later = [r for r in api.pieces() if r["name"] == "My waltz"]
+        self.assertEqual(len(later), 1)
+        self.assertGreater(later[0]["last"], named[0]["last"])
+
+        view = api.name_piece({"key": later[0]["key"], "name": ""})
+        self.assertFalse(any(r["name"] for r in view))
+        for sid, notes in notes_before.items():
+            self.assertEqual(store.notes(sid), notes)
+        with self.assertRaises(ValueError):
+            api.name_piece({"key": "nope", "name": "x"})
+
+
 if __name__ == "__main__":
     unittest.main()

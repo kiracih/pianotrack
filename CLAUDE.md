@@ -7,7 +7,7 @@ Headless piano practice tracker for a Raspberry Pi (Roland FP-30X over USB). Pur
 1. Update README.md so it describes what the code does now: feature list, metrics table, API table, CLI options.
 2. Regenerate the screenshots in docs/ when anything visible changes:
    ```
-   python3 -m pianotrack --db /tmp/demo.db backfill --days 120 --seed 3
+   python3 -m pianotrack --db /tmp/demo.db backfill --days 120 --seed 3 --beginner
    python3 -m pianotrack --db /tmp/demo.db run --no-collector --port 8099 &
    npm install --no-save playwright && node tools/screenshots.mjs http://localhost:8099
    ```

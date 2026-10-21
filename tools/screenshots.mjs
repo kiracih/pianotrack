@@ -1,6 +1,6 @@
 // Regenerates the README screenshots in docs/ from a running dashboard.
 //
-//   python3 -m pianotrack --db /tmp/demo.db backfill --days 120 --seed 3
+//   python3 -m pianotrack --db /tmp/demo.db backfill --days 120 --seed 3 --beginner
 //   python3 -m pianotrack --db /tmp/demo.db run --no-collector --port 8099 &
 //   npm install --no-save playwright && node tools/screenshots.mjs http://localhost:8099
 //
@@ -25,6 +25,18 @@ async function open(width, scheme) {
 }
 const card = (page, sel) => page.$(sel).then((h) => h.evaluateHandle((e) => e.closest("section")));
 
+// Name some of the simulator's pieces the way the owner would, by ear (here by their
+// most played phrase). One stays unnamed to show how that looks.
+const known = { "Für Elise": [76, 75, 76, 71, 74, 72], "Minuet in G": [67, 69, 71, 72, 74, 67],
+  "Twinkle": [79, 77, 77, 76, 76, 74] };
+const req = (await browser.newContext()).request;
+for (const p of await (await req.get(base + "/api/pieces")).json()) {
+  if (p.name || !Object.keys(known).length) continue;
+  const [name, hits] = Object.entries(known).map(([n, o]) => [n, o.filter((v, i) => p.opening.notes[i] === v).length])
+    .sort((a, b) => b[1] - a[1])[0];
+  if (hits >= 5) { await req.post(base + "/api/pieces/name", { data: { key: p.key, name } }); delete known[name]; }
+}
+
 // Main dashboard, light, desktop: everything above the session list.
 let page = await open(1100, "light");
 await page.screenshot({ path: out + "dashboard.png", fullPage: true, clip: await page.evaluate(() => {
@@ -32,6 +44,12 @@ await page.screenshot({ path: out + "dashboard.png", fullPage: true, clip: await
   return { x: 0, y: 0, width: 1100, height: r.bottom + window.scrollY + 16 };
 }) });
 await (await card(page, "#all-keys")).screenshot({ path: out + "keys.png" });
+
+// Pieces, with the most played one opened to its per-session charts.
+await page.click("#pieces tr[data-key]");
+await page.waitForSelector("#pc-tempo svg");
+await (await page.$("#pieces-card")).screenshot({ path: out + "pieces.png" });
+await page.click("#pieces tr[data-key]");
 
 // Backup box after a fresh backup. For the demo, pretend a Mac has pulled a copy
 // (deploy/mac/pull-backup.sh leaves this mark on the Pi).

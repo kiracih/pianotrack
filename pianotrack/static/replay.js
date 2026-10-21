@@ -131,7 +131,7 @@ function prepare(data, skipPauses) {
   const pedalTimeline = sustain.map(([a, b]) => [map(a), b === Infinity ? Infinity : map(b)]);
   const duration = Math.max(0, ...out.map((n) => n.sound));
   let maxHold = 0; for (const n of out) maxHold = Math.max(maxHold, n.off - n.on);
-  return { notes: out, sustain: pedalTimeline, duration, maxHold, skipped: warp.length - 1 };
+  return { notes: out, sustain: pedalTimeline, duration, maxHold, skipped: warp.length - 1, map };
 }
 
 const piano = new PianoSampler();
@@ -204,8 +204,13 @@ class Replay {
     this.$(".rp-kbd").appendChild(svg);
   }
 
-  async load(id) {
-    if (this.id === id) return;
+  load(id) {
+    if (this.id === id) return this.loading;
+    this.loading = this._load(id);
+    return this.loading;
+  }
+
+  async _load(id) {
     this.stop();
     this.id = id;
     this.$(".rp-msg").textContent = "";
@@ -215,6 +220,13 @@ class Replay {
     this.prep = prepare(this.data, this.skip);
     this.pos = 0;
     this.draw();
+  }
+
+  // Load a session and move to `t` seconds after its start (real time, before pause skipping).
+  async jump(id, t) {
+    await this.load(id);
+    if (this.id !== id || !this.prep) return;
+    this.seek(this.prep.map(t));
   }
 
   async play() {

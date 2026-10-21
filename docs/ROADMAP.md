@@ -62,6 +62,9 @@ and it opens.
 On simulated beginner practice it passes the gate on 10 of 10 runs (95 to 98% right,
 at most 2.4% wrong); see [pieces-matcher.md](pieces-matcher.md). Waiting for the owner
 to check the report against their real history before step 2.
+**Status 2026-10-21, later:** the report found the Chopin waltz the owner played last on
+their first real session; owner chose to build the Pieces view now. Step 2 shipped the
+same day (dashboard Pieces card, naming, Listen, per-piece tempo and steadiness).
 
 **Problem.** Every session is anonymous ("Today 19:05, 22 min"). The owner can't
 see how long they've spent on a given piece or whether it is getting steadier
