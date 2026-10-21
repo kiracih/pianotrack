@@ -144,7 +144,10 @@ more than once a week.
 
 - 2026-10-21: **Days follow your clock: no action.** Day boundaries use the Pi's
   time zone while times show in the browser's; the owner always plays in one zone
-  (UTC+3), so this is parked. Revisit if the owner travels or ships to others.
+  (UTC+3), so this is parked. That only holds if the Pi itself is set to UTC+3
+  (e.g. `Europe/Istanbul`); check `timedatectl` on the Pi at the next deploy and set
+  it with `sudo timedatectl set-timezone Europe/Istanbul` if it is UTC. Revisit
+  if the owner travels or ships to others.
 
 - 2026-10-21: **Keep the random trycloudflare link** rather than buy a domain for a
   named tunnel (owner's choice). Revisit only if the owner asks.
