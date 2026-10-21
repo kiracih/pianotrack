@@ -1,8 +1,7 @@
 [Unit]
 Description=Piano practice tracker (MIDI collector + dashboard)
-# The Pi has no hardware clock: wait for network time so session timestamps are right.
 After=network-online.target sound.target time-sync.target
-Wants=network-online.target time-sync.target
+Wants=network-online.target
 
 [Service]
 Type=simple
@@ -11,6 +10,10 @@ SupplementaryGroups=audio
 WorkingDirectory=@DIR@
 Environment=PIANOTRACK_DB=/var/lib/pianotrack/pianotrack.db
 Environment=PYTHONUNBUFFERED=1
+# The Pi has no hardware clock: wait (up to 90 s) for network time so session
+# timestamps are right, but start anyway if the Pi is offline.
+ExecStartPre=-/bin/sh -c 'for i in $(seq 90); do [ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" = yes ] && exit 0; sleep 1; done'
+TimeoutStartSec=120
 ExecStart=/usr/bin/python3 -m pianotrack run --port @PORT@
 Restart=always
 RestartSec=3

@@ -17,10 +17,6 @@ echo "Installing pianotrack from $DIR for user $RUN_USER on port $PORT"
 sudo usermod -aG audio "$RUN_USER"
 sed -e "s|@USER@|$RUN_USER|" -e "s|@DIR@|$DIR|" -e "s|@PORT@|$PORT|" \
     "$DIR/deploy/pianotrack.service" | sudo tee /etc/systemd/system/pianotrack.service >/dev/null
-# Make time-sync.target actually wait for NTP (systemd-timesyncd) at boot.
-if systemctl list-unit-files systemd-time-wait-sync.service >/dev/null 2>&1; then
-    sudo systemctl enable systemd-time-wait-sync.service >/dev/null 2>&1 || true
-fi
 sudo systemctl daemon-reload
 sudo systemctl enable --now pianotrack
 sudo systemctl restart pianotrack
