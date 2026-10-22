@@ -109,7 +109,14 @@ tbody tr:hover td { background: var(--bg); }
 tr.sel td { background: var(--accent-soft) !important; }
 .num { text-align: right; }
 .hide-sm { }
-@media (max-width: 600px) { .hide-sm { display: none; } }
+.show-sm { display: none; }
+@media (max-width: 600px) {
+  .hide-sm { display: none; } .show-sm { display: block; }
+  .pc-acts { margin-top: 6px; white-space: nowrap; }
+  #pieces .spark svg { width: 44px; }
+  #pieces .pc-acts button { padding: 3px 8px; }
+  #pieces td { padding: 9px 4px; }
+}
 .records { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .empty { color: var(--muted); font-size: 14px; padding: 12px 0; }
 .muted-s { color: var(--muted); font-size: 12px; }
@@ -151,6 +158,21 @@ tr.sel td { background: var(--accent-soft) !important; }
 footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
 footer a { color: var(--text-2); }
 .scroll-x { overflow-x: auto; }
+.sub-h span { font-weight: 400; color: var(--muted); }
+.trends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.trends .sub-h { margin-top: 0; }
+#trend-tabs { display: none; }
+/* Phone: what changes day to day first (today, week, pieces, sessions), then the slower
+   views; the three trend charts share one card with tabs. Desktop keeps the page order. */
+@media (max-width: 760px) {
+  .o-today { order: 1; } .o-week { order: 2; } .o-pieces { order: 3; } .o-detail { order: 4; }
+  .o-sessions { order: 5; } .o-trends { order: 6; } .o-calendar { order: 7; } .o-keys { order: 8; }
+  .o-records { order: 9; }
+  #trend-tabs { display: inline-flex; }
+  .trends { grid-template-columns: 1fr; }
+  .trend { display: none; } .trend.on { display: block; }
+  .trend .sub-h { display: none; }
+}
 </style>
 </head>
 <body>
@@ -172,7 +194,7 @@ footer a { color: var(--text-2); }
       </div>
     </section>
 
-    <section class="card span-7">
+    <section class="card span-7 o-today">
       <h2>Today <span id="today-date"></span></h2>
       <div class="today">
         <div class="ring" id="ring"></div>
@@ -185,26 +207,35 @@ footer a { color: var(--text-2); }
       </div>
     </section>
 
-    <section class="card span-5">
+    <section class="card span-5 o-week">
       <h2>This week <span id="week-total"></span></h2>
       <div id="week"></div>
     </section>
 
-    <section class="card span-12">
+    <section class="card span-12 o-calendar">
       <h2>Practice calendar <span>minutes per day, last 26 weeks</span></h2>
       <div class="scroll-x"><div id="heatmap"></div></div>
       <div class="legend" id="heat-legend"></div>
     </section>
 
-    <section class="card span-4"><h2>Steadiness <span>0–100, higher is more even</span></h2><div id="tr-steady"></div></section>
-    <section class="card span-4"><h2>Notes per minute <span>while playing</span></h2><div id="tr-npm"></div></section>
-    <section class="card span-4"><h2>Dynamic range <span>velocity spread</span></h2><div id="tr-dyn"></div></section>
+    <section class="card span-12 o-trends" id="trends-card">
+      <h2>Trends
+        <span class="seg" id="trend-tabs">
+          <button data-t="steady" class="on">Steadiness</button><button data-t="npm">Notes/min</button><button data-t="dyn">Dynamics</button>
+        </span>
+      </h2>
+      <div class="trends">
+        <div class="trend on" data-t="steady"><div class="sub-h">Steadiness <span>0–100, higher is more even</span></div><div id="tr-steady"></div></div>
+        <div class="trend" data-t="npm"><div class="sub-h">Notes per minute <span>while playing</span></div><div id="tr-npm"></div></div>
+        <div class="trend" data-t="dyn"><div class="sub-h">Dynamic range <span>velocity spread</span></div><div id="tr-dyn"></div></div>
+      </div>
+    </section>
 
-    <section class="card span-12" id="pieces-card">
+    <section class="card span-12 o-pieces" id="pieces-card">
       <h2>Pieces <span>found from what you play, wrong notes and all · trial</span></h2>
       <div class="scroll-x">
         <table id="pieces-table">
-          <thead><tr><th>Piece</th><th class="num">Time</th><th class="num hide-sm">Sessions</th><th>Last played</th><th>Tempo</th><th>Steadiness</th><th></th></tr></thead>
+          <thead><tr><th>Piece</th><th class="num hide-sm">Time</th><th class="num hide-sm">Sessions</th><th class="hide-sm">Last played</th><th>Tempo</th><th>Steadiness</th><th class="hide-sm"></th></tr></thead>
           <tbody id="pieces"></tbody>
         </table>
       </div>
@@ -212,7 +243,7 @@ footer a { color: var(--text-2); }
       <div class="legend">Tap a piece for its tempo and steadiness per session. Name it once and the name sticks. Scales and exercises can show up as pieces too.</div>
     </section>
 
-    <section class="card span-12">
+    <section class="card span-12 o-keys">
       <h2>Most used keys
         <span class="seg" id="key-range">
           <button data-days="7">7 days</button><button data-days="30" class="on">30 days</button><button data-days="90">90 days</button><button data-days="0">All</button>
@@ -223,7 +254,7 @@ footer a { color: var(--text-2); }
       <div class="topkeys" id="top-keys"></div>
     </section>
 
-    <section class="card span-12" id="detail-card" style="display:none">
+    <section class="card span-12 o-detail" id="detail-card" style="display:none">
       <div class="detail-head">
         <h3 id="d-title"></h3>
         <div style="display:flex;gap:8px">
@@ -246,7 +277,7 @@ footer a { color: var(--text-2); }
       <div class="scroll-x"><div id="d-keys"></div></div>
     </section>
 
-    <section class="card span-8">
+    <section class="card span-8 o-sessions">
       <h2>Recent sessions <a class="btn" href="/api/sessions.csv" style="text-transform:none;letter-spacing:0;font-weight:400">Export CSV</a></h2>
       <div class="scroll-x">
         <table>
@@ -257,7 +288,7 @@ footer a { color: var(--text-2); }
       <div class="empty" id="no-sessions" style="display:none">No sessions yet. Play something on the piano and it will show up here.</div>
     </section>
 
-    <section class="card span-4">
+    <section class="card span-4 o-records">
       <h2>Records</h2>
       <div class="records" id="records"></div>
       <h2 style="margin-top:20px">All time</h2>
@@ -482,9 +513,14 @@ function trendLine(target, rows, key, unit, fixedMax, per = "day") {
   const first = roll[Math.min(6, roll.length - 1)], lastV = roll.at(-1);
   const diff = lastV - first;
   const note = document.createElement("div"); note.className = "legend";
-  note.textContent = `Now ${lastV.toFixed(0)}${unit} (7-${per} avg), ${diff >= 0 ? "up" : "down"} ${Math.abs(diff).toFixed(0)}${unit} over the period.`;
+  const change = Math.round(Math.abs(diff)) === 0 ? "no change" : `${diff > 0 ? "up" : "down"} ${Math.abs(diff).toFixed(0)}${unit}`;
+  note.textContent = `Now ${lastV.toFixed(0)}${unit} (7-${per} avg), ${change} over the period.`;
   box.appendChild(note);
 }
+
+document.querySelectorAll("#trend-tabs button").forEach((b) => {
+  b.onclick = () => document.querySelectorAll("#trend-tabs button, .trend").forEach((e) => e.classList.toggle("on", e.dataset.t === b.dataset.t));
+});
 
 // --- pieces ------------------------------------------------------------------
 function spark(vals, max) {
@@ -505,13 +541,15 @@ async function loadPieces() {
   $("pieces-table").style.display = rows.length ? "" : "none";
   $("pieces").innerHTML = rows.map((p) => {
     const h = p.history;
+    const acts = `<button class="pc-listen" title="Hear its most played phrase in the replay">▶ Listen</button>
+        <button class="pc-name">${p.name ? "Rename" : "Name"}</button>`;
     const main = `<tr data-key="${p.key}" class="${p.key === pieceOpen ? "sel" : ""}">
-      <td><b>${escapeHtml(p.label)}</b><div class="muted-s">${p.opening.notes.map(noteName).join(" ")}</div></td>
-      <td class="num">${fmtDur(p.active_seconds)}</td><td class="num hide-sm">${p.sessions}</td>
-      <td>${fmtWhen(p.last)}</td>
+      <td><b>${escapeHtml(p.label)}</b><div class="muted-s">${p.opening.notes.map(noteName).join(" ")}</div>
+        <div class="muted-s show-sm">${fmtDur(p.active_seconds)} · ${fmtWhen(p.last)}</div><div class="pc-acts show-sm">${acts}</div></td>
+      <td class="num hide-sm">${fmtDur(p.active_seconds)}</td><td class="num hide-sm">${p.sessions}</td>
+      <td class="hide-sm">${fmtWhen(p.last)}</td>
       <td>${spark(h.slice(-20).map((x) => x.tempo_bpm))}</td><td>${spark(h.slice(-20).map((x) => x.steadiness), 100)}</td>
-      <td class="num" style="white-space:nowrap"><button class="pc-listen" title="Hear its most played phrase in the replay">▶ Listen</button>
-        <button class="pc-name">${p.name ? "Rename" : "Name"}</button></td></tr>`;
+      <td class="num hide-sm" style="white-space:nowrap">${acts}</td></tr>`;
     const more = p.key === pieceOpen ? `<tr class="pc-more"><td colspan="7"><div class="grid2">
       <div><div class="sub-h">Tempo per session (bpm)</div><div id="pc-tempo"></div></div>
       <div><div class="sub-h">Steadiness per session</div><div id="pc-steady"></div></div></div></td></tr>` : "";
@@ -520,20 +558,20 @@ async function loadPieces() {
   document.querySelectorAll("#pieces tr[data-key]").forEach((tr) => {
     const p = rows.find((r) => r.key === tr.dataset.key);
     tr.onclick = () => { pieceOpen = pieceOpen === p.key ? null : p.key; loadPieces(); };
-    tr.querySelector(".pc-listen").onclick = async (e) => {
+    tr.querySelectorAll(".pc-listen").forEach((b) => b.onclick = async (e) => {
       e.stopPropagation();
       await openSession(p.opening.session);
       $("detail-card").scrollIntoView({ behavior: "smooth" });
       if (window.replay) window.replay.jump(p.opening.session, p.opening.offset);
-    };
-    tr.querySelector(".pc-name").onclick = async (e) => {
+    });
+    tr.querySelectorAll(".pc-name").forEach((b) => b.onclick = async (e) => {
       e.stopPropagation();
       const name = prompt(p.name ? "Rename this piece (leave empty to forget the name)" : "Name this piece", p.name || "");
       if (name === null) return;
       await fetch("/api/pieces/name", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: p.key, name }) });
       loadPieces();
-    };
+    });
   });
   const open = rows.find((r) => r.key === pieceOpen);
   if (open) {

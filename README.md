@@ -27,6 +27,12 @@ No phone app, no cloud, no extra Python packages.
 | Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
 | Pieces | Per piece: active time, sessions, last played, and per-session tempo and steadiness (active-time weighted over the stretches of that piece). |
 
+**On a phone** the page puts what changes day to day first: Today, This week, Pieces and
+recent sessions, then the slower views (trends, calendar, keys, records). Steadiness,
+notes per minute and dynamic range share one **Trends** card; on a phone, tabs switch
+between them, on a wider screen all three show side by side. Pieces fit the phone
+width, with time, last played, Listen and Name under each piece's name.
+
 Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
 

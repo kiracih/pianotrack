@@ -10,45 +10,10 @@ Previous: 2026-10-21 (first run, owner decisions recorded the same day).
 
 ## Now
 
-At most three. Proposed 2026-10-22; nothing is built until the owner says go.
+At most three. Owner decisions 2026-10-22: phone-first page order built and shipped;
+engine test vectors approved ("if it's not too much effort, you choose").
 
-### 1. Today's pieces on the Today card (practice insight, S) · today's increment
-
-**Problem.** The Today card says *how much* you played (minutes, notes, streak) but
-not *what*, and not whether it went better than last time. The answer to "did the
-waltz get better?" sits three screens down in the Pieces table, and on a phone the
-three flat trend charts (steadiness, notes per minute, dynamic range, each "up 0
-over the period") come first. Pieces is the only metric that tells a learner they
-are improving, so it should be the first thing they see after playing.
-
-**User story.** As the owner, when I open the dashboard after practising, I want to
-see which pieces I played today and how each compares with the last time I played
-it, so I know at a glance whether today's practice moved anything.
-
-**Acceptance criteria**
-- Under the ring, the Today card lists up to 3 pieces played today, most time
-  first: name (or "Piece C" with its phrase), time today, tempo and steadiness
-  today, and the change vs the previous day that piece was played ("+6 bpm",
-  "steadier +4"). No previous day: "first time".
-- Changes smaller than the noise (tempo within ±3 bpm, steadiness within ±3) read
-  "about the same" rather than "+1".
-- Tapping a piece opens that piece's charts in the Pieces card (existing view).
-- Nothing played today, or no pieces found yet: the line is hidden, the card looks
-  exactly as now.
-- Data comes from the existing pieces grouping (`/api/summary` gains a
-  `today_pieces` list, or the page reuses `/api/pieces`); raw sessions, replay,
-  `.mid` and `.csv` are untouched.
-- Small fix in the same change: trend notes say "steady" instead of "up 0" / "down 0".
-- Tests: a simulated day with two pieces returns both with the right deltas; a day
-  with none returns an empty list. README (features, API) and screenshots updated.
-
-**Out of scope.** Goals per piece, notifications, reordering the rest of the page
-(see Next #1).
-
-**How we'll know.** The owner can say what changed today without scrolling; over a
-week they tap through to a piece's charts from the Today card.
-
-### 2. Pieces trial: watch it on real practice (practice insight) · in trial
+### 1. Pieces trial: watch it on real practice (practice insight) · in trial
 
 Step 1 (matcher) and step 2 (Pieces card, naming, Listen) shipped and deployed
 2026-10-21; spec in git history (roadmap as of 3c78ef1). Open question for the next
@@ -57,10 +22,10 @@ real practice, and do left-hand-alone stretches show up as separate pieces? Need
 look at the Pi's real data (owner's go-ahead) or the owner's own check. Graduates
 from "trial" when the owner confirms the grouping after about two weeks.
 
-### 3. Engine test vectors (app path, M) · proposed
+### 2. Engine test vectors (app path, M) · approved 2026-10-22, in progress
 
-**Problem.** Every app route (browser mode, phone app, plug-in box) needs the
-recorder, metrics and pieces engine outside Python. Porting it without a fixed
+**Problem.** Every app route (native iOS app first, then others) needs the
+recorder, metrics and pieces engine outside Python (Swift for iOS). Porting it without a fixed
 reference means the phone and the Pi will disagree on minutes, streaks and pieces.
 
 **Acceptance criteria**
@@ -72,16 +37,17 @@ reference means the phone and the Pi will disagree on minutes, streaks and piece
   ports the engine.
 - No change to anything the owner sees.
 
-**Out of scope.** The JavaScript port itself (milestone 2 below).
+**Out of scope.** The Swift port itself (milestone 2 below).
 
 **How we'll know.** A port can be checked against the vectors with one command.
 
 ## Next
 
-1. **Phone-first page order** (polish, S). Problem: on a phone you scroll past three
-   flat trend charts to reach Pieces and the session list, the parts that change day
-   to day. Order becomes Today, This week, Pieces, Sessions, then one "Trends" card
-   with the three charts as tabs, calendar and keys below. Desktop keeps its grid.
+1. **Black keys readable in the key map** (practice insight, S) · owner request
+   2026-10-22. Problem: in "Most used keys" a rarely used black key is drawn black and a
+   much used one dark blue, so the owner can't tell which black keys they press most.
+   Fix to propose in the 2026-10-23 review (e.g. same colour scale on black and white
+   keys with an outline, or a lighter fill for unused black keys).
 2. **Streak-at-risk nudge to the phone** (habit, S–M). Problem: the streak breaks
    on evenings you simply forget. A notification at a chosen time ("12 min to
    your goal, streak 9 days") when today is short. Needs a push channel: ntfy
@@ -146,28 +112,39 @@ Later / paid tier:
 ### Path from today's Pi + web dashboard (each step ships on its own)
 
 1. **Phone-quality web app (now).** The current dashboard as an installable home
-   screen app: phone-first layout, today's pieces, reminders. Proves which screens
-   matter. *Roadmap: Now #1, Next #1–3.*
-2. **Portable engine.** Golden test vectors from the Python engine (Now #3), then
-   a JavaScript port of recorder, metrics and pieces that passes them. One engine
-   for browser, phone and Pi dashboard.
-3. **Browser mode (Web MIDI).** The same page captures from Chrome/Edge/Android
+   screen app: phone-first layout (shipped 2026-10-22), reminders. Proves which
+   screens matter before they are rebuilt natively.
+2. **Portable engine.** Golden test vectors from the Python engine (Now #2), then
+   a Swift port of recorder, metrics and pieces that passes them.
+3. **Browser mode (Web MIDI), optional.** The same page captures from Chrome/Edge/Android
    Chrome and stores in IndexedDB; export/import in the Pi's database format.
    First thing others can try with no hardware; measures demand.
-4. **Mobile app shell.** Wrap the web app (e.g. Capacitor) with native Bluetooth
-   MIDI, notifications and a foreground service on Android; iOS "on the stand"
-   mode. Same UI and engine, so most work is capture and packaging.
+4. **Native iOS app.** SwiftUI app with Core MIDI capture (Bluetooth and USB),
+   the Swift engine, Today, Pieces, replay and local notifications; "on the stand"
+   mode while background capture is studied. Android later.
 5. **Pi as hub + sync.** The app pulls sessions from a Pi on the home network or
    through the tunnel, so always-on capture and the phone app combine.
 6. **Sharing and Pro.** Teacher share links, subscription (about $39/yr), then
    decide on a plug-in box only after preorders.
 
-Open owner decisions for the app: wrap the web app (recommended: one codebase,
-fastest) or build native apps; Android first (Bluetooth/USB capture in the
-background works) or iOS first (owner's own phone?).
+Owner decisions 2026-10-22: **native app, iOS first.** Consequences: the engine is
+ported to Swift (checked against the test vectors), capture uses Core MIDI (Bluetooth
+MIDI pairing through Apple's CABTMIDICentralViewController, USB through the Camera
+Adapter), and charts are rebuilt in SwiftUI. Browser mode (step 3) becomes optional,
+since Safari has no Web MIDI and it would not reach the owner's own phone.
+
+**Research for 2026-10-23 (owner question):** can the phone itself replace the Pi as
+the collector, or is there something simpler than a Pi (a USB stick-sized box)?
+Points to settle: whether iOS keeps receiving Bluetooth/USB MIDI with the screen off
+or the app in the background, what "leave the phone on the stand" costs in practice,
+and cheap always-on options (ESP32-S3 USB-host/BLE dongle, Pi Zero 2 W, a piano's own
+Bluetooth to the phone).
 
 ## Decided and rejected
 
+- 2026-10-22: **Rejected: "today's pieces" on the Today card** (owner didn't like it).
+  Don't re-propose a per-piece summary on the Today card.
+- 2026-10-22: **App: native, iOS first** rather than wrapping the web app.
 - 2026-10-21: **Days follow your clock: no action.** Day boundaries use the Pi's
   time zone while times show in the browser's; the owner always plays in one zone
   (UTC+3), so this is parked. Checked 2026-10-21: the Pi is set to Europe/Istanbul
@@ -194,6 +171,9 @@ background works) or iOS first (owner's own phone?).
 - 2026-10-21: Boot waits for network time (no RTC on the Pi).
 - 2026-10-21: Remote access through a Cloudflare Quick Tunnel.
 - 2026-10-21: Password login for tunnel visitors; replay fixed behind Cloudflare.
+- 2026-10-22: Phone-first page order: Today, week, Pieces, sessions first on a phone;
+  one Trends card (tabs on a phone); Pieces table fits the phone width; trend notes
+  say "no change" instead of "up 0".
 - 2026-10-21: Pieces trial steps 1 and 2: matcher, `pieces` report, dashboard Pieces
   card with naming and Listen. Live on the Pi.
 - 2026-10-21: Nightly backups with Mac copy (launchd agent pulls on login, wake and
