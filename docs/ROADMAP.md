@@ -140,6 +140,14 @@ or the app in the background, what "leave the phone on the stand" costs in pract
 and cheap always-on options (ESP32-S3 USB-host/BLE dongle, Pi Zero 2 W, a piano's own
 Bluetooth to the phone).
 
+**Research for 2026-10-23 (owner question):** is exactly this product, or something
+close, already on the market? If not, can the idea be protected, and is it worth it?
+Points to settle: a fresh competitor scan beyond the 2026-10-20 market scan (apps,
+piano makers, hardware dongles, patents); what can be protected (patent on the
+automatic piece grouping or capture box, trademark on the name, design, trade
+secrets) and roughly what each costs; and the catch that the code is public on
+GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent.
+
 ## Decided and rejected
 
 - 2026-10-22: **Rejected: "today's pieces" on the Today card** (owner didn't like it).
