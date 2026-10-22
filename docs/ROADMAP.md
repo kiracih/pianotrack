@@ -22,7 +22,7 @@ real practice, and do left-hand-alone stretches show up as separate pieces? Need
 look at the Pi's real data (owner's go-ahead) or the owner's own check. Graduates
 from "trial" when the owner confirms the grouping after about two weeks.
 
-### 2. Engine test vectors (app path, M) · approved 2026-10-22, in progress
+### 2. Engine test vectors (app path, M) · shipped 2026-10-22 (see Done)
 
 **Problem.** Every app route (native iOS app first, then others) needs the
 recorder, metrics and pieces engine outside Python (Swift for iOS). Porting it without a fixed
@@ -171,6 +171,8 @@ Bluetooth to the phone).
 - 2026-10-21: Boot waits for network time (no RTC on the Pi).
 - 2026-10-21: Remote access through a Cloudflare Quick Tunnel.
 - 2026-10-21: Password login for tunnel visitors; replay fixed behind Cloudflare.
+- 2026-10-22: Engine test vectors: `python3 -m pianotrack vectors`, four cases in
+  `tests/vectors/`, format in docs/engine-vectors.md, checked by tests/test_vectors.py.
 - 2026-10-22: Phone-first page order: Today, week, Pieces, sessions first on a phone;
   one Trends card (tabs on a phone); Pieces table fits the phone width; trend notes
   say "no change" instead of "up 0".

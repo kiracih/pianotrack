@@ -145,6 +145,12 @@ def cmd_pieces(args):
     store.close()
 
 
+def cmd_vectors(args):
+    from . import vectors
+    for path in vectors.write_all(args.out):
+        print(f"wrote {path} ({os.path.getsize(path) // 1024} KB)")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="pianotrack", description="Piano practice tracker")
     p.add_argument("--db", default=DEFAULT_DB, help="SQLite file (default %(default)s)")
@@ -213,6 +219,10 @@ def main(argv=None):
     rp.add_argument("--start", type=float, help="unix time the session started")
     rp.add_argument("--idle-gap", type=float, default=180.0)
     rp.set_defaults(func=cmd_replay)
+
+    v = sub.add_parser("vectors", help="rewrite the engine test vectors (tests/vectors/)")
+    v.add_argument("--out", help="folder (default: tests/vectors in the source tree)")
+    v.set_defaults(func=cmd_vectors)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,

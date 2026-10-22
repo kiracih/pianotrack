@@ -264,6 +264,11 @@ The daily goal is set from the dashboard.
 `backfill` and `simulate` take `--beginner` to play the simulator's small repertoire
 the way a learner does.
 
+`python3 -m pianotrack vectors [--out DIR]` rewrites the engine test vectors in
+`tests/vectors/`: fixed MIDI input and the sessions, metrics, daily totals, streaks and
+pieces the engine makes of it, so a port of the engine (such as the planned iOS app) can
+be checked against this one. See [docs/engine-vectors.md](docs/engine-vectors.md).
+
 ## API
 
 | Endpoint | Returns |
