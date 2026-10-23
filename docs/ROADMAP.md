@@ -13,7 +13,7 @@ Previous: 2026-10-22 (app target added), 2026-10-21 (first run).
 
 At most three. Proposed 2026-10-23; nothing is built until the owner says go.
 
-### 1. Black keys you can read in "Most used keys" (practice insight, S) · today's increment
+### 1. Black keys you can read in "Most used keys" (practice insight, S) · shipped 2026-10-23 (owner approved)
 
 **Problem.** Owner, 2026-10-22: "I don't really understand which black keys pressed
 most." An unused black key is drawn black (#2c2c2a) and the most used one dark blue
@@ -51,7 +51,12 @@ gets no MIDI (Apple developer forum, July 2026). Yet *Piano Tracker* (iOS, free,
 2025) says it tracks "with the screen off or in the background". Checking that costs
 nothing and decides the capture design below.
 
-**Check (owner, optional).** Install the free *Piano Tracker* app, pair the FP-30X
+Owner, 2026-10-23: *Piano Tracker* is not in the Turkish App Store, so this check
+can't be done that way. Alternative: the review can test it with our own small
+test app later (milestone 4), or try *DigitalPianoMIDITimer* if it is available in
+Turkey.
+
+**Original check.** Install the free *Piano Tracker* app, pair the FP-30X
 over Bluetooth inside the app, lock the phone, play 10 minutes, unlock: did it count
 10 minutes? Then once more after leaving the phone untouched for an hour first.
 
@@ -261,6 +266,7 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 - 2026-10-21: Boot waits for network time (no RTC on the Pi).
 - 2026-10-21: Remote access through a Cloudflare Quick Tunnel.
 - 2026-10-21: Password login for tunnel visitors; replay fixed behind Cloudflare.
+- 2026-10-23: Key map: usage bands on white and black keys, Top black keys row.
 - 2026-10-22: Engine test vectors (Now #2 of 2026-10-22): `python3 -m pianotrack vectors`, four cases in
   `tests/vectors/`, format in docs/engine-vectors.md, checked by tests/test_vectors.py.
 - 2026-10-22: Phone-first page order: Today, week, Pieces, sessions first on a phone;

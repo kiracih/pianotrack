@@ -252,6 +252,7 @@ footer a { color: var(--text-2); }
       <div class="scroll-x"><div id="all-keys"></div></div>
       <div class="legend" id="keys-legend"></div>
       <div class="topkeys" id="top-keys"></div>
+      <div class="topkeys" id="top-black"></div>
     </section>
 
     <section class="card span-12 o-detail" id="detail-card" style="display:none">
@@ -665,17 +666,26 @@ function keyboard(hist, target) {
   const shade = (c) => keyShade(c, max);
   const tipFor = (p, c) => `<b>${noteName(p)}</b><br>${fmtNum(c)} notes${c ? ` · ${(100 * c / total).toFixed(1)}%` : ""}`;
   const pos = {}; whites.forEach((p, i) => pos[p] = i * ww);
+  // Keys keep their piano colours; how much a key was played is a band of the
+  // usage colour on its lower part, the same scale on white and black keys, so a
+  // much played black key never looks like an unplayed one.
+  const band = (x, y, w, h, c, outline) => {
+    if (!c) return;
+    el("rect", { x, y, width: w, height: h, rx: 1.5, fill: shade(c), stroke: outline, "stroke-width": outline === "none" ? 0 : 1, "pointer-events": "none" }, s);
+  };
   for (const p of whites) {
     const c = hist[p - LOW];
-    const r = el("rect", { x: pos[p] + 0.5, y: 0, width: ww - 1, height: H, rx: 2, fill: shade(c) || "var(--key-white)", stroke: "var(--border)" }, s);
+    const r = el("rect", { x: pos[p] + 0.5, y: 0, width: ww - 1, height: H, rx: 2, fill: "var(--key-white)", stroke: "var(--border)" }, s);
     hover(r, tipFor(p, c));
+    band(pos[p] + 1.5, bh + 3, ww - 3, H - bh - 5, c, "none");
     if (p % 12 === 0) el("text", { x: p === 108 ? W : pos[p] + ww / 2, y: H + 13, "text-anchor": p === 108 ? "end" : "middle" }, s).textContent = noteName(p);
   }
   for (let p = 22; p <= 108; p++) {
     if (!isBlack(p)) continue;
     const c = hist[p - LOW], x = pos[p - 1] + ww - 4;
-    const r = el("rect", { x, y: 0, width: 8, height: bh, rx: 1.5, fill: shade(c) || "var(--key-black)", stroke: shade(c) ? "var(--surface)" : "none" }, s);
+    const r = el("rect", { x, y: 0, width: 8, height: bh, rx: 1.5, fill: "var(--key-black)" }, s);
     hover(r, tipFor(p, c));
+    band(x + 1, bh - 22, 6, 20, c, "var(--key-white)");
   }
   $(target).innerHTML = ""; $(target).appendChild(s);
 }
@@ -841,7 +851,7 @@ async function loadKeys() {
   const label = keyDays ? `last ${keyDays} days` : "all time";
   if (!k.total) {
     $("all-keys").innerHTML = `<div class="empty">No notes in the ${label} yet.</div>`;
-    $("keys-legend").innerHTML = ""; $("top-keys").innerHTML = ""; return;
+    $("keys-legend").innerHTML = ""; $("top-keys").innerHTML = ""; $("top-black").innerHTML = ""; return;
   }
   keyboard(k.histogram, "all-keys");
   $("keys-legend").innerHTML = `<span>${fmtNum(k.total)} notes in ${k.sessions} sessions, ${label}</span>` +
@@ -851,6 +861,9 @@ async function loadKeys() {
   $("top-keys").innerHTML = `<span>Top keys:</span>` + ranked.slice(0, 8).map(([p, c]) =>
     `<span class="chip"><b>${noteName(p)}</b> ${(100 * c / k.total).toFixed(1)}%</span>`).join("") +
     `<span class="chip">${ranked.length} of 88 keys used</span><span class="chip">${Math.round(100 * below / k.total)}% below middle C</span>`;
+  const black = ranked.filter(([p]) => [1, 3, 6, 8, 10].includes(p % 12));
+  $("top-black").innerHTML = black.length ? `<span>Top black keys:</span>` + black.slice(0, 5).map(([p, c]) =>
+    `<span class="chip"><b>${noteName(p)}</b> ${(100 * c / k.total).toFixed(1)}%</span>`).join("") : "";
 }
 document.querySelectorAll("#key-range button").forEach((b) => b.onclick = () => {
   keyDays = +b.dataset.days;
