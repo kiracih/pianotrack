@@ -113,6 +113,22 @@ difference from the competing apps found on 2026-10-23 (see App target).
 - **Per-piece goals**: "Waltz at 120 bpm, steady 60" with a progress bar, once the
   Pieces trial graduates.
 
+## Sections
+
+From 2026-10-24 the daily review runs one agent per section plus a design lead in
+parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
+the next review is set here at the end of every review.
+
+| Section | Covers | Next review's focus |
+|---|---|---|
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | How the iOS app would capture over Core MIDI and Bluetooth, and what first-run setup looks like |
+| Today & habits | ring, streak, week, calendar, goals, reminders | Weekly target vs all-or-nothing streak; what makes people come back (Duolingo, Strava, Apple Fitness) |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Showing a piece getting better over weeks so a beginner can feel it |
+| Practice insight | trends, session metrics, zones, dynamics, key map | The trend charts are flat lines: what would be actionable instead |
+| Replay & session detail | player, keyboard, downloads, session page | Replay on a phone: keyboard size, looping a phrase, jumping to mistakes |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | First-load speed on the Pi with months of data; restore from a backup in practice |
+| Design (lead) | identity, layout, type, colour, motion, copy | A first design direction (docs/DESIGN.md) that is distinctive and piano-grounded, plus the first small step toward it |
+
 ## App target
 
 The end goal is a (probably mobile) app: sit down, play, and the phone shows what
@@ -238,6 +254,8 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 - 2026-10-22: **Rejected: "today's pieces" on the Today card** (owner didn't like it).
   Don't re-propose a per-piece summary on the Today card.
 - 2026-10-22: **App: native, iOS first** rather than wrapping the web app.
+- 2026-10-23: **Daily review redesigned** (owner): one agent per section plus a design
+  lead, PM builds small increments itself and reports daily with tomorrow's focus.
 - 2026-10-23: **Recommended against a patent** (code public since 2026-10-20, prior
   art exists); trademark on a new name instead. Owner to confirm.
 - 2026-10-21: **Days follow your clock: no action.** Day boundaries use the Pi's
