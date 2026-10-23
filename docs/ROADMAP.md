@@ -192,7 +192,7 @@ Not legal advice; a patent attorney should confirm before money is spent.
 1. **Phone-quality web app (now).** The current dashboard as an installable home
    screen app: phone-first layout (shipped 2026-10-22), reminders. Proves which
    screens matter before they are rebuilt natively.
-2. **Portable engine.** Golden test vectors from the Python engine (Now #2), then
+2. **Portable engine.** Golden test vectors from the Python engine (shipped 2026-10-22), then
    a Swift port of recorder, metrics and pieces that passes them.
 3. **Browser mode (Web MIDI), optional.** The same page captures from Chrome/Edge/Android
    Chrome and stores in IndexedDB; export/import in the Pi's database format.
