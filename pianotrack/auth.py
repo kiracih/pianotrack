@@ -7,9 +7,12 @@ need a signed session cookie, issued after the password is entered once.
 
 import hashlib
 import hmac
+import ipaddress
 import secrets
+import socket
 import threading
 import time
+from urllib.parse import urlsplit
 
 COOKIE = "pianotrack_session"
 SESSION_DAYS = 30
@@ -17,6 +20,8 @@ MIN_PASSWORD = 8
 PBKDF2_ROUNDS = 200_000
 MAX_FAILURES = 5          # per client, within FAILURE_WINDOW
 FAILURE_WINDOW = 15 * 60
+GLOBAL_MAX_FAILURES = 20  # all clients together, within GLOBAL_WINDOW
+GLOBAL_WINDOW = 60 * 60
 
 
 class Auth:
@@ -24,6 +29,7 @@ class Auth:
         self.store = store
         self.clock = clock
         self._failures = {}
+        self._all_failures = []
         self._lock = threading.Lock()
 
     # --- password ---
@@ -38,7 +44,10 @@ class Auth:
         salt = secrets.token_hex(16)
         digest = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), PBKDF2_ROUNDS)
         self.store.set_secret("password_hash", f"pbkdf2_sha256${PBKDF2_ROUNDS}${salt}${digest.hex()}")
-        # A new password signs everyone out.
+        self.sign_out_everyone()  # a new password signs every device out
+
+    def sign_out_everyone(self):
+        """Invalidate every issued session cookie by changing the signing key."""
         self.store.set_secret("session_key", secrets.token_hex(32))
 
     def check_password(self, password):
@@ -52,15 +61,22 @@ class Auth:
     # --- rate limiting ---
 
     def blocked(self, client):
+        """True while this client, or everyone together, has failed too often."""
         now = self.clock()
         with self._lock:
-            recent = [t for t in self._failures.get(client, []) if now - t < FAILURE_WINDOW]
-            self._failures[client] = recent
-            return len(recent) >= MAX_FAILURES
+            self._all_failures = [t for t in self._all_failures if now - t < GLOBAL_WINDOW]
+            for c in list(self._failures):
+                self._failures[c] = [t for t in self._failures[c] if now - t < FAILURE_WINDOW]
+                if not self._failures[c]:
+                    del self._failures[c]
+            return (len(self._failures.get(client, [])) >= MAX_FAILURES
+                    or len(self._all_failures) >= GLOBAL_MAX_FAILURES)
 
     def record_failure(self, client):
+        now = self.clock()
         with self._lock:
-            self._failures.setdefault(client, []).append(self.clock())
+            self._failures.setdefault(client, []).append(now)
+            self._all_failures.append(now)
 
     # --- session cookies ---
 
@@ -98,6 +114,50 @@ class Auth:
 def via_tunnel(headers):
     """True when the request came through Cloudflare rather than the home network."""
     return bool(headers.get("Cf-Ray") or headers.get("Cf-Connecting-Ip"))
+
+
+def home_peer(address):
+    """True for a client on the home network or this machine (private, loopback, link-local)."""
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    if getattr(ip, "ipv4_mapped", None):
+        ip = ip.ipv4_mapped
+    return ip.is_private or ip.is_loopback or ip.is_link_local
+
+
+def home_host(host, extra=()):
+    """True when the Host header names this machine the way the home network does.
+
+    A page on some other site can make a browser on the home Wi-Fi send requests
+    here, but (short of DNS rebinding) only under that site's own name, so a
+    request is trusted only when it addresses the Pi by IP, as name.local, by its
+    hostname, as localhost, or by a name passed with --allowed-host.
+    """
+    if not host:
+        return False
+    name = urlsplit("//" + host).hostname or ""
+    if not name:
+        return False
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    own = socket.gethostname().lower().split(".")[0]
+    allowed = {"localhost", own, own + ".local"} | {h.lower() for h in extra}
+    return name in allowed or name.endswith(".local")
+
+
+def same_origin(headers):
+    """False when a browser says the request came from a page on another site."""
+    origin = headers.get("Origin")
+    if not origin:
+        return True  # not sent by a browser page (curl, scripts), or a same-origin GET
+    if origin == "null":
+        return False
+    return urlsplit(origin).netloc.lower() == (headers.get("Host") or "").lower()
 
 
 def client_id(headers, fallback):

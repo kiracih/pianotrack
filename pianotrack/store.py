@@ -49,6 +49,33 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 """
 
+# Schema changes, oldest first. Version 1 is the layout above (databases made
+# before versioning have it too, as CREATE ... IF NOT EXISTS). To change the
+# schema, append one step (SQL run once, in one transaction) and never edit an
+# old one; Store() brings any older database up to date when it opens it.
+MIGRATIONS = [
+    SCHEMA,  # 1
+]
+SCHEMA_VERSION = len(MIGRATIONS)
+
+
+def migrate(db, steps=MIGRATIONS):
+    """Bring an open sqlite3 connection up to len(steps). Returns the old version."""
+    have = db.execute("PRAGMA user_version").fetchone()[0]
+    if have > len(steps):
+        raise RuntimeError(f"database schema version {have} is newer than this pianotrack "
+                           f"({len(steps)}); update the code before using it")
+    for version in range(have + 1, len(steps) + 1):
+        # executescript commits first, so wrap the step and its version bump ourselves
+        try:
+            db.executescript(f"BEGIN; {steps[version - 1]}; PRAGMA user_version = {version}; COMMIT;")
+        except sqlite3.Error:
+            if db.in_transaction:
+                db.rollback()
+            raise
+    return have
+
+
 DEFAULT_SETTINGS = {
     "daily_goal_minutes": 30,
     "streak_min_minutes": 5,
@@ -65,13 +92,14 @@ class Store:
             uri = "file:" + urllib.parse.quote(os.path.abspath(path)) + "?mode=ro"
             self._db = sqlite3.connect(uri, uri=True, check_same_thread=False)
             self._db.row_factory = sqlite3.Row
+            if self._db.execute("PRAGMA user_version").fetchone()[0] > SCHEMA_VERSION:
+                raise RuntimeError("database schema is newer than this pianotrack")
             return
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
-        self._db.executescript(SCHEMA)
-        self._db.commit()
+        migrate(self._db)
 
     def close(self):
         with self._lock:

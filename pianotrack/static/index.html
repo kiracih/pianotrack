@@ -309,6 +309,7 @@ footer a { color: var(--text-2); }
         <form class="settings" id="pw-form">
           <input type="password" id="pw" minlength="8" autocomplete="new-password" placeholder="New password" aria-label="New password" style="width:170px">
           <button type="submit">Set</button>
+          <button type="button" id="signout-all" style="display:none" title="Every device signed in through the remote link must enter the password again">Sign out all devices</button>
           <span id="pw-msg"></span>
         </form>
       </div>
@@ -726,7 +727,7 @@ async function refresh() {
   const st = $("status"), c = sum.collector;
   if (sum.live) st.innerHTML = `<span class="dot live"></span><span>Recording</span>`;
   else if (!c) st.innerHTML = `<span class="dot"></span><span>Dashboard only</span>`;
-  else if (c.connected) st.innerHTML = `<span class="dot on"></span><span>${c.name || "Piano"} connected</span>`;
+  else if (c.connected) st.innerHTML = `<span class="dot on"></span><span>${escapeHtml(c.name || "Piano")} connected</span>`;
   else st.innerHTML = `<span class="dot"></span><span>Piano off</span>`;
 
   const lv = sum.live;
@@ -788,10 +789,12 @@ async function showAuth() {
   try {
     const a = await get("/api/auth");
     if (a.remote) {
-      $("remote-link").innerHTML = `<a href="/logout">Sign out</a>`;
+      $("remote-link").innerHTML = `<a href="/logout">Sign out</a> · <a href="#" id="signout-all-link">Sign out all devices</a>`;
+      $("signout-all-link").onclick = (e) => { e.preventDefault(); signOutAll().then(() => location.reload()); };
       return;
     }
     $("remote-box").style.display = "";
+    $("signout-all").style.display = a.password_set ? "" : "none";
     $("pw-status").textContent = a.password_set
       ? "Password set. Visitors through the remote link must enter it once per device (30 days)."
       : "No password yet, so the remote link is locked. Set one to use the dashboard away from home.";
@@ -829,13 +832,23 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => `&#${c.char
 showBackup(); setInterval(showBackup, 300000);
 $("bk-now").onclick = async () => {
   $("bk-msg").textContent = "Backing up…"; $("bk-msg").style.color = "";
-  const r = await fetch("/api/backup", { method: "POST" });
+  const r = await fetch("/api/backup", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   const body = await r.json().catch(() => ({}));
   const ok = r.ok && !body.error;
   $("bk-msg").textContent = ok ? "Done" : (body.error || "Failed");
   $("bk-msg").style.color = ok ? "var(--good-text)" : "var(--live)";
   setTimeout(() => $("bk-msg").textContent = "", 3000);
   showBackup();
+};
+
+async function signOutAll() {
+  return fetch("/api/signout-all", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+}
+$("signout-all").onclick = async () => {
+  const r = await signOutAll();
+  $("pw-msg").textContent = r.ok ? "Every remote device is signed out" : "Could not sign out";
+  $("pw-msg").style.color = r.ok ? "var(--good-text)" : "var(--live)";
+  setTimeout(() => $("pw-msg").textContent = "", 4000);
 };
 
 $("pw-form").onsubmit = async (e) => {

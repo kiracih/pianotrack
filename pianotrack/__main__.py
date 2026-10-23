@@ -31,9 +31,15 @@ def cmd_run(args):
     backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
     api = Api(store, collector, backups)
     threading.Thread(target=api.pieces, daemon=True).start()  # first pieces pass is slow
-    httpd = make_server(api, args.host, args.port)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    servers = [make_server(api, args.host, args.port, allowed_hosts=args.allowed_host)]
     logging.info("dashboard on http://%s:%d", args.host, args.port)
+    if args.tunnel_port:
+        # Only this machine can reach it; cloudflared forwards here and every
+        # request is treated as remote, so it always needs the password.
+        servers.append(make_server(api, "127.0.0.1", args.tunnel_port, tunnel=True))
+        logging.info("tunnel entrance on http://127.0.0.1:%d", args.tunnel_port)
+    for httpd in servers:
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
     stop = threading.Event()
     if backups:
@@ -45,7 +51,8 @@ def cmd_run(args):
         collector.run()  # returns after stop(), closing any open session
     else:
         stop.wait()
-    httpd.shutdown()
+    for httpd in servers:
+        httpd.shutdown()
     store.close()
 
 
@@ -162,6 +169,10 @@ def main(argv=None):
     r.add_argument("--device", help="ALSA card name regex, or a path such as a FIFO")
     r.add_argument("--host", default="0.0.0.0")
     r.add_argument("--port", type=int, default=8080)
+    r.add_argument("--tunnel-port", type=int, default=8081,
+                   help="localhost-only port for cloudflared, always behind the password (0: off)")
+    r.add_argument("--allowed-host", action="append", default=[], metavar="NAME",
+                   help="extra host name the home network may use for the dashboard (repeatable)")
     r.add_argument("--idle-gap", type=float, default=180.0,
                    help="seconds of silence that end a session")
     r.add_argument("--no-collector", action="store_true", help="dashboard only")

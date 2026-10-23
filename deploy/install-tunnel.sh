@@ -3,10 +3,10 @@
 # Visitors sign in with the dashboard password, set on the dashboard at home.
 # Emails are optional: they add Cloudflare's email-code gate in front, which is
 # currently broken by cloudflared issue #1752 (login expires after seconds).
-# Usage: ./deploy/install-tunnel.sh [you@example.com ...] [--port 8080]
+# Usage: ./deploy/install-tunnel.sh [you@example.com ...] [--port 8081]
 set -euo pipefail
 
-PORT=8080
+PORT=8081  # pianotrack run --tunnel-port: localhost only, always needs the password
 EMAILS=()
 while [ $# -gt 0 ]; do
     case "$1" in

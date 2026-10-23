@@ -315,16 +315,39 @@ class Api:
         return self.store.settings()
 
 
+class BadRequest(ValueError):
+    """A request the client got wrong; answered with 400 and the message."""
+
+
+def _int_param(q, name, default, lo, hi):
+    raw = q.get(name)
+    if raw is None:
+        return default
+    try:
+        v = int(raw)
+    except ValueError:
+        raise BadRequest(f"{name} must be a whole number") from None
+    return max(lo, min(v, hi))
+
+
 def _safe_next(target):
     """Only allow redirects to a path on this site after login."""
     return target if target.startswith("/") and not target.startswith("//") else "/"
 
 
-def make_handler(api):
+def make_handler(api, tunnel=False, allowed_hosts=()):
+    """Request handler class. `tunnel` marks the port cloudflared forwards to:
+    every request there is remote and needs the password."""
     auth = authmod.Auth(api.store)
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "pianotrack"
+
+        @property
+        def remote(self):
+            """True unless the request comes straight from the home network."""
+            return (tunnel or authmod.via_tunnel(self.headers)
+                    or not authmod.home_peer(self.client_address[0]))
 
         def log_message(self, fmt, *args):
             log.debug("%s " + fmt, self.address_string(), *args)
@@ -348,9 +371,20 @@ def make_handler(api):
             return self._send(code, page, "text/html; charset=utf-8",
                               {"X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer"})
 
-        def _allowed(self, path):
-            """Gate for requests that came through the tunnel. Sends the refusal itself."""
-            if not authmod.via_tunnel(self.headers):
+        def _allowed(self, path, write=False):
+            """Gate every request. Sends the refusal itself."""
+            if not self.remote:
+                # Home network: no password, but only for requests addressed to
+                # this machine (stops DNS rebinding) and, for changes, sent by
+                # its own pages (stops other sites posting through the browser).
+                if not authmod.home_host(self.headers.get("Host"), allowed_hosts):
+                    log.warning("refused request for unknown host %r", self.headers.get("Host"))
+                    self._send(403, {"error": "unknown host name; see --allowed-host"})
+                    return False
+                if write and not authmod.same_origin(self.headers):
+                    log.warning("refused cross-site %s from %r", path, self.headers.get("Origin"))
+                    self._send(403, {"error": "cross-site request refused"})
+                    return False
                 return True
             if path in ("/login", "/icon.svg"):
                 return True
@@ -381,7 +415,7 @@ def make_handler(api):
                         "Location": "/login", "Set-Cookie": authmod.Auth.clear_cookie_header()})
                 if path == "/api/auth":
                     return self._send(200, {"password_set": auth.password_set,
-                                            "remote": authmod.via_tunnel(self.headers)})
+                                            "remote": self.remote})
                 if path in ("/", "/index.html"):
                     with open(os.path.join(STATIC, "index.html"), "rb") as f:
                         return self._send(200, f.read(), "text/html; charset=utf-8")
@@ -394,15 +428,15 @@ def make_handler(api):
                         return self._send(200, f.read(), "audio/mpeg",
                                           {"Cache-Control": "public, max-age=31536000"})
                 if path == "/api/keys":
-                    return self._send(200, api.keys(max(0, min(int(q.get("days", 30)), 5000))))
+                    return self._send(200, api.keys(_int_param(q, "days", 30, 0, 5000)))
                 if path == "/api/summary":
                     return self._send(200, api.summary())
                 if path == "/api/days":
-                    return self._send(200, api.days(min(int(q.get("days", 365)), 2000)))
+                    return self._send(200, api.days(_int_param(q, "days", 365, 1, 2000)))
                 if path == "/api/trends":
-                    return self._send(200, api.trends(min(int(q.get("days", 60)), 2000)))
+                    return self._send(200, api.trends(_int_param(q, "days", 60, 1, 2000)))
                 if path == "/api/sessions":
-                    return self._send(200, api.sessions(int(q.get("limit", 50))))
+                    return self._send(200, api.sessions(_int_param(q, "limit", 50, 1, 5000)))
                 if path == "/api/sessions.csv":
                     return self._send(200, api.sessions_csv(), "text/csv",
                                       {"Content-Disposition": "attachment; filename=sessions.csv"})
@@ -437,31 +471,48 @@ def make_handler(api):
                     data = api.session(sid)
                     return self._send(200 if data else 404, data or {"error": "not found"})
                 return self._send(404, {"error": "not found"})
-            except Exception as e:  # keep the server up whatever happens
+            except BadRequest as e:
+                return self._send(400, {"error": str(e)})
+            except Exception:  # keep the server up whatever happens
                 log.exception("error serving %s", self.path)
-                return self._send(500, {"error": str(e)})
+                return self._send(500, {"error": "internal error"})
 
         def do_POST(self):
             path = urlparse(self.path).path
-            n = min(int(self.headers.get("Content-Length", 0) or 0), 64 * 1024)
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = -1
+            if not 0 <= n <= 64 * 1024:
+                self.close_connection = True
+                return self._send(400, {"error": "bad or too large Content-Length"})
             body = self.rfile.read(n)
+            if not self._allowed(path, write=True):
+                return
             if path == "/login":
                 return self._login(body)
-            if not self._allowed(path):
-                return
+            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if ctype != "application/json":
+                return self._send(415, {"error": "send JSON (Content-Type: application/json)"})
             try:
                 data = json.loads(body or b"{}")
+                if not isinstance(data, dict):
+                    raise BadRequest("expected a JSON object")
+                if path == "/api/signout-all":
+                    auth.sign_out_everyone()
+                    extra = {"Set-Cookie": auth.clear_cookie_header()} if self.remote else None
+                    return self._send(200, {"signed_out": True}, extra=extra)
                 if path == "/api/settings":
                     return self._send(200, api.update_settings(data))
                 if path == "/api/pieces/name":
                     return self._send(200, api.name_piece(data))
                 if path == "/api/password":
-                    if authmod.via_tunnel(self.headers):
+                    if self.remote:
                         return self._send(403, {"error": "the password can only be changed at home"})
                     auth.set_password(str(data.get("password", "")))
                     return self._send(200, {"password_set": True})
                 if path == "/api/backup":
-                    if authmod.via_tunnel(self.headers):
+                    if self.remote:
                         return self._send(403, {"error": "backups can only be made at home"})
                     if not api.backups:
                         return self._send(404, {"error": "backups are off"})
@@ -471,12 +522,15 @@ def make_handler(api):
                         pass  # the status carries the error
                     return self._send(200, api.backups.status())
                 return self._send(404, {"error": "not found"})
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError) as e:  # bad JSON or a rejected value
                 return self._send(400, {"error": str(e)})
+            except Exception:
+                log.exception("error serving POST %s", self.path)
+                return self._send(500, {"error": "internal error"})
 
         def _send_backup(self):
             """Stream a fresh, consistent copy of the database (home network only)."""
-            if authmod.via_tunnel(self.headers):
+            if self.remote:
                 return self._send(403, {"error": "backups can only be downloaded at home"})
             with tempfile.TemporaryDirectory() as tmp:
                 path = backupmod.snapshot(api.store.path, os.path.join(tmp, "pianotrack.db"))
@@ -508,5 +562,5 @@ def make_handler(api):
     return Handler
 
 
-def make_server(api, host="0.0.0.0", port=8080):
-    return ThreadingHTTPServer((host, port), make_handler(api))
+def make_server(api, host="0.0.0.0", port=8080, tunnel=False, allowed_hosts=()):
+    return ThreadingHTTPServer((host, port), make_handler(api, tunnel, allowed_hosts))

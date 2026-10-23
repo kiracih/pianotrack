@@ -8,7 +8,7 @@ set -eu
 
 EMAILS_FILE="${EMAILS_FILE:-/etc/pianotrack/allowed-emails}"
 URL_FILE="${URL_FILE:-/var/lib/pianotrack/tunnel-url}"
-PORT="${PORT:-8080}"
+PORT="${PORT:-8081}"  # pianotrack's localhost-only tunnel entrance
 
 set --
 if [ -f "$EMAILS_FILE" ]; then

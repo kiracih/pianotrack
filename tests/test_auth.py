@@ -7,6 +7,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from pianotrack import auth as authmod
 from pianotrack.auth import Auth
 from pianotrack.server import Api, make_server
 from pianotrack.store import Store
@@ -92,6 +93,72 @@ class AuthTest(unittest.TestCase):
         # Changing the password signs everyone out.
         self.req("/api/password", json_body={"password": "another horse"})
         self.assertEqual(self.req("/api/summary", authed)[0], 401)
+
+    def test_other_sites_cannot_post_from_home_browsers(self):
+        evil = {"Origin": "https://evil.example"}
+        code, _, _ = self.req("/api/password", evil, json_body={"password": "attacker pw"})
+        self.assertEqual(code, 403)
+        self.assertFalse(Auth(self.store).password_set)
+        own = {"Origin": self.base}
+        self.assertEqual(self.req("/api/password", own, json_body={"password": "correct horse"})[0], 200)
+        # A plain-text body (no CORS preflight) is refused even without an Origin.
+        code, _, _ = self.req("/api/settings", {"Content-Type": "text/plain"},
+                              data=b'{"daily_goal_minutes": 5}')
+        self.assertEqual(code, 415)
+
+    def test_unknown_host_names_are_refused_at_home(self):
+        # DNS rebinding: an attacker's name pointed at the Pi.
+        self.assertEqual(self.req("/api/summary", {"Host": "attacker.example"})[0], 403)
+        self.assertEqual(self.req("/api/summary", {"Host": "pi4.local:8080"})[0], 200)
+        self.assertEqual(self.req("/api/summary", {"Host": "192.168.1.108:8080"})[0], 200)
+        self.assertTrue(authmod.home_host("piano.home", extra=["piano.home"]))
+        self.assertFalse(authmod.home_host("piano.home"))
+        self.assertFalse(authmod.home_host(""))
+
+    def test_only_home_addresses_skip_the_password(self):
+        for ip in ("192.168.1.20", "10.0.0.5", "127.0.0.1", "::1", "fe80::1", "::ffff:192.168.1.2"):
+            self.assertTrue(authmod.home_peer(ip), ip)
+        for ip in ("1.1.1.1", "8.8.8.8", "2001:4860::1", "nonsense"):
+            self.assertFalse(authmod.home_peer(ip), ip)
+
+    def test_tunnel_port_always_needs_the_password(self):
+        tunnel = make_server(Api(self.store), "127.0.0.1", 0, tunnel=True)
+        threading.Thread(target=tunnel.serve_forever, daemon=True).start()
+        base, self.base = self.base, f"http://127.0.0.1:{tunnel.server_address[1]}"
+        try:
+            self.assertEqual(self.req("/api/summary")[0], 403)  # no password yet
+            self.assertEqual(self.req("/api/password", json_body={"password": "correct horse"})[0], 403)
+            Auth(self.store).set_password("correct horse")
+            self.assertEqual(self.req("/api/summary")[0], 401)
+            self.assertEqual(self.req("/api/backup")[0], 401)
+        finally:
+            self.base = base
+            tunnel.shutdown()
+            tunnel.server_close()
+
+    def test_sign_out_all_devices(self):
+        self.req("/api/password", json_body={"password": "correct horse"})
+        form = urllib.parse.urlencode({"password": "correct horse", "next": "/"}).encode()
+        cookie = self.req("/login", TUNNEL, data=form)[1]["Set-Cookie"].split(";")[0]
+        authed = dict(TUNNEL, Cookie=cookie)
+        self.assertEqual(self.req("/api/summary", authed)[0], 200)
+        self.assertEqual(self.req("/api/signout-all", json_body={})[0], 200)
+        self.assertEqual(self.req("/api/summary", authed)[0], 401)
+        self.assertTrue(Auth(self.store).check_password("correct horse"))
+
+    def test_bad_input_gets_a_clear_400(self):
+        code, _, body = self.req("/api/sessions?limit=abc")
+        self.assertEqual(code, 400)
+        self.assertIn("limit", json.loads(body)["error"])
+        self.assertEqual(self.req("/api/settings", json_body=[1, 2])[0], 400)
+        self.assertEqual(self.req("/api/settings", json_body={"daily_goal_minutes": "x"})[0], 400)
+        self.assertEqual(self.req("/api/days?days=-5")[0], 200)
+
+    def test_global_rate_limit(self):
+        auth = Auth(self.store)
+        for i in range(authmod.GLOBAL_MAX_FAILURES):
+            auth.record_failure(f"10.0.{i}.1")
+        self.assertTrue(auth.blocked("198.51.100.1"))  # a fresh address is blocked too
 
     def test_rate_limit(self):
         auth = Auth(self.store)

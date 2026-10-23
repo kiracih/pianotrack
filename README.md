@@ -86,7 +86,11 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
 * **Pieces** (`pieces.py`) cuts sessions into segments at pauses of 3.5 s, takes the
   melody (top voice), and matches segments by shared runs of pitch intervals. Pieces heard
   3+ times are listed, recomputed from the raw notes after each new session.
-* **Server** (`server.py`) serves the dashboard and a JSON API on port 8080.
+* **Store** (`store.py`) keeps everything in one SQLite file. Its schema carries a version
+  number (`PRAGMA user_version`); schema changes are added as numbered steps and an older
+  database is upgraded when it opens, while a database from a newer version is refused.
+* **Server** (`server.py`) serves the dashboard and a JSON API on port 8080, plus a
+  localhost-only entrance on 8081 for the remote link (see below).
 * **Backups** (`backup.py`) copy the database every night (see below).
 
 Data never leaves your home. The SQLite file lives at `/var/lib/pianotrack/pianotrack.db`
@@ -137,14 +141,24 @@ Then open the dashboard at home and set a password under **Remote access**. Unti
 password exists, anything coming through the tunnel is refused. Visitors through the
 tunnel see a sign-in page once per device and stay signed in for 30 days; on the home
 network no password is asked. Five wrong attempts lock that visitor out for 15 minutes,
-and setting a new password signs every device out. The password can only be set or
-changed from the home network.
+and 20 wrong attempts from anywhere within an hour pause all sign-ins for a while.
+Setting a new password, or **Sign out all devices** (in Remote access at home, or in the
+footer of a signed-in remote visit), signs every device out. The password can only be set
+or changed from the home network.
 
 <img src="docs/login.png" alt="Sign-in page shown to visitors through the tunnel" width="260">
 
-How it tells the two apart: cloudflared adds Cloudflare headers (`Cf-Ray`,
-`Cf-Connecting-Ip`) to every request it forwards, and direct requests on the home
-network don't have them.
+How it tells the two apart: cloudflared connects to a second port, 8081
+(`--tunnel-port`), which listens only on the Pi itself, and every request on that port
+needs the password. On the home port, 8080, a request still counts as remote when it
+carries Cloudflare headers (`Cf-Ray`, `Cf-Connecting-Ip`) or comes from an address
+outside the home network, so opening 8080 to the internet by mistake would not skip the
+password.
+
+The home network itself is protected from web pages: any site you visit could make your
+browser send requests to the Pi, so without a password the Pi still only answers
+requests addressed to it by IP, as `pi4.local` or `localhost`, or by its hostname (add
+others with `--allowed-host`), and only accepts changes sent as JSON by its own pages.
 
 The link is a random `https://….trycloudflare.com` address that **changes whenever the
 tunnel restarts** (for example after a reboot). The dashboard footer shows the current
@@ -243,6 +257,8 @@ whenever the dashboard changes.
 
 * `--device` a regex for the ALSA card name (default: first non-virtual device, preferring Roland), or a path
 * `--port` (8080), `--host` (0.0.0.0)
+* `--tunnel-port` (8081) the port cloudflared forwards to; it listens on 127.0.0.1 only and always asks for the password (0 turns it off)
+* `--allowed-host NAME` another name the home network uses for the Pi, besides its IP, hostname, `*.local` and `localhost` (repeatable)
 * `--idle-gap` seconds of silence that end a session (180)
 * `--db` or `PIANOTRACK_DB` for the database path
 * `--backup-dir` or `PIANOTRACK_BACKUP_DIR` folder for the nightly copies (default `backups/` next to the database)
@@ -271,6 +287,9 @@ be checked against this one. See [docs/engine-vectors.md](docs/engine-vectors.md
 
 ## API
 
+POST requests send JSON (`Content-Type: application/json`); anything else gets 415. Bad
+query values get 400 with an `error` message.
+
 | Endpoint | Returns |
 |---|---|
 | `GET /api/summary` | today, week, streak, records, totals, live session, collector status |
@@ -278,6 +297,7 @@ be checked against this one. See [docs/engine-vectors.md](docs/engine-vectors.md
 | `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
 | `GET /login`, `POST /login`, `GET /logout` | sign-in page for tunnel visitors |
+| `POST /api/signout-all` | signs every remote device out (the password stays) |
 | `GET /api/backup` | a fresh, consistent copy of the database as a `.db` file (home network only) |
 | `POST /api/backup` | make a backup into the backup folder now (home network only); returns the status below |
 | `GET /api/backups` | backup folder, last backup time, `stale` (over 2 days), daily/weekly counts, last error, and `offsite`: when and by which machine the last copy was pulled (`offsite_stale` after 3 days) |

@@ -283,7 +283,7 @@ class BackupHttpTest(unittest.TestCase):
     def test_back_up_now_and_status(self):
         st = json.loads(self.req("/api/backups")[2])
         self.assertIsNone(st["last_backup"])
-        code, _, body = self.req("/api/backup", data=b"")
+        code, _, body = self.req("/api/backup", {"Content-Type": "application/json"}, data=b"{}")
         self.assertEqual(code, 200)
         st = json.loads(body)
         self.assertFalse(st["stale"])
