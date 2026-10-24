@@ -128,6 +128,7 @@ tr.sel td { background: var(--accent-soft) !important; }
 .hide-sm { }
 .show-sm { display: none; }
 #pieces td.num { white-space: nowrap; }
+.pc-prog { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--text-2); margin-top: 2px; }
 @media (max-width: 600px) {
   .hide-sm { display: none; } .show-sm { display: block; }
   .pc-acts { margin-top: 6px; white-space: nowrap; }
@@ -554,17 +555,39 @@ function spark(vals, max) {
     `<circle cx="${lx}" cy="${ly}" r="2.5" fill="var(--accent)"/></svg><b>${pts.at(-1)[1]}</b></span>`;
 }
 let pieceOpen = null;
+// "Then → now" for a piece: medians of its first and last 5 sessions, from 10 sessions on.
+function pieceProgress(h) {
+  const med = (xs) => {
+    xs = xs.filter((x) => x != null).sort((a, b) => a - b);
+    if (xs.length < 3) return null;  // too few sessions with a value to compare
+    const m = xs.length >> 1;
+    return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
+  };
+  if (h.length < 10) return "";
+  const t0 = med(h.slice(0, 5).map((x) => x.tempo_bpm)), t1 = med(h.slice(-5).map((x) => x.tempo_bpm));
+  const s0 = med(h.slice(0, 5).map((x) => x.steadiness)), s1 = med(h.slice(-5).map((x) => x.steadiness));
+  if (t0 == null || t1 == null || s0 == null || s1 == null) return "";
+  const dt = (t1 - t0) / t0, ds = s1 - s0;
+  const tempo = dt >= 0.05 ? "faster" : dt <= -0.05 ? (dt <= -0.2 ? "much slower" : "slower") : "";
+  const steady = ds >= 3 ? "steadier" : ds <= -3 ? "less even" : "";
+  const verdict = tempo === "faster" && steady === "steadier" ? "faster and steadier"
+    : tempo.endsWith("slower") && steady === "steadier" ? "slowed down to clean up"
+    : tempo && steady ? `${tempo} and ${steady}`
+    : tempo ? `${tempo}, just as even` : steady ? `${steady} at the same tempo` : "holding steady";
+  return `${Math.round(t0)} → ${Math.round(t1)} bpm, steadiness ${Math.round(s0)} → ${Math.round(s1)}: ${verdict}`;
+}
 async function loadPieces() {
   let rows;
   try { rows = await get("/api/pieces"); } catch (e) { return; }
   $("no-pieces").style.display = rows.length ? "none" : "";
   $("pieces-table").style.display = rows.length ? "" : "none";
   $("pieces").innerHTML = rows.map((p) => {
-    const h = p.history;
+    const h = p.history, prog = pieceProgress(h);
     const acts = `<button class="pc-listen" title="Hear its most played phrase in the replay">▶ Listen</button>
         <button class="pc-name">${p.name ? "Rename" : "Name"}</button>`;
     const main = `<tr data-key="${p.key}" class="${p.key === pieceOpen ? "sel" : ""}">
       <td><b>${escapeHtml(p.label)}</b><div class="muted-s">${p.opening.notes.map(noteName).join(" ")}</div>
+        ${prog ? `<div class="pc-prog">${prog}</div>` : ""}
         <div class="muted-s show-sm">${fmtDur(p.active_seconds)}, last ${fmtWhen(p.last).replace(/^(Today|Yesterday)/, (d) => d.toLowerCase())}</div><div class="pc-acts show-sm">${acts}</div></td>
       <td class="num hide-sm">${fmtDur(p.active_seconds)}</td><td class="num hide-sm">${p.sessions}</td>
       <td class="hide-sm">${fmtWhen(p.last)}</td>

@@ -63,7 +63,9 @@ command. See [Backups](#backups).
 **Pieces (trial):** the dashboard groups the stretches of playing that are the same
 piece, found from the notes alone, with wrong notes, restarts, slow tempos and all.
 Nothing to log. Each piece shows its total time, sessions and when you last played it,
-and its tempo and steadiness per session (tap a piece for the charts). Pieces show as
+and its tempo and steadiness per session (tap a piece for the charts). From 10 sessions
+on, a line under the piece compares its first 5 sessions with its last 5 (medians), e.g.
+"153 → 109 bpm, steadiness 59 → 69: slowed down to clean up". Pieces show as
 "Piece A, B…" with their most played phrase; **Listen** jumps the replay to that phrase
 so you can recognise it, and **Name** names it once ("Chopin waltz"). The name follows
 the music into later sessions. A session's detail lists the pieces played in it.
