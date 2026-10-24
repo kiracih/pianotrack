@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#1a1a19">
+<meta name="theme-color" content="#edeeea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1416" media="(prefers-color-scheme: dark)">
 <title>Piano Practice</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-180.png">
@@ -14,47 +15,51 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root {
+  /* "Felt and ebony" (docs/DESIGN.md): a practice room, not a gym. Plaster walls,
+     ivory and ebony keys, the claret felt strip behind the keys, brass for rewards. */
   color-scheme: light;
-  --bg: #f4f3f0;
-  --surface: #fcfcfb;
-  --border: #e4e2dc;
-  --text: #0b0b0b;
-  --text-2: #52514e;
-  --muted: #8a8984;
-  --grid: #ebe9e4;
-  --accent: #2a78d6;
-  --accent-soft: #cde2fb;
-  --good: #0ca30c;
-  --good-text: #006300;
-  --live: #d03b3b;
+  --bg: #edeeea;          /* plaster */
+  --surface: #fbfaf6;     /* ivory */
+  --border: #dcdbd4;
+  --text: #1f1a1c;        /* ebony */
+  --text-2: #55514f;      /* graphite */
+  --muted: #6e6965;
+  --grid: #e6e5df;
+  --accent: #9b2335;      /* felt */
+  --accent-soft: #f3dde0;
+  --good: #a8822f;        /* brass: goal met, records */
+  --good-text: #7a5a1c;
+  --live: #c2283f;
   --warn-text: #8a5300;
-  --track: #e8e6e1;
-  --seq-0: #ebe9e4; --seq-1: #b7d3f6; --seq-2: #6da7ec; --seq-3: #2a78d6; --seq-4: #184f95;
+  --track: #e3e2db;
+  /* Calendar: felt ramp, brass when the goal is met. */
+  --seq-0: #e6e5df; --seq-1: #ebc3c9; --seq-2: #d27d8b; --seq-3: #9b2335; --seq-4: #a8822f;
   /* Key map bands sit on the keys, which stay light in both themes, so "most" is
-     always the darkest blue there (the calendar flips its scale in dark mode). */
-  --kseq-1: #b7d3f6; --kseq-2: #6da7ec; --kseq-3: #2a78d6; --kseq-4: #184f95;
-  --z-rest: #d8d6d0; --z-light: #9ec5f4; --z-moderate: #5598e7; --z-vigorous: #256abf; --z-peak: #0d366b;
-  --key-white: #ffffff; --key-black: #2c2c2a;
+     always the darkest felt there. */
+  --kseq-1: #ebc3c9; --kseq-2: #d27d8b; --kseq-3: #9b2335; --kseq-4: #5e1320;
+  --z-rest: #dcdbd4; --z-light: #ebc3c9; --z-moderate: #d27d8b; --z-vigorous: #9b2335; --z-peak: #5e1320;
+  --key-white: #fffefa; --key-black: #1f1a1c;
+  --serif: ui-serif, "New York", "Iowan Old Style", Charter, "Bitstream Charter", Georgia, serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #111110; --surface: #1a1a19; --border: #2c2c2a; --text: #f0efec; --text-2: #c3c2b7;
-    --muted: #8f8e86; --grid: #2a2a28; --accent: #3987e5; --accent-soft: #1c3a5e;
-    --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --warn-text: #e3a43c; --track: #2c2c2a;
-    --seq-0: #262624; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
-    --z-rest: #3a3a37; --z-light: #184f95; --z-moderate: #256abf; --z-vigorous: #3987e5; --z-peak: #9ec5f4;
-    --key-white: #d9d8d3; --key-black: #111110;
+    --bg: #1b1416; --surface: #251c1e; --border: #3a2e30; --text: #f2ece4; --text-2: #c2b6b0;
+    --muted: #988b86; --grid: #33282a; --accent: #e57a8a; --accent-soft: #4a2229;
+    --good: #d6aa52; --good-text: #d6aa52; --live: #f0687c; --warn-text: #e3a43c; --track: #3a2e30;
+    --seq-0: #2e2426; --seq-1: #5e1f2a; --seq-2: #93303f; --seq-3: #d2586b; --seq-4: #d6aa52;
+    --z-rest: #3a2e30; --z-light: #5e1f2a; --z-moderate: #93303f; --z-vigorous: #d2586b; --z-peak: #f2a7b2;
+    --key-white: #e9e2d8; --key-black: #120d0e;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111110; --surface: #1a1a19; --border: #2c2c2a; --text: #f0efec; --text-2: #c3c2b7;
-  --muted: #8f8e86; --grid: #2a2a28; --accent: #3987e5; --accent-soft: #1c3a5e;
-  --good: #0ca30c; --good-text: #4cc94c; --live: #e66767; --warn-text: #e3a43c; --track: #2c2c2a;
-  --seq-0: #262624; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5; --seq-4: #86b6ef;
-  --z-rest: #3a3a37; --z-light: #184f95; --z-moderate: #256abf; --z-vigorous: #3987e5; --z-peak: #9ec5f4;
-  --key-white: #d9d8d3; --key-black: #111110;
+  --bg: #1b1416; --surface: #251c1e; --border: #3a2e30; --text: #f2ece4; --text-2: #c2b6b0;
+  --muted: #988b86; --grid: #33282a; --accent: #e57a8a; --accent-soft: #4a2229;
+  --good: #d6aa52; --good-text: #d6aa52; --live: #f0687c; --warn-text: #e3a43c; --track: #3a2e30;
+  --seq-0: #2e2426; --seq-1: #5e1f2a; --seq-2: #93303f; --seq-3: #d2586b; --seq-4: #d6aa52;
+  --z-rest: #3a2e30; --z-light: #5e1f2a; --z-moderate: #93303f; --z-vigorous: #d2586b; --z-peak: #f2a7b2;
+  --key-white: #e9e2d8; --key-black: #120d0e;
 }
 * { box-sizing: border-box; }
 body {
@@ -62,33 +67,42 @@ body {
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+/* The felt strip: the claret runner behind every piano's keys. */
+body::before { content: ""; display: block; height: 6px; background: var(--accent); }
+html { -webkit-tap-highlight-color: transparent; }
+button, a, input, select { touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 main { max-width: 980px; margin: 0 auto; padding: 16px 16px 48px; }
 header { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; flex-wrap: wrap; }
-header h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; flex: 1; }
+header h1 { font-family: var(--serif); font-weight: 600; font-size: 26px; margin: 0; flex: 1; }
 .pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
   color: var(--text-2); background: var(--surface); display: inline-flex; gap: 6px; align-items: center; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-.dot.on { background: var(--good); }
+.dot.on { background: var(--accent); }
 .dot.live { background: var(--live); animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { opacity: .3; } }
 button, .btn { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
 button:hover, .btn:hover { border-color: var(--muted); }
 .grid { display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
-.card h2 { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 0 0 12px;
-  text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; gap: 8px; }
-.card h2 span { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
+/* Cards are shaped like a key: square at the top, rounded at the bottom. */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px 4px 10px 10px; padding: 16px; min-width: 0; }
+.card h2 { font-family: var(--serif); font-size: 19px; font-weight: 600; color: var(--text); margin: 0 0 12px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card h2 span { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 13px; font-weight: 400; color: var(--muted); }
+/* Today is the hero: it sits on the page, not in a box. */
+.o-today { background: transparent; border: 0; padding: 8px 0 16px; }
+.o-today h2 { font-size: 22px; }
 .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-7 { grid-column: span 7; }
 .span-6 { grid-column: span 6; } .span-5 { grid-column: span 5; } .span-4 { grid-column: span 4; }
 @media (max-width: 760px) { .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; } }
 .today { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
 .ring { position: relative; width: 160px; height: 160px; flex: none; }
 .ring .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.ring .big { font-size: 38px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
+.ring .big { font-family: var(--serif); font-size: 44px; font-weight: 600; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
 .ring .sub { font-size: 12px; color: var(--text-2); margin-top: 4px; }
 .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; flex: 1; min-width: 200px; }
-.tile .v { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.tile .v { font-family: var(--serif); font-size: 26px; font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
 .tile .v small { font-size: 13px; font-weight: 500; color: var(--text-2); margin-left: 2px; }
 .tile .l { font-size: 12px; color: var(--text-2); }
 .tile .d { font-size: 12px; color: var(--muted); }
@@ -113,6 +127,7 @@ tr.sel td { background: var(--accent-soft) !important; }
 .num { text-align: right; }
 .hide-sm { }
 .show-sm { display: none; }
+#pieces td.num { white-space: nowrap; }
 @media (max-width: 600px) {
   .hide-sm { display: none; } .show-sm { display: block; }
   .pc-acts { margin-top: 6px; white-space: nowrap; }
@@ -133,7 +148,7 @@ tr.sel td { background: var(--accent-soft) !important; }
 .detail-head h3 { margin: 0; font-size: 17px; }
 .dtiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 @media (max-width: 600px) { .dtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.sub-h { font-size: 12px; color: var(--text-2); margin: 16px 0 6px; font-weight: 600; }
+.sub-h { font-family: var(--serif); font-size: 15px; color: var(--text); margin: 16px 0 6px; font-weight: 600; }
 .settings { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--text-2); }
 .settings input { width: 70px; font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); }
@@ -143,9 +158,9 @@ tr.sel td { background: var(--accent-soft) !important; }
 .seg button.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
 .topkeys { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--text-2); }
 .topkeys b { color: var(--text); }
-.chip { border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
+.chip { border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
 .rp-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-.rp-play { width: 44px; height: 36px; font-size: 15px; background: var(--accent); color: #fff; border-color: var(--accent); }
+.rp-play { width: 44px; height: 36px; font-size: 15px; background: var(--accent); color: var(--surface); border-color: var(--accent); }
 .rp-time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-2); min-width: 92px; }
 .rp-seek { flex: 1; min-width: 140px; accent-color: var(--accent); }
 .rp-speed { font: inherit; font-size: 13px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
@@ -188,7 +203,7 @@ footer a { color: var(--text-2); }
 
   <div class="grid">
     <section class="card span-12 live-banner" id="live">
-      <h2><span style="color:var(--live);text-transform:uppercase;letter-spacing:.06em;font-weight:600">● Playing now</span><span id="live-since"></span></h2>
+      <h2><span style="color:var(--live);font-weight:600">● Playing now</span><span id="live-since"></span></h2>
       <div class="row">
         <div class="tile"><div class="v" id="live-time">0:00</div><div class="l">active time</div></div>
         <div class="tile"><div class="v" id="live-notes">0</div><div class="l">notes</div></div>
@@ -235,7 +250,7 @@ footer a { color: var(--text-2); }
     </section>
 
     <section class="card span-12 o-pieces" id="pieces-card">
-      <h2>Pieces <span>found from what you play, wrong notes and all · trial</span></h2>
+      <h2>Pieces <span>found from what you play, wrong notes and all (trial)</span></h2>
       <div class="scroll-x">
         <table id="pieces-table">
           <thead><tr><th>Piece</th><th class="num hide-sm">Time</th><th class="num hide-sm">Sessions</th><th class="hide-sm">Last played</th><th>Tempo</th><th>Steadiness</th><th class="hide-sm"></th></tr></thead>
@@ -426,7 +441,7 @@ function weekBars(week, goalSec) {
     label.textContent = dt.toLocaleDateString(undefined, { weekday: "narrow" });
     if (i === 6) label.setAttribute("style", "fill:var(--text);font-weight:600");
     const hit = el("rect", { x, y: pad.t, width: bw, height: H - pad.t - pad.b, class: "hit" }, s);
-    hover(hit, `<b>${dt.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</b><br>${fmtDur(d.active_seconds)} · ${fmtNum(d.notes)} notes${d.goal_met ? " · goal met" : ""}`);
+    hover(hit, `<b>${dt.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</b><br>${fmtDur(d.active_seconds)}, ${fmtNum(d.notes)} notes${d.goal_met ? ", goal met" : ""}`);
   });
   $("week").innerHTML = ""; $("week").appendChild(s);
 }
@@ -465,7 +480,7 @@ function heatmap(days, goalSec) {
       const m = d.active_seconds / 60;
       const r = el("rect", { x: left + col * (cell + gap), y: top + row * (cell + gap), width: cell, height: cell, rx: 3,
         fill: `var(--seq-${level(m)})` }, s);
-      hover(r, `<b>${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</b><br>${m > 0 ? fmtDur(d.active_seconds) + " · " + fmtNum(d.notes) + " notes" : "no practice"}`);
+      hover(r, `<b>${dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</b><br>${m > 0 ? fmtDur(d.active_seconds) + ", " + fmtNum(d.notes) + " notes" : "no practice"}`);
     }
   });
   $("heatmap").innerHTML = ""; $("heatmap").appendChild(s);
@@ -509,7 +524,7 @@ function trendLine(target, rows, key, unit, fixedMax, per = "day") {
     const r = s.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
     let best = 0; xy.forEach(([cx], i) => { if (Math.abs(cx - px) < Math.abs(xy[best][0] - px)) best = i; });
     cross.setAttribute("x1", xy[best][0]); cross.setAttribute("x2", xy[best][0]); cross.setAttribute("opacity", 1);
-    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that ${per} · 7-${per} avg ${roll[best].toFixed(0)}${unit}`);
+    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that ${per}, 7-${per} avg ${roll[best].toFixed(0)}${unit}`);
   };
   hit.addEventListener("mousemove", onMove);
   hit.addEventListener("touchmove", (e) => onMove(e.touches[0]), { passive: true });
@@ -550,7 +565,7 @@ async function loadPieces() {
         <button class="pc-name">${p.name ? "Rename" : "Name"}</button>`;
     const main = `<tr data-key="${p.key}" class="${p.key === pieceOpen ? "sel" : ""}">
       <td><b>${escapeHtml(p.label)}</b><div class="muted-s">${p.opening.notes.map(noteName).join(" ")}</div>
-        <div class="muted-s show-sm">${fmtDur(p.active_seconds)} · ${fmtWhen(p.last)}</div><div class="pc-acts show-sm">${acts}</div></td>
+        <div class="muted-s show-sm">${fmtDur(p.active_seconds)}, last ${fmtWhen(p.last).replace(/^(Today|Yesterday)/, (d) => d.toLowerCase())}</div><div class="pc-acts show-sm">${acts}</div></td>
       <td class="num hide-sm">${fmtDur(p.active_seconds)}</td><td class="num hide-sm">${p.sessions}</td>
       <td class="hide-sm">${fmtWhen(p.last)}</td>
       <td>${spark(h.slice(-20).map((x) => x.tempo_bpm))}</td><td>${spark(h.slice(-20).map((x) => x.steadiness), 100)}</td>
@@ -610,7 +625,7 @@ function timelineChart(m) {
         fill: `var(--z-${zoneColor(p.npm)})` }, s);
     }
     const hit = el("rect", { x, y: pad.t, width: bw, height: H - pad.t - pad.b, class: "hit" }, s);
-    hover(hit, `<b>${fmtClock(p.t)}–${fmtClock(p.t + tl.bucket_seconds)}</b><br>${p.npm} notes/min${p.velocity ? " · velocity " + p.velocity : ""}`);
+    hover(hit, `<b>${fmtClock(p.t)}–${fmtClock(p.t + tl.bucket_seconds)}</b><br>${p.npm} notes/min${p.velocity ? ", velocity " + p.velocity : ""}`);
   });
   const total = pts.length * tl.bucket_seconds;
   for (let k = 0; k <= 4; k++) {
@@ -631,7 +646,7 @@ function zonesChart(m) {
     el("text", { x: 0, y: yy + 16, style: "fill:var(--text-2)" }, s).textContent = n;
     el("rect", { x: lw, y: yy + 6, width: W - lw - vw, height: 12, rx: 3, fill: "var(--track)" }, s);
     if (w > 0) el("rect", { x: lw, y: yy + 6, width: Math.max(w, 3), height: 12, rx: 3, fill: `var(--z-${n.toLowerCase()})` }, s);
-    el("text", { x: W, y: yy + 16, "text-anchor": "end", style: "fill:var(--text)" }, s).textContent = `${fmtDur(v)} · ${Math.round(100 * v / total)}%`;
+    el("text", { x: W, y: yy + 16, "text-anchor": "end", style: "fill:var(--text)" }, s).textContent = `${fmtDur(v)}, ${Math.round(100 * v / total)}%`;
     const hit = el("rect", { x: 0, y: yy, width: W, height: rowH, class: "hit" }, s);
     hover(hit, `<b>${n}</b> (${ranges[n]} notes/min)<br>${fmtDur(v)}`);
   });
@@ -668,7 +683,7 @@ function keyboard(hist, target) {
   const s = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H + 16}`, style: `min-width:${W * 0.7}px` });
   const max = Math.max(...hist) || 1;
   const shade = (c) => keyShade(c, max);
-  const tipFor = (p, c) => `<b>${noteName(p)}</b><br>${fmtNum(c)} notes${c ? ` · ${(100 * c / total).toFixed(1)}%` : ""}`;
+  const tipFor = (p, c) => `<b>${noteName(p)}</b><br>${fmtNum(c)} notes${c ? `, ${(100 * c / total).toFixed(1)}%` : ""}`;
   const pos = {}; whites.forEach((p, i) => pos[p] = i * ww);
   // Keys keep their piano colours; how much a key was played is a band of the
   // usage colour on its lower part, the same scale on white and black keys, so a
@@ -699,7 +714,7 @@ async function openSession(id) {
   if (window.replay) window.replay.load(id);
   const d = await get(`/api/sessions/${id}`), m = d.metrics;
   $("detail-card").style.display = "";
-  $("d-title").textContent = `${fmtWhen(d.start)}${d.closed ? "" : " · in progress"}`;
+  $("d-title").textContent = `${fmtWhen(d.start)}${d.closed ? "" : ", in progress"}`;
   $("d-mid").href = `/api/sessions/${id}.mid`; $("d-csv").href = `/api/sessions/${id}.csv`;
   if (!m.note_count) { $("d-tiles").innerHTML = `<div class="empty">No notes yet.</div>`; return; }
   $("d-tiles").innerHTML = [
@@ -710,11 +725,11 @@ async function openSession(id) {
     tile(m.intensity, "intensity", `load ${m.load}`),
     tile(m.velocity_mean, "avg velocity", `range ${m.velocity_p10}–${m.velocity_p90}`),
     tile(`${Math.round(m.sustain_fraction * 100)}<small>%</small>`, "time on sustain",
-      `${m.sustain_presses} presses · soft pedal ${m.soft_fraction != null ? Math.round(m.soft_fraction * 100) + "%" : (m.soft_pedal_used ? "used" : "0%")}`),
-    tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys · ${Math.round(m.left_hand_share * 100)}% below middle C`),
+      `${m.sustain_presses} presses, soft pedal ${m.soft_fraction != null ? Math.round(m.soft_fraction * 100) + "%" : (m.soft_pedal_used ? "used" : "0%")}`),
+    tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys, ${Math.round(m.left_hand_share * 100)}% below middle C`),
   ].join("");
   $("d-pieces").innerHTML = (d.pieces || []).length
-    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}`).join(" · ") : "";
+    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}`).join(", ") : "";
   timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m.key_histogram, "d-keys");
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
 }
@@ -749,7 +764,7 @@ async function refresh() {
   $("t-load").textContent = t.load;
   $("t-consistency").innerHTML = `${sum.consistency_28d}<small>%</small>`;
   const diff = sum.week_total_seconds - sum.prev_week_total_seconds;
-  $("week-total").textContent = `${fmtDur(sum.week_total_seconds)} · ${diff >= 0 ? "+" : "−"}${fmtDur(Math.abs(diff))} vs last week`;
+  $("week-total").textContent = `${fmtDur(sum.week_total_seconds)}, ${diff >= 0 ? "+" : "−"}${fmtDur(Math.abs(diff))} on last week`;
   weekBars(sum.week, t.goal_seconds);
   if (document.activeElement !== $("goal")) $("goal").value = goalMin;
 
@@ -789,7 +804,7 @@ async function showAuth() {
   try {
     const a = await get("/api/auth");
     if (a.remote) {
-      $("remote-link").innerHTML = `<a href="/logout">Sign out</a> · <a href="#" id="signout-all-link">Sign out all devices</a>`;
+      $("remote-link").innerHTML = `<a href="/logout">Sign out</a> or <a href="#" id="signout-all-link">sign out all devices</a>`;
       $("signout-all-link").onclick = (e) => { e.preventDefault(); signOutAll().then(() => location.reload()); };
       return;
     }
@@ -813,7 +828,7 @@ async function showBackup() {
   if (b.last_backup) {
     const copies = `${b.daily} daily, ${b.weekly} weekly`;
     lines.push(b.stale ? warn(`Last backup: ${fmtWhen(b.last_backup)}, over 2 days ago.`)
-                       : `<div>Last backup: ${fmtWhen(b.last_backup)} · ${copies} copies, nightly at ${b.at}</div>`);
+                       : `<div>Last backup: ${fmtWhen(b.last_backup)}, ${copies} copies, nightly at ${b.at}</div>`);
   } else {
     lines.push(warn(`No backup yet. The first one is made within a few minutes of starting.`));
   }
@@ -900,10 +915,15 @@ $("theme").onclick = () => {
   const cur = document.documentElement.dataset.theme ||
     (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   const next = cur === "dark" ? "light" : "dark";
-  document.documentElement.dataset.theme = next;
+  setTheme(next);
   try { localStorage.setItem("theme", next); } catch (e) {}
 };
-try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+// A chosen theme also sets the browser bar colour, which otherwise follows the system.
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.content = t === "dark" ? "#1b1416" : "#edeeea");
+}
+try { const t = localStorage.getItem("theme"); if (t) setTheme(t); } catch (e) {}
 
 async function showTunnel() {
   try {

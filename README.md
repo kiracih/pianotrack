@@ -33,6 +33,11 @@ notes per minute and dynamic range share one **Trends** card; on a phone, tabs s
 between them, on a wider screen all three show side by side. Pieces fit the phone
 width, with time, last played, Listen and Name under each piece's name.
 
+**The look** follows [docs/DESIGN.md](docs/DESIGN.md): a practice room rather than a gym.
+Felt claret and brass on plaster and ivory (rosewood in dark mode), serif headings and
+figures (New York on Apple devices), goal-met days in brass, and a felt focus ring for
+keyboard use.
+
 Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
 

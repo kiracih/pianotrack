@@ -3,8 +3,8 @@
   "short_name": "Piano",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#111110",
-  "theme_color": "#2a78d6",
+  "background_color": "#edeeea",
+  "theme_color": "#9b2335",
   "icons": [
     {
       "src": "/icon-512.png",
