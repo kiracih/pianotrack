@@ -5,43 +5,28 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 (an evening), M (a few days), L (a week or more). Nothing here is built until the
 owner says so.
 
-Last review: 2026-10-23 (research: phone or small box instead of the Pi; similar
-products and protecting the idea; black keys in the key map).
-Previous: 2026-10-22 (app target added), 2026-10-21 (first run).
+Last review: 2026-10-24 (first run with one agent per section and a design lead; built
+the piano-room look step 1 and a "then → now" line per piece).
+Previous: 2026-10-23 (phone or box instead of the Pi; similar products; black keys),
+2026-10-22 (app target added), 2026-10-21 (first run).
 
 ## Now
 
 At most three. Proposed 2026-10-23; nothing is built until the owner says go.
 
-### 1. Black keys you can read in "Most used keys" (practice insight, S) · shipped 2026-10-23 (owner approved)
+### 1. Pieces appear right away after practice (trust, S) · build next review
 
-**Problem.** Owner, 2026-10-22: "I don't really understand which black keys pressed
-most." An unused black key is drawn black (#2c2c2a) and the most used one dark blue
-(#184f95, the top of the colour scale), so on the keyboard the two look the same.
-In dark mode it is worse. White keys read fine.
+**Problem.** On a 400-day demo (406 sessions) the first /api/pieces after a new
+session or a restart took 17.7 s on a fast machine, so roughly 50–90 s on the Pi.
+18.5 s of 29 s is `Matcher._consolidate`: every new session regroups the whole history.
 
-**Proposed fix.** Keep the piano looking like a piano (white keys white, black keys
-black) and show use as a coloured band on **every** key, on the same scale: the
-lower part of each white key and of each black key is filled with the usage colour,
-and the strongest band is outlined so it never melts into black. Also:
-- tapping or hovering any key shows its name, count and share ("F♯4 · 1,204 notes ·
-  2.1%"), on a phone too;
-- a second chip row "Top black keys" (e.g. "F♯4 3.1% · B♭3 2.4% · C♯5 1.9%"), since
-  accidentals are what a learner stumbles on.
+**Proposal.** `group()` already adds sessions oldest first. When the only change is
+closed sessions newer than every cached one, add just their segments to the cached
+matcher and rebuild the view. Regroup fully only after a delete, a rename or an
+out-of-order session. Stored data unchanged.
 
-**Acceptance criteria**
-- In both light and dark mode, on a phone and a laptop, the 3 most used black keys
-  in the demo data are visibly the darkest-banded black keys (checked on the
-  screenshots), and an unused black key has no band.
-- White and black keys use one legend ("few … most"); the legend sits next to it.
-- Same drawing in the session detail's "Keys played".
-- Top black keys row lists up to 5, hidden when no black key was played.
-- README and screenshots (keys.png, session.png) updated; tests pass.
-
-**Out of scope.** Changing the colour scale for white keys, per-hand split.
-
-**How we'll know.** The owner can name their most used black keys from the
-screenshot without asking.
+**Acceptance.** After one new session /api/pieces answers in under 0.5 s on the
+400-day demo; output identical to a full `group()` (new test); `tests/vectors` unchanged.
 
 ### 2. Does phone-only capture work? A 10-minute check (app path, no code)
 
@@ -107,9 +92,6 @@ difference from the competing apps found on 2026-10-23 (see App target).
   most (where you get stuck) and whether they're getting steadier.
 - **Android app / plug-in box / pricing**: see App target; hardware only after preorders.
 - **Bluetooth MIDI and other ALSA sequencer sources** (setup, L). Problem: the collector only reads raw USB MIDI, so the FP-30X's own Bluetooth, a second instrument, or software ports can't be tracked. Needs reading `/dev/snd/seq` with stdlib ioctls.
-- **Pieces recompute cost**: every new session regroups the whole history in memory
-  (segments are cached, matching is not). Fine for months; measure on the Pi at a
-  year of data before it slows the first load after practice.
 - **Per-piece goals**: "Waltz at 120 bpm, steady 60" with a progress bar, once the
   Pieces trial graduates.
 
@@ -119,15 +101,28 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
+Ideas found 2026-10-24 (best first; S = an evening). Ideas the PM builds without asking
+are S, change no stored data and send nothing off the Pi.
+
+| Section | Ideas waiting (impact, effort) |
+|---|---|
+| Capture & setup | "Play a key" check: last note heard shown in the status pill (med, S); iOS first-run flow sketch (high, M); phone-capture test app for Now #2 (high, M) |
+| Today & habits | "Play 5 min to make it 9 days" line on Today (high, S); weekly days target (high, S, owner decision: changes what Today shows); automatic rest-day freeze (med, M) |
+| Pieces | Make the demo's beginner learn over weeks so progress shows (med, S); steady-tempo personal best per piece (med, M); tempo halving/doubling seen in the data (check) |
+| Practice insight | "vs your usual" band on the trends (med, S); one progress sentence per piece on Trends (med, S); a weekly focus suggestion (high, M). Trends look flat because daily averages mix pieces |
+| Replay & session detail | Loop a phrase plus ±5 s buttons at 44 px (high, S); phone-sized keyboard (med, S); jump to stumbles (high, M) |
+| Trust & access | Pieces incremental (Now #1); backups say what they hold ("406 sessions, up to Oct 24") and restore warns before losing sessions (high, S); "Finding pieces…" while it computes (med, S/M) |
+| Design (lead) | Step 2: the week as an octave (high, S/M); step 3: engraved dynamics, sun/moon toggle, tr-TR 24 h dates (med, S); login page, home-screen icon and status dot in the new palette (med, S) |
+
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | How the iOS app would capture over Core MIDI and Bluetooth, and what first-run setup looks like |
-| Today & habits | ring, streak, week, calendar, goals, reminders | Weekly target vs all-or-nothing streak; what makes people come back (Duolingo, Strava, Apple Fitness) |
-| Pieces | matcher, Pieces card, per-piece progress, naming | Showing a piece getting better over weeks so a beginner can feel it |
-| Practice insight | trends, session metrics, zones, dynamics, key map | The trend charts are flat lines: what would be actionable instead |
-| Replay & session detail | player, keyboard, downloads, session page | Replay on a phone: keyboard size, looping a phrase, jumping to mistakes |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | First-load speed on the Pi with months of data; restore from a backup in practice |
-| Design (lead) | identity, layout, type, colour, motion, copy | A first design direction (docs/DESIGN.md) that is distinctive and piano-grounded, plus the first small step toward it |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Pi and phone both capturing: how to avoid counting a session twice; FP-30X over USB and Bluetooth at once |
+| Today & habits | ring, streak, week, calendar, goals, reminders | Reminder wording and timing that invite rather than nag (habit research) |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Longest unbroken stretch per piece; why some tempos jump to double or half |
+| Practice insight | trends, session metrics, zones, dynamics, key map | Plateau detection: when to tell a beginner to raise the metronome |
+| Replay & session detail | player, keyboard, downloads, session page | Defining a stumble (stop, restart, wrong-note burst) as an engine metric |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Pieces speed on the real Pi (cold boot and first load after practice); a restore drill onto a fresh SD card |
+| Design (lead) | identity, layout, type, colour, motion, copy | Prototype step 2, the week as an octave, at 390 px in light and dark |
 
 ## App target
 
@@ -211,7 +206,8 @@ Not legal advice; a patent attorney should confirm before money is spent.
 ### Path from today's Pi + web dashboard (each step ships on its own)
 
 1. **Phone-quality web app (now).** The current dashboard as an installable home
-   screen app: phone-first layout (shipped 2026-10-22), reminders. Proves which
+   screen app: phone-first layout (shipped 2026-10-22), design direction for web and
+   app in docs/DESIGN.md (step 1 shipped 2026-10-24; its tokens map to SwiftUI), reminders. Proves which
    screens matter before they are rebuilt natively.
 2. **Portable engine.** Golden test vectors from the Python engine (shipped 2026-10-22), then
    a Swift port of recorder, metrics and pieces that passes them.
@@ -277,6 +273,10 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-10-24: Piano-room look, step 1 (docs/DESIGN.md): felt and brass palette in both
+  themes, serif headings and figures, Today without a card, focus ring, theme colour
+  follows the toggle.
+- 2026-10-24: Pieces: "then → now" line per piece (first 5 vs last 5 sessions, medians).
 - 2026-10-20: MIDI collector, sessions, metrics, dashboard, simulator.
 - 2026-10-20: Key heatmap over 7/30/90 days, soft pedal stats, home screen icon.
 - 2026-10-20: Session replay with grand piano sound and live keyboard.
