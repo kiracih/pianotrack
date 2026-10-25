@@ -28,7 +28,9 @@ records. Contrast was checked against both backgrounds, and every text pair is A
 Felt ramp (light): #E6E5DF, #EBC3C9, #D27D8B, #9B2335, #5E1320. In dark mode the ramp
 reverses toward light pink. Goal-met days use brass rather than the darkest step. The key map is the exception: its
 `--kseq` ramp (#EBC3C9, #D27D8B, #9B2335, #5E1320) is the same in both themes so "most"
-is always the darkest key (owner feedback, 2026-10-23).
+is always the darkest key (owner feedback, 2026-10-23). The octave's keys also stay ivory in
+both themes, so its fills use on-key colours: felt #9B2335 in both themes, brass #A8822F light
+and #8C6A1F dark (dark brass #D6AA52 is only 1.7:1 on an ivory key).
 Do not use: pure #000 or #0b0b0b, the cream #F4F1EA, terracotta, blue/green "fitness"
 colours, gradients or soft grey card shadows.
 
@@ -89,8 +91,9 @@ Animate only transform and opacity, and list properties instead of using `transi
 **The week as an octave.** Seven white keys, C to B, are Monday to Sunday. Each key fills
 from the bottom with felt up to the daily goal and turns brass when the goal is met.
 Today's key is outlined and presses down once. Black keys sit between them as decoration
-only. A beginner learns the octave and sees their week in it. It becomes the home-screen
-widget and the native app's hero.
+only, under a thin felt rail that repeats the page's strip. Days still to come are plain
+keys, the same as a day without practice: the octave never marks a gap. A beginner learns
+the octave and sees their week in it. It becomes the home-screen widget and the native app's hero.
 
 ## Principles
 

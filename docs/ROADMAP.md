@@ -5,28 +5,32 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 (an evening), M (a few days), L (a week or more). Nothing here is built until the
 owner says so.
 
-Last review: 2026-10-24 (first run with one agent per section and a design lead; built
-the piano-room look step 1 and a "then → now" line per piece).
-Previous: 2026-10-23 (phone or box instead of the Pi; similar products; black keys),
+Last review: 2026-10-25 (built: Pieces added incrementally, Today invite line; found
+that the tempo estimate often reads double the real beat).
+Previous: 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
 2026-10-22 (app target added), 2026-10-21 (first run).
 
 ## Now
 
 At most three. Proposed 2026-10-23; nothing is built until the owner says go.
 
-### 1. Pieces appear right away after practice (trust, S) · build next review
+### 1. Tempo that follows the piece, not the left hand (pieces, M) · owner go needed
 
-**Problem.** On a 400-day demo (406 sessions) the first /api/pieces after a new
-session or a restart took 17.7 s on a fast machine, so roughly 50–90 s on the Pi.
-18.5 s of 29 s is `Matcher._consolidate`: every new session regroups the whole history.
+**Problem.** `tempo_metrics` takes the median gap between all notes, so it often
+measures the left-hand eighths, then folds into 60–180 bpm. On the beginner demo only
+29% of segments land on the true beat and 65% read double; Minuet's estimate fell
+134 → 112 while the real tempo rose 66 → 79. The "then → now" line and the tempo
+sparklines can say the opposite of what happened.
 
-**Proposal.** `group()` already adds sessions oldest first. When the only change is
-closed sessions newer than every cached one, add just their segments to the cached
-matcher and rebuild the view. Regroup fully only after a delete, a rename or an
-out-of-order session. Stored data unchanged.
+**Proposal.** Time each segment's 5-note phrases against the same phrases in the
+piece's other plays: speed = median(reference duration / this duration), bpm = speed ×
+one fixed beat per piece, so it never folds. Prototype correlation with the true tempo
+0.94–0.98. Engine change: vectors regenerated.
 
-**Acceptance.** After one new session /api/pieces answers in under 0.5 s on the
-400-day demo; output identical to a full `group()` (new test); `tests/vectors` unchanged.
+**Acceptance.** Seed 3 beginner: per-piece correlation with the true bpm ≥ 0.9, no ×2
+or ×0.5 jumps that aren't real, and every piece's "then → now" direction matches the
+truth. Also makes steadiness fair to slow practice (insight found that the same 3.5%
+jitter scores 61 at 60 bpm and 81 at 140 bpm).
 
 ### 2. Does phone-only capture work? A 10-minute check (app path, no code)
 
@@ -101,28 +105,28 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
-Ideas found 2026-10-24 (best first; S = an evening). Ideas the PM builds without asking
+Ideas found 2026-10-25 (best first; S = an evening). Ideas the PM builds without asking
 are S, change no stored data and send nothing off the Pi.
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | "Play a key" check: last note heard shown in the status pill (med, S); iOS first-run flow sketch (high, M); phone-capture test app for Now #2 (high, M) |
-| Today & habits | "Play 5 min to make it 9 days" line on Today (high, S); weekly days target (high, S, owner decision: changes what Today shows); automatic rest-day freeze (med, M) |
-| Pieces | Make the demo's beginner learn over weeks so progress shows (med, S); steady-tempo personal best per piece (med, M); tempo halving/doubling seen in the data (check) |
-| Practice insight | "vs your usual" band on the trends (med, S); one progress sentence per piece on Trends (med, S); a weekly focus suggestion (high, M). Trends look flat because daily averages mix pieces |
-| Replay & session detail | Loop a phrase plus ±5 s buttons at 44 px (high, S); phone-sized keyboard (med, S); jump to stumbles (high, M) |
-| Trust & access | Pieces incremental (Now #1); backups say what they hold ("406 sessions, up to Oct 24") and restore warns before losing sessions (high, S); "Finding pieces…" while it computes (med, S/M) |
-| Design (lead) | Step 2: the week as an octave (high, S/M); step 3: engraved dynamics, sun/moon toggle, tr-TR 24 h dates (med, S); login page, home-screen icon and status dot in the new palette (med, S) |
+| Capture & setup | One connection per piano: USB first, Bluetooth only if USB drops, drop identical note-ons within 15 ms (high, S); merge the same session recorded on Pi and phone, Pi ranked first (high, M); show where each session was recorded (med, S) |
+| Today & habits | Reminder rules: usual start time minus 30 min, at most one a day, none once 5 min are in, weekly summary after 3 ignored days (high, M); weekly days count beside the streak (high, S, owner decision) |
+| Pieces | Tempo per piece (Now #1, M); longest unbroken stretch per piece as a personal best (high, M); steady-tempo record (med, S after #1); make the demo learn over weeks (med, S) |
+| Practice insight | Steadiness as a share of the beat, fair to slow practice (high, S–M, with Now #1); "Ready for +5 bpm / Pushing too fast / Consolidating" per piece (high, M); trends within each piece (med, S) |
+| Replay & session detail | Loop a span, ±5 s buttons at 44 px, Space plays (high, S); `stumbles(notes)` engine metric with seek-bar marks and "Next stumble" (high, M; a quick rule found 65% of stops at 47% precision); intensity chart seeks the replay (med, S) |
+| Trust & access | Warm Pieces in the background at startup and when a session closes (high, S: cold start still 17 s); restore refuses while the service runs and the README gets fresh-card steps (med, S); backups say what they hold (high, S) |
+| Design (lead) | Step 2, the week as an octave: prototype ready, about 7 KB (high, S); Today without the ring: a serif sentence, small figures (med, S); fewer boxes: records and settings on plaster (med, S); step 3 engraved dynamics and locale (med, S) |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Pi and phone both capturing: how to avoid counting a session twice; FP-30X over USB and Bluetooth at once |
-| Today & habits | ring, streak, week, calendar, goals, reminders | Reminder wording and timing that invite rather than nag (habit research) |
-| Pieces | matcher, Pieces card, per-piece progress, naming | Longest unbroken stretch per piece; why some tempos jump to double or half |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Plateau detection: when to tell a beginner to raise the metronome |
-| Replay & session detail | player, keyboard, downloads, session page | Defining a stumble (stop, restart, wrong-note burst) as an engine metric |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Pieces speed on the real Pi (cold boot and first load after practice); a restore drill onto a fresh SD card |
-| Design (lead) | identity, layout, type, colour, motion, copy | Prototype step 2, the week as an octave, at 390 px in light and dark |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Session identity for sync: a UUID and device id per session so Pi-to-app and stick sync can re-run without copies |
+| Today & habits | ring, streak, week, calendar, goals, reminders | What to say after a break ("welcome back", not "streak 0"), and the Sunday weekly summary |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Make the simulator learn over weeks (faster, fewer restarts) so tempo and stretch fixes can be checked against a real trend |
+| Practice insight | trends, session metrics, zones, dynamics, key map | Calibrating steadiness: what a metronome scale at 60, 90 and 120 bpm should score |
+| Replay & session detail | player, keyboard, downloads, session page | A stumble map per piece: do stumbles cluster at the same bar across sessions? |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Cold-start cost with background warm-up; memory use on the Pi with a year of data |
+| Design (lead) | identity, layout, type, colour, motion, copy | Ship the octave week, then Today without the ring, so the octave is the one bold element on the first screen |
 
 ## App target
 
@@ -273,6 +277,10 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-10-25: Pieces: a new session is added to the kept matcher (under 1 s instead of
+  about 17 s after practice with 400 days of data; same pieces as a full regroup).
+- 2026-10-25: Today: an invite line above the ring ("5 min keeps your 8-day run going");
+  the week chart's goal label is no longer hidden by bars.
 - 2026-10-24: Piano-room look, step 1 (docs/DESIGN.md): felt and brass palette in both
   themes, serif headings and figures, Today without a card, focus ring, theme colour
   follows the toggle.
