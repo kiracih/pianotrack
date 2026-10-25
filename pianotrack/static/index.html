@@ -98,6 +98,8 @@ button:hover, .btn:hover { border-color: var(--muted); }
 @media (max-width: 760px) { .span-8, .span-7, .span-6, .span-5, .span-4 { grid-column: span 12; } }
 .today { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
 .ring { position: relative; width: 160px; height: 160px; flex: none; }
+.goal-label { pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.invite { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--accent); margin: -4px 0 12px; }
 .ring .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ring .big { font-family: var(--serif); font-size: 44px; font-weight: 600; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
 .ring .sub { font-size: 12px; color: var(--text-2); margin-top: 4px; }
@@ -215,6 +217,7 @@ footer a { color: var(--text-2); }
 
     <section class="card span-7 o-today">
       <h2>Today <span id="today-date"></span></h2>
+      <p class="invite" id="t-invite"></p>
       <div class="today">
         <div class="ring" id="ring"></div>
         <div class="tiles">
@@ -427,7 +430,6 @@ function weekBars(week, goalSec) {
   }
   const goalY = y(goalSec / 60);
   el("line", { x1: pad.l, x2: W - pad.r, y1: goalY, y2: goalY, stroke: "var(--text-2)", "stroke-dasharray": "4 4", "stroke-width": 1 }, s);
-  el("text", { x: pad.l + 2, y: goalY - 5 }, s).textContent = `goal ${Math.round(goalSec / 60)}m`;
   const bw = (W - pad.l - pad.r) / 7;
   week.forEach((d, i) => {
     const m = d.active_seconds / 60, x = pad.l + i * bw;
@@ -444,6 +446,9 @@ function weekBars(week, goalSec) {
     const hit = el("rect", { x, y: pad.t, width: bw, height: H - pad.t - pad.b, class: "hit" }, s);
     hover(hit, `<b>${dt.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</b><br>${fmtDur(d.active_seconds)}, ${fmtNum(d.notes)} notes${d.goal_met ? ", goal met" : ""}`);
   });
+  // Drawn last so a tall bar never covers it.
+  const gl = el("text", { x: W - pad.r - 2, y: goalY - 5, "text-anchor": "end", class: "goal-label" }, s);
+  gl.textContent = `goal ${Math.round(goalSec / 60)}m`;
   $("week").innerHTML = ""; $("week").appendChild(s);
 }
 function niceTicks(max, n) {
@@ -781,6 +786,7 @@ async function refresh() {
   const t = sum.today, goalMin = sum.settings.daily_goal_minutes;
   $("today-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   ring(t.goal_pct, Math.round(t.active_seconds / 60), goalMin);
+  $("t-invite").textContent = t.invite || "";
   $("t-streak").innerHTML = `${sum.streak.current}<small>${sum.streak.current === 1 ? "day" : "days"}</small>`;
   $("t-streak-best").textContent = `best ${sum.streak.longest}`;
   $("t-notes").textContent = fmtNum(t.notes);

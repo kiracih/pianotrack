@@ -82,6 +82,19 @@ class MetricsTest(unittest.TestCase):
         days = {today - timedelta(days=i): {"active_seconds": 600} for i in (1, 2, 3, 6, 7)}
         self.assertEqual(metrics.streaks(days, 300, today), {"current": 3, "longest": 3})
 
+    def test_invite_offers_the_next_small_step(self):
+        inv = metrics.invite
+        self.assertEqual(inv(0, 1800, 300, 9), "5 min keeps your 9-day run going")
+        self.assertEqual(inv(130, 1800, 300, 9), "3 min keeps your 9-day run going")
+        self.assertEqual(inv(0, 1800, 300, 0), "5 min starts a new run")
+        self.assertEqual(inv(400, 1800, 300, 10), "23 min to your 30 min goal")  # ring shows 7
+        self.assertEqual(inv(1795, 1800, 300, 10), "Goal met today")  # ring shows 100%
+        self.assertEqual(inv(1800, 1800, 300, 10), "Goal met today")
+        for args in [(0, 1800, 300, 0), (0, 1800, 300, 40), (60, 1800, 300, 0), (1000, 1800, 300, 3)]:
+            line = inv(*args)
+            self.assertNotIn("!", line)
+            self.assertNotIn("lose", line.lower())
+
 
 class RecorderTest(TmpStore):
     def test_idle_gap_splits_sessions_and_short_ones_are_dropped(self):

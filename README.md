@@ -17,7 +17,7 @@ No phone app, no cloud, no extra Python packages.
 | Metric | What it means |
 |---|---|
 | Active time | Time actually playing. Pauses longer than 3 s stop the clock, so reading the score doesn't count. |
-| Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. |
+| Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today". |
 | Notes, notes per minute | Volume of playing and how dense it was while playing. |
 | Effort zones | Like heart-rate zones: time spent at Rest / Light / Moderate / Vigorous / Peak note density. |
 | Intensity and load | A 0 to 100 effort figure from density and loudness, and load = active minutes × intensity / 50. |
@@ -302,7 +302,7 @@ query values get 400 with an `error` message.
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/summary` | today, week, streak, records, totals, live session, collector status |
+| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, records, totals, live session, collector status |
 | `GET /api/status` | collector state: piano connected, device, last MIDI event |
 | `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |

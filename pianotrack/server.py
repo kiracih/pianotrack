@@ -103,6 +103,7 @@ class Api:
             bd = max(days.items(), key=lambda kv: kv[1]["active_seconds"])
             records["best_day"] = {"date": bd[0].isoformat(),
                                    "active_seconds": round(bd[1]["active_seconds"])}
+        streak = metrics.streaks(days, settings["streak_min_minutes"] * 60, today)
         week_secs = sum(w["active_seconds"] for w in week)
         prev_week = sum(days.get(today - timedelta(days=i), empty)["active_seconds"]
                         for i in range(7, 14))
@@ -112,11 +113,13 @@ class Api:
             "today": {"date": today.isoformat(), "active_seconds": round(t["active_seconds"]),
                       "notes": t["notes"], "sessions": t["sessions"],
                       "load": round(t["load"], 1), "goal_seconds": goal,
-                      "goal_pct": round(100 * t["active_seconds"] / goal) if goal else 0},
+                      "goal_pct": round(100 * t["active_seconds"] / goal) if goal else 0,
+                      "invite": metrics.invite(t["active_seconds"], goal, settings["streak_min_minutes"] * 60,
+                                               streak["current"])},
             "week": week,
             "week_total_seconds": round(week_secs),
             "prev_week_total_seconds": round(prev_week),
-            "streak": metrics.streaks(days, settings["streak_min_minutes"] * 60, today),
+            "streak": streak,
             "consistency_28d": metrics.consistency(days, today),
             "totals": {"sessions": len(closed),
                        "active_seconds": round(sum(s["metrics"]["active_seconds"] for s in closed)),

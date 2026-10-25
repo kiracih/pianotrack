@@ -247,6 +247,24 @@ def streaks(days, min_seconds, today=None):
     return {"current": cur, "longest": longest}
 
 
+def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float, streak: int) -> str:
+    """One calm line for Today: the next small step, never a scolding.
+
+    `streak` is the current streak as `streaks` returns it, which counts today
+    only once today has reached `streak_min_seconds`.
+    """
+    # Goal minutes round the way the ring shows them, so the two always agree.
+    if goal_seconds and round(100 * today_seconds / goal_seconds) >= 100:
+        return "Goal met today"
+    if today_seconds < streak_min_seconds:
+        need = max(1, math.ceil((streak_min_seconds - today_seconds) / 60))
+        if streak:
+            return f"{need} min keeps your {streak}-day run going"
+        return f"{need} min starts a new run" if not today_seconds else f"{need} min more starts a new run"
+    goal_min = round(goal_seconds / 60)
+    return f"{max(1, goal_min - round(today_seconds / 60))} min to your {goal_min} min goal"
+
+
 def consistency(days, today=None, window=28):
     """Share of the last `window` days with any practice, 0..100."""
     today = today or date.today()
