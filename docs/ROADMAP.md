@@ -14,23 +14,11 @@ Previous: 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10
 
 At most three. Proposed 2026-10-23; nothing is built until the owner says go.
 
-### 1. Tempo that follows the piece, not the left hand (pieces, M) · owner go needed
+### 1. Steadiness that is fair to slow practice (insight, S–M) · next
 
-**Problem.** `tempo_metrics` takes the median gap between all notes, so it often
-measures the left-hand eighths, then folds into 60–180 bpm. On the beginner demo only
-29% of segments land on the true beat and 65% read double; Minuet's estimate fell
-134 → 112 while the real tempo rose 66 → 79. The "then → now" line and the tempo
-sparklines can say the opposite of what happened.
-
-**Proposal.** Time each segment's 5-note phrases against the same phrases in the
-piece's other plays: speed = median(reference duration / this duration), bpm = speed ×
-one fixed beat per piece, so it never folds. Prototype correlation with the true tempo
-0.94–0.98. Engine change: vectors regenerated.
-
-**Acceptance.** Seed 3 beginner: per-piece correlation with the true bpm ≥ 0.9, no ×2
-or ×0.5 jumps that aren't real, and every piece's "then → now" direction matches the
-truth. Also makes steadiness fair to slow practice (insight found that the same 3.5%
-jitter scores 61 at 60 bpm and 81 at 140 bpm).
+The same 3.5% unevenness scores 61 at 60 bpm and 81 at 140 bpm, because steadiness uses
+absolute milliseconds. Measure it as a share of the local beat; keep `timing_error_ms`.
+Acceptance: 3.5% jitter at 60/100/140 bpm scores within ±3; vectors regenerated.
 
 ### 2. Does phone-only capture work? A 10-minute check (app path, no code)
 
@@ -251,6 +239,8 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Decided and rejected
 
+- 2026-10-25: **Approved and built: tempo per piece, the octave week, a weekly days
+  target** beside the streak (owner: "make all three"). The streak stays.
 - 2026-10-22: **Rejected: "today's pieces" on the Today card** (owner didn't like it).
   Don't re-propose a per-piece summary on the Today card.
 - 2026-10-22: **App: native, iOS first** rather than wrapping the web app.
@@ -277,6 +267,9 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-10-25 (owner go): Pieces tempo timed by phrase per piece (correlation with the real
+  tempo 0.91–0.99, was 0.07–0.30); the week as an octave; weekly days target (default 5);
+  tips close when you tap elsewhere or scroll.
 - 2026-10-25: Pieces: a new session is added to the kept matcher (under 1 s instead of
   about 17 s after practice with 400 days of data; same pieces as a full regroup).
 - 2026-10-25: Today: an invite line above the ring ("5 min keeps your 8-day run going");
