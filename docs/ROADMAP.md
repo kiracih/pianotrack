@@ -81,11 +81,25 @@ difference from the competing apps found on 2026-10-23 (see App target).
    good-looking image of a week (the octave), a streak, or a piece's "then → now",
    made on the device (canvas to PNG) and shared through the phone's share sheet. Nothing
    leaves the Pi unless the owner shares it. Needs design work first (design lead).
-7. **Check playing against the score** (pieces, L; owner idea 2026-10-26, "killer
-   feature"). Upload a photo of the sheet music or name the piece; the app compares
-   what you played with the notes and shows wrong and missed notes. Being researched
-   in its own thread (optical music recognition, score libraries, alignment). Big
-   step beyond today's matcher, and the clearest difference from the rival apps.
+7. **Check playing against the score, step 1: score file** (pieces, M; owner idea
+   2026-10-26, "killer feature"; owner said "add it" 2026-10-26). Problem: Pieces
+   knows *what* you played but not whether the notes were right. Attach a MusicXML
+   (`.xml`/`.mxl`, read with stdlib xml.etree + zipfile) or `.mid` file to a piece;
+   every play of that piece is aligned note by note (edit distance over pitches,
+   chords as sets, jumps back allowed for restarts) and the piece shows accuracy
+   over time and its trouble bars. Counted kindly: a wrong note fixed at once is
+   "fixed", hands-alone plays judged on that hand, partial plays on the bars played,
+   pedal/dynamics ignored; notes first, rhythm later. Places where your consistent
+   playing (the piece's core n-grams) disagrees with the score show as "score or
+   you?", not mistakes. Raw replay, `.mid` and `.csv` untouched; score stored next to
+   the piece name; engine vectors for the iOS port. Acceptance: on `simulate.py
+   --beginner` at least 90% of injected wrong/missed notes found and under 5% of
+   correct notes flagged; owner tries it on the Chopin A minor waltz.
+   Later steps, decided after step 1: find a score by name (small public-domain
+   list, candidates shown with opening notes, S–M), then photo via hosted OMR from
+   the iOS app with a listen-and-confirm step (M–L; best OMR still misreads about
+   1 symbol in 5 on real scans). Research:
+   [Score check research](https://claude.ai/artifact/N3eacvxdqMVHEuWRiNaYGC).
 8. **Choose the product name** (business, S). "pianotrack" sits next to the App
    Store's *Piano Tracker* and *PianoTrax*; a distinctive name is needed before any
    public launch or trademark filing. *Owner decision.*
