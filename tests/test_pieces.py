@@ -32,6 +32,24 @@ class MatcherTest(unittest.TestCase):
             first = m.add(self.play("Minuet in G", 1, beginner=True))
             self.assertEqual(m.add(self.play("Minuet in G", 2, **kw)), first, kw)
 
+    def test_piece_tempo_follows_the_melody_without_jumps(self):
+        # Beginner plays of one piece from 0.7x to 1.3x speed, left hand included.
+        speeds = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3] * 2
+        segs, speed = [], []
+        for i, v in enumerate(speeds):
+            ev, _ = simulate.perform(random.Random(10 + i), 0.0, simulate.REPERTOIRE["Minuet in G"],
+                                     tempo=v, beginner=True)
+            found = played(ev)  # a long stop can split a play in two
+            segs += found
+            speed += [v] * len(found)
+        speeds = speed
+        bpm = pieces.piece_tempo(segs)
+        timed = [(bpm[i], v) for i, v in enumerate(speeds) if bpm[i]]
+        self.assertGreaterEqual(len(timed), 0.8 * len(segs))  # a short leftover may go untimed
+        for (a, va), (b, vb) in zip(timed, timed[1:]):
+            # Each play's tempo moves with the real speed, within 12%, and never folds.
+            self.assertAlmostEqual((b / a) / (vb / va), 1.0, delta=0.12)
+
     def test_different_pieces_do_not_match(self):
         names = sorted(simulate.REPERTOIRE)
         m = pieces.Matcher()

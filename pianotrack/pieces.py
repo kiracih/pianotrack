@@ -10,6 +10,7 @@ Beginners play wrong notes, miss notes and restart, so a segment only needs a
 share of its n-grams to match, not all of them.
 """
 
+import statistics
 from collections import Counter, defaultdict
 
 from . import metrics
@@ -23,6 +24,8 @@ MATCH = 0.2  # share of a segment's n-grams that must be known to a piece
 MIN_HITS = 6  # and at least this many of them
 MERGE = 0.6  # core overlap at which two groups are taken to be one piece
 CORE_AFTER = 5  # segments heard before a piece ignores n-grams heard only once
+PHRASE_MAX = 8.0  # seconds: a five-note phrase slower than this is a stop, not tempo
+PHRASES_MIN = 5  # timed phrases a segment needs before its tempo is trusted
 
 
 def top_voice(notes):
@@ -324,6 +327,58 @@ def _motif(segs, rep, n=6):
     return motif, rep, rep["start"]
 
 
+def _phrase_times(seg):
+    """Median duration of each five-note melody phrase (by intervals) in a segment."""
+    mel = seg["melody"]
+    pitches = [p for _, p in mel]
+    found = defaultdict(list)
+    for i in range(len(mel) - N):
+        dt = mel[i + N][0] - mel[i][0]
+        if 0 < dt < PHRASE_MAX:
+            found[tuple(b - a for a, b in zip(pitches[i:i + N], pitches[i + 1:i + N + 1]))].append(dt)
+    return {g: statistics.median(v) for g, v in found.items()}
+
+
+def piece_tempo(segs):
+    """Tempo of each segment of one piece, as {index in segs: bpm or None}.
+
+    Timing every note gap mixes in the left hand and halves or doubles the beat
+    from one play to the next. Instead each segment's phrases are timed against
+    the same phrases in the piece's other plays, which gives its speed relative
+    to the piece; one beat for the whole piece (its typical melody note, folded
+    into 60-180 once) turns that into bpm, so a session can't jump by 2x.
+    """
+    times = [_phrase_times(s) for s in segs]
+    pooled = defaultdict(list)
+    for t in times:
+        for g, d in t.items():
+            pooled[g].append(d)
+    plays = min(PHRASES_MIN, max(2, len(segs) // 2))  # a new piece has few plays to compare
+    ref = {g: statistics.median(v) for g, v in pooled.items() if len(v) >= plays}
+    speed = {}
+    for i, t in enumerate(times):
+        r = [ref[g] / d for g, d in t.items() if g in ref]
+        if len(r) >= PHRASES_MIN:
+            speed[i] = statistics.median(r)
+    if not speed:
+        return {i: None for i in range(len(segs))}
+    # A melody note at speed 1: the typical gap of the piece's first timed plays, scaled
+    # by their speed. Taking the first ones keeps the beat (and its fold) the same as
+    # more sessions arrive, so past tempos don't halve or double later.
+    gaps = []
+    for i, v in sorted(speed.items())[:10]:
+        mel = [t for t, _ in segs[i]["melody"]]
+        iois = [b - a for a, b in zip(mel, mel[1:]) if 0 < b - a < PHRASE_MAX / N]
+        if iois:
+            gaps.append(statistics.median(iois) * v)
+    beat = 60.0 / statistics.median(gaps) if gaps else 100.0
+    while beat > 180:
+        beat /= 2
+    while beat < 60:
+        beat *= 2
+    return {i: (beat * speed[i] if i in speed else None) for i in range(len(segs))}
+
+
 def pieces_view(matcher, named=(), session_starts=None):
     """Pieces for the dashboard: groups heard three or more times, plus their
     named matches merged under one name, most recently played first."""
@@ -345,13 +400,14 @@ def pieces_view(matcher, named=(), session_starts=None):
     rows = []
     for g in groups.values():
         segs = sorted(g["segments"], key=lambda s: s["start"])
+        tempo = piece_tempo(segs)
         per = {}
-        for s in segs:
+        for k, s in enumerate(segs):
             h = per.setdefault(s["session"], {"session": s["session"], "start": s["start"],
                                               "active_seconds": 0.0, "_t": [0.0, 0.0], "_s": [0.0, 0.0]})
             h["active_seconds"] += s["active"]
-            if s.get("tempo_bpm"):
-                h["_t"][0] += s["tempo_bpm"] * s["active"]
+            if tempo[k]:
+                h["_t"][0] += tempo[k] * s["active"]
                 h["_t"][1] += s["active"]
             if s.get("steadiness") is not None:
                 h["_s"][0] += s["steadiness"] * s["active"]

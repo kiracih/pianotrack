@@ -61,7 +61,11 @@ Rules the recorder follows (see `pianotrack/recorder.py`):
   as of `settings.today`. `consistency_28d`: share of the 28 days up to today with
   any practice.
 - `pieces`: as `/api/pieces` returns them, except that sessions are referred to by
-  their index in `sessions` and the internal `key` is left out.
+  their index in `sessions` and the internal `key` is left out. A piece's per-session
+  `tempo_bpm` comes from `pieces.piece_tempo`: five-note melody phrases are timed against
+  the same phrases in the piece's other plays (relative speed), times one beat per piece
+  (its typical melody note, folded into 60–180 once). Since 2026-10-25; before, it was
+  the session tempo of each segment, which often read the left hand's double beat.
 
 ## Matching
 
