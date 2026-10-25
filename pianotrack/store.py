@@ -79,6 +79,7 @@ def migrate(db, steps=MIGRATIONS):
 DEFAULT_SETTINGS = {
     "daily_goal_minutes": 30,
     "streak_min_minutes": 5,
+    "weekly_days_target": 5,
 }
 
 

@@ -120,6 +120,8 @@ class Api:
             "week_total_seconds": round(week_secs),
             "prev_week_total_seconds": round(prev_week),
             "streak": streak,
+            "week_days": {"played": metrics.week_days(days, settings["streak_min_minutes"] * 60, today),
+                          "target": settings["weekly_days_target"]},
             "consistency_28d": metrics.consistency(days, today),
             "totals": {"sessions": len(closed),
                        "active_seconds": round(sum(s["metrics"]["active_seconds"] for s in closed)),
@@ -329,12 +331,15 @@ class Api:
         return buf.getvalue()
 
     def update_settings(self, data):
-        for key in ("daily_goal_minutes", "streak_min_minutes"):
+        limits = {"daily_goal_minutes": 600, "streak_min_minutes": 600, "weekly_days_target": 7}
+        new = {}
+        for key, hi in limits.items():
             if key in data:
-                v = int(data[key])
-                if not 1 <= v <= 600:
-                    raise ValueError(f"{key} must be between 1 and 600")
-                self.store.set_setting(key, v)
+                new[key] = v = int(data[key])
+                if not 1 <= v <= hi:
+                    raise ValueError(f"{key} must be between 1 and {hi}")
+        for key, v in new.items():  # all or nothing
+            self.store.set_setting(key, v)
         return self.store.settings()
 
 

@@ -265,6 +265,17 @@ def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float,
     return f"{max(1, goal_min - round(today_seconds / 60))} min to your {goal_min} min goal"
 
 
+def week_days(days, min_seconds, today=None):
+    """Days this calendar week (Monday to today) with at least `min_seconds`.
+
+    A weekly count forgives a missed day that would end a streak.
+    """
+    today = today or date.today()
+    monday = today - timedelta(days=today.weekday())
+    return sum(1 for i in range((today - monday).days + 1)
+               if days.get(monday + timedelta(days=i), {}).get("active_seconds", 0) >= min_seconds)
+
+
 def consistency(days, today=None, window=28):
     """Share of the last `window` days with any practice, 0..100."""
     today = today or date.today()

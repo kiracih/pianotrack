@@ -17,6 +17,7 @@ No phone app, no cloud, no extra Python packages.
 | Metric | What it means |
 |---|---|
 | Active time | Time actually playing. Pauses longer than 3 s stop the clock, so reading the score doesn't count. |
+| This week | The week as an octave: seven white keys, Monday to Sunday, each filling with felt up to the daily goal and brass when it is met; today's key is outlined. Tap a key for its minutes. Plus days played this week against a weekly target (5 by default, set under Goals), which forgives a missed day the streak would not. |
 | Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today". |
 | Notes, notes per minute | Volume of playing and how dense it was while playing. |
 | Effort zones | Like heart-rate zones: time spent at Rest / Light / Moderate / Vigorous / Peak note density. |
@@ -25,13 +26,14 @@ No phone app, no cloud, no extra Python packages.
 | Dynamics | Mean velocity, pp to ff distribution, and dynamic range (spread between the quiet and loud 10%). |
 | Keys | 88-key map per session and across the last 7, 30 or 90 days or all time: keys keep their piano colours and a coloured band on each key, white or black, shows how much it was played (tap a key for its count). Top keys, top black keys, lowest and highest note, share of notes below middle C. |
 | Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
-| Pieces | Per piece: active time, sessions, last played, and per-session tempo and steadiness (active-time weighted over the stretches of that piece). |
+| Pieces | Per piece: active time, sessions, last played, and per-session tempo and steadiness (active-time weighted over the stretches of that piece). A piece's tempo times its melody phrases against the same phrases in its other plays, so the left hand can't make it read double and a session never jumps 2×; it is counted in the piece's typical melody note. |
 
 **On a phone** the page puts what changes day to day first: Today, This week, Pieces and
 recent sessions, then the slower views (trends, calendar, keys, records). Steadiness,
 notes per minute and dynamic range share one **Trends** card; on a phone, tabs switch
 between them, on a wider screen all three show side by side. Pieces fit the phone
-width, with time, last played, Listen and Name under each piece's name.
+width, with time, last played, Listen and Name under each piece's name. Chart and key tips
+open on a tap and close when you tap anywhere else or scroll.
 
 **The look** follows [docs/DESIGN.md](docs/DESIGN.md): a practice room rather than a gym.
 Felt claret and brass on plaster and ivory (rosewood in dark mode), serif headings and
@@ -302,7 +304,7 @@ query values get 400 with an `error` message.
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, records, totals, live session, collector status |
+| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, `week_days` (played and target, Monday to today), records, totals, live session, collector status |
 | `GET /api/status` | collector state: piano connected, device, last MIDI event |
 | `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
@@ -322,7 +324,7 @@ query values get 400 with an `error` message.
 | `GET /api/sessions.csv` | all sessions as CSV |
 | `GET /api/pieces` | pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`active_seconds`, `tempo_bpm`, `steadiness`) |
 | `POST /api/pieces/name` | `{"key": "...", "name": "..."}` names a piece (empty name forgets it); returns the pieces |
-| `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5}` |
+| `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5, "weekly_days_target": 5}` |
 
 ## Roadmap
 

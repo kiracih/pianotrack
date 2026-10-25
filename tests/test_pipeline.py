@@ -82,6 +82,14 @@ class MetricsTest(unittest.TestCase):
         days = {today - timedelta(days=i): {"active_seconds": 600} for i in (1, 2, 3, 6, 7)}
         self.assertEqual(metrics.streaks(days, 300, today), {"current": 3, "longest": 3})
 
+    def test_week_days_counts_monday_to_today(self):
+        from datetime import date, timedelta
+        thu = date(2026, 10, 22)  # a Thursday
+        days = {thu - timedelta(days=i): {"active_seconds": s} for i, s in
+                [(0, 600), (1, 100), (2, 400), (3, 900), (4, 900)]}  # Sunday before doesn't count
+        self.assertEqual(metrics.week_days(days, 300, thu), 3)
+        self.assertEqual(metrics.week_days({}, 300, thu), 0)
+
     def test_invite_offers_the_next_small_step(self):
         inv = metrics.invite
         self.assertEqual(inv(0, 1800, 300, 9), "5 min keeps your 9-day run going")
