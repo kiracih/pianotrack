@@ -37,8 +37,9 @@ class Api:
         self.backups = backups
         self._live_cache = {}
         self._segments = {}  # closed session id -> its piece segments (closed sessions never change)
+        self._matcher = None  # (session ids in the order added, matcher) kept between calls
         self._pieces_cache = None
-        self._pieces_lock = threading.Lock()
+        self._pieces_lock = threading.RLock()  # also held while name_piece reads the matcher
 
     def _metrics(self, s):
         if s["metrics"] and s["closed"]:
@@ -225,16 +226,31 @@ class Api:
                 "start": s["start"], "end": s["end"], "metrics": m, "pieces": found}
 
     def _pieces(self):
-        """(matcher, view) over all closed sessions, recomputed when they or names change."""
+        """(matcher, view) over all closed sessions, recomputed when they or names change.
+
+        Sessions that close after everything already matched are added to the kept
+        matcher, which gives the same pieces as regrouping and is far cheaper with a
+        long history. A deleted or out-of-order session regroups from scratch.
+        """
         with self._pieces_lock:
-            closed = self.store.sessions(closed_only=True)
+            closed = piecesmod.closed_in_order(self.store)
+            ids = tuple((s["id"], s["start"]) for s in closed)  # ids alone can be reused after a delete
             named = self.store.piece_names()
-            key = (tuple(sorted(s["id"] for s in closed)), tuple((n[0], n[1]) for n in named))
+            key = (ids, tuple((n[0], n[1]) for n in named))
             if self._pieces_cache and self._pieces_cache[0] == key:
                 return self._pieces_cache[1]
-            ids = set(key[0])
-            self._segments = {k: v for k, v in self._segments.items() if k in ids}
-            matcher, _ = piecesmod.group(self.store, cache=self._segments)
+            done = self._matcher[0] if self._matcher else None
+            if done is None or ids[:len(done)] != done:
+                # Keep cached segments only for sessions that are still the same recording.
+                keep = {sid for sid, _ in (set(ids) & set(done) if done else ids)}
+                self._segments = {k: v for k, v in self._segments.items() if k in keep}
+                self._matcher = ((), piecesmod.Matcher())
+                done = ()
+            matcher = self._matcher[1]
+            if len(ids) > len(done):
+                self._matcher = None  # until the add succeeds: a half-fed matcher must regroup
+                piecesmod.add_sessions(matcher, self.store, closed[len(done):], self._segments)
+                self._matcher = (ids, matcher)
             view = piecesmod.pieces_view(matcher, named, {s["id"]: s["start"] for s in closed})
             self._pieces_cache = (key, (matcher, view))
             return matcher, view
@@ -246,6 +262,10 @@ class Api:
     def name_piece(self, data):
         """Give a piece a name (an empty name forgets it). Changes no recordings."""
         key, name = str(data.get("key", "")), " ".join(str(data.get("name", "")).split())[:80]
+        with self._pieces_lock:  # the matcher grows in place when a session closes
+            return self._name_piece(key, name)
+
+    def _name_piece(self, key, name):
         matcher, view = self._pieces()
         row = next((r for r in view if key in r["_keys"]), None)
         if row is None:

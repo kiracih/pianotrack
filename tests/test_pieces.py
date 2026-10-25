@@ -155,6 +155,42 @@ class PiecesApiTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             api.name_piece({"key": "nope", "name": "x"})
 
+    def test_new_sessions_are_added_without_regrouping(self):
+        from pianotrack.server import Api
+        store = Store(":memory:")
+        simulate.backfill(store, days=20, seed=4, beginner=True, now=datetime(2026, 1, 1, 22))
+        api = Api(store)
+        api.pieces()
+        kept = api._matcher[1]
+        simulate.backfill(store, days=6, seed=8, beginner=True, now=datetime(2026, 1, 8, 22))
+        grown = api.pieces()
+        self.assertIs(api._matcher[1], kept)  # grown in place, not regrouped
+        self.assertEqual(grown, Api(store).pieces())  # same as grouping from scratch
+
+        # A deleted session regroups from scratch, and still matches a fresh grouping.
+        store.delete_session(grown[0]["history"][0]["session"])
+        after = api.pieces()
+        self.assertIsNot(api._matcher[1], kept)
+        self.assertEqual(after, Api(store).pieces())
+
+    def test_a_failed_update_regroups_instead_of_counting_twice(self):
+        from unittest import mock
+        from pianotrack.server import Api
+        store = Store(":memory:")
+        simulate.backfill(store, days=12, seed=4, beginner=True, now=datetime(2026, 1, 1, 22))
+        api = Api(store)
+        api.pieces()
+        simulate.backfill(store, days=3, seed=8, beginner=True, now=datetime(2026, 1, 5, 22))
+        real = pieces.add_sessions
+
+        def half(matcher, st, sessions, cache=None):
+            real(matcher, st, sessions[:1], cache)
+            raise OSError("database is locked")
+        with mock.patch.object(pieces, "add_sessions", half):
+            with self.assertRaises(OSError):
+                api.pieces()
+        self.assertEqual(api.pieces(), Api(store).pieces())
+
 
 if __name__ == "__main__":
     unittest.main()

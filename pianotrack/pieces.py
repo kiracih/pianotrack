@@ -212,15 +212,20 @@ def session_segments(store, sid):
     return out
 
 
-def group(store, since=None, cache=None):
-    """Match every closed session's segments, oldest first. Changes nothing.
+def closed_in_order(store, since=None):
+    """Closed sessions in the order the matcher takes them: oldest first."""
+    return sorted(store.sessions(since=since, closed_only=True), key=lambda s: s["start"])
+
+
+def add_sessions(matcher, store, sessions, cache=None):
+    """Feed these sessions' segments to the matcher in order; returns the segments.
 
     `cache` (session id -> segments) saves re-reading sessions that are closed
-    and so can no longer change.
+    and so can no longer change. Adding sessions newer than all earlier ones to a
+    matcher gives the same pieces as grouping everything again.
     """
-    matcher = Matcher()
     segs = []
-    for s in sorted(store.sessions(since=since, closed_only=True), key=lambda s: s["start"]):
+    for s in sessions:
         if cache is None:
             found = session_segments(store, s["id"])
         else:
@@ -231,6 +236,13 @@ def group(store, since=None, cache=None):
             seg.pop("piece", None)
             matcher.add(seg)
             segs.append(seg)
+    return segs
+
+
+def group(store, since=None, cache=None):
+    """Match every closed session's segments, oldest first. Changes nothing."""
+    matcher = Matcher()
+    segs = add_sessions(matcher, store, closed_in_order(store, since), cache)
     return matcher, segs
 
 
