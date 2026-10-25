@@ -57,9 +57,12 @@ difference from the competing apps found on 2026-10-23 (see App target).
    your goal, streak 9 days") when today is short. Needs a push channel: ntfy
    (one HTTP POST, stdlib only) is easiest but sends the message text through a
    third-party server unless self-hosted. *Owner decision needed.*
-2. **Weekly target instead of all-or-nothing streak** (habit, S). Problem: one
-   missed day resets a long streak, which demotivates. Add "5 of 7 days" weekly
-   goal and a weekly summary card (time, best day, change vs last week).
+2. **Every recording of a piece, over time** (pieces, S; owner idea 2026-10-26).
+   Problem: tapping a piece shows its charts, and Listen plays only one recording
+   (its best play of the main phrase), so you can't hear how it sounded weeks ago.
+   Add a list of the piece's past plays, oldest to newest, each with its date, tempo
+   and steadiness and a ▶ that jumps the replay to that stretch. Data is already in
+   `/api/pieces` history; a play's start offset needs adding (additive API field).
 3. **Ignore accompaniment and split channels** (setup / data quality, S).
    Problem: notes from every MIDI channel count, so rhythm or song playback sent
    over MIDI inflates practice. Add a channel filter setting (default: all) and
@@ -68,7 +71,22 @@ difference from the competing apps found on 2026-10-23 (see App target).
    recorded once a session is open, so a pedal pressed just before the first
    note is lost and sustain share reads low. Remember the last pedal state and
    write it at session start.
-5. **Choose the product name** (business, S). "pianotrack" sits next to the App
+5. **Merge and split pieces** (pieces, M; owner idea 2026-10-26). Problem: the
+   matcher sometimes keeps one piece as two (or joins two). "Merge" on a piece joins
+   it with another; "Split" separates a play or a group back out. Stored as user
+   corrections next to piece names (a new table, so a migration and the owner's go
+   on the data change); recordings untouched, the matcher re-applies the
+   corrections after every regroup. Carries over to the iOS app.
+6. **Share cards for social media** (motivation, M; owner idea 2026-10-26). A
+   good-looking image of a week (the octave), a streak, or a piece's "then → now",
+   made on the device (canvas to PNG) and shared through the phone's share sheet. Nothing
+   leaves the Pi unless the owner shares it. Needs design work first (design lead).
+7. **Check playing against the score** (pieces, L; owner idea 2026-10-26, "killer
+   feature"). Upload a photo of the sheet music or name the piece; the app compares
+   what you played with the notes and shows wrong and missed notes. Being researched
+   in its own thread (optical music recognition, score libraries, alignment). Big
+   step beyond today's matcher, and the clearest difference from the rival apps.
+8. **Choose the product name** (business, S). "pianotrack" sits next to the App
    Store's *Piano Tracker* and *PianoTrax*; a distinctive name is needed before any
    public launch or trademark filing. *Owner decision.*
 
