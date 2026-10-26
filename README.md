@@ -18,7 +18,7 @@ No phone app, no cloud, no extra Python packages.
 |---|---|
 | Active time | Time actually playing. Pauses longer than 3 s stop the clock, so reading the score doesn't count. |
 | This week | The week as an octave: seven white keys, Monday to Sunday, each filling with felt up to the daily goal and brass when it is met; today's key is outlined. Tap a key for its minutes. Plus days played this week against a weekly target (5 by default, set under Goals), which forgives a missed day the streak would not. |
-| Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today". |
+| Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today"; after one missed day it says "One day off doesn't undo a habit. 5 min picks it back up.", after a longer break "Welcome back. 5 min is a good start.", instead of greeting you with a zero. |
 | Notes, notes per minute | Volume of playing and how dense it was while playing. |
 | Effort zones | Like heart-rate zones: time spent at Rest / Light / Moderate / Vigorous / Peak note density. |
 | Intensity and load | A 0 to 100 effort figure from density and loudness, and load = active minutes × intensity / 50. |
@@ -69,7 +69,9 @@ and its tempo and steadiness per session (tap a piece for the charts). From 10 s
 on, a line under the piece compares its first 5 sessions with its last 5 (medians), e.g.
 "153 → 109 bpm, steadiness 59 → 69: slowed down to clean up". Pieces show as
 "Piece A, B…" with their most played phrase; **Listen** jumps the replay to that phrase
-so you can recognise it, and **Name** names it once ("Chopin waltz"). The name follows
+so you can recognise it. Tap a piece to open its tempo and
+steadiness charts and a list of every recording of it, newest first; ▶ plays one from
+where the piece starts, so you can hear how it sounded weeks ago. **Name** names it once ("Chopin waltz"). The name follows
 the music into later sessions. A session's detail lists the pieces played in it.
 A session that closes after everything already grouped is added to the existing
 pieces instead of regrouping the whole history (under a second instead of about 17 s with 400
@@ -322,7 +324,7 @@ query values get 400 with an `error` message.
 | `GET /api/sessions/<id>/events` | the session as a time series for replay: notes `[on, off, pitch, velocity]` and pedals `[t, cc, value]`, seconds from start |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
 | `GET /api/sessions.csv` | all sessions as CSV |
-| `GET /api/pieces` | pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`active_seconds`, `tempo_bpm`, `steadiness`) |
+| `GET /api/pieces` | pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`session`, `start`, `offset` (seconds into the session to play this recording from, 1 s before the piece), `active_seconds`, `tempo_bpm`, `steadiness`) |
 | `POST /api/pieces/name` | `{"key": "...", "name": "..."}` names a piece (empty name forgets it); returns the pieces |
 | `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5, "weekly_days_target": 5}` |
 

@@ -130,6 +130,10 @@ tr.sel td { background: var(--accent-soft) !important; }
 .hide-sm { }
 .show-sm { display: none; }
 #pieces td.num { white-space: nowrap; }
+.pc-plays { list-style: none; margin: 4px 0 0; padding: 0; columns: 2 280px; column-gap: 24px; }
+.pc-plays li { display: flex; align-items: center; gap: 10px; padding: 3px 0; break-inside: avoid; }
+.pc-plays .pc-play { min-width: 44px; min-height: 36px; padding: 0; }
+.pc-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pc-prog { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--text-2); margin-top: 2px; }
 @media (max-width: 600px) {
   .hide-sm { display: none; } .show-sm { display: block; }
@@ -290,7 +294,7 @@ footer a { color: var(--text-2); }
         </table>
       </div>
       <div class="empty" id="no-pieces" style="display:none">Pieces appear once you have played the same music three times. Nothing to log: they are found from your playing.</div>
-      <div class="legend">Tap a piece for its tempo and steadiness per session. Name it once and the name sticks. Scales and exercises can show up as pieces too.</div>
+      <div class="legend">Tap a piece for its tempo and steadiness per session and every recording of it. Name it once and the name sticks. Scales and exercises can show up as pieces too.</div>
     </section>
 
     <section class="card span-12 o-keys">
@@ -672,7 +676,9 @@ async function loadPieces() {
       <td class="num hide-sm" style="white-space:nowrap">${acts}</td></tr>`;
     const more = p.key === pieceOpen ? `<tr class="pc-more"><td colspan="7"><div class="grid2">
       <div><div class="sub-h">Tempo per session (bpm)</div><div id="pc-tempo"></div></div>
-      <div><div class="sub-h">Steadiness per session</div><div id="pc-steady"></div></div></div></td></tr>` : "";
+      <div><div class="sub-h">Steadiness per session</div><div id="pc-steady"></div></div></div>
+      <div class="sub-h">Recordings <span class="muted-s">newest first, ▶ plays it from where the piece starts</span></div>
+      <ol class="pc-plays" id="pc-plays"></ol></td></tr>` : "";
     return main + more;
   }).join("");
   document.querySelectorAll("#pieces tr[data-key]").forEach((tr) => {
@@ -698,7 +704,27 @@ async function loadPieces() {
     const pts = open.history.map((x) => ({ ...x, date: new Date(x.start * 1000).toLocaleDateString("sv") }));
     trendLine("pc-tempo", pts, "tempo_bpm", "", undefined, "session");
     trendLine("pc-steady", pts, "steadiness", "", 100, "session");
+    piecePlays(open, false);
   }
+}
+// Every recording of the open piece, so you can hear how it sounded weeks ago.
+function piecePlays(p, all) {
+  const plays = p.history.slice().reverse(), shown = all ? plays : plays.slice(0, 8);
+  const row = (h) => `<li><button class="pc-play" data-s="${h.session}" data-o="${h.offset || 0}"
+      aria-label="Play the recording from ${fmtWhen(h.start)}">▶</button>
+    <span class="pc-when">${fmtWhen(h.start)}</span>
+    <span class="muted-s">${h.active_seconds < 60 ? "<1m" : fmtDur(h.active_seconds)}${h.tempo_bpm ? `, ${h.tempo_bpm} bpm` : ""}${h.steadiness != null ? `, steadiness ${h.steadiness}` : ""}</span></li>`;
+  $("pc-plays").innerHTML = shown.map(row).join("") +
+    (plays.length > shown.length ? `<li><button class="pc-all">Show all ${plays.length}</button></li>` : "");
+  $("pc-plays").querySelectorAll(".pc-play").forEach((b) => b.onclick = async (e) => {
+    e.stopPropagation();
+    const sid = +b.dataset.s;
+    await openSession(sid);
+    $("detail-card").scrollIntoView({ behavior: "smooth" });
+    if (window.replay) window.replay.jump(sid, +b.dataset.o);
+  });
+  const more = $("pc-plays").querySelector(".pc-all");
+  if (more) more.onclick = (e) => { e.stopPropagation(); piecePlays(p, true); };
 }
 
 // --- session detail ----------------------------------------------------------

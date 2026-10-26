@@ -152,6 +152,10 @@ class PiecesApiTest(unittest.TestCase):
         self.assertGreaterEqual(len(view), len(simulate.REPERTOIRE))
         top = max(view, key=lambda r: r["active_seconds"])
         self.assertTrue(all(h["active_seconds"] > 0 for h in top["history"]))
+        # Each recording says where the piece starts in its session, for the ▶ in the list.
+        for h in top["history"]:
+            s = store.session(h["session"])
+            self.assertTrue(0 <= h["offset"] <= s["end"] - s["start"], h)
         self.assertIn(top["label"], [r["label"] for r in view])
 
         view = api.name_piece({"key": top["key"], "name": "  My   waltz "})

@@ -405,6 +405,9 @@ def pieces_view(matcher, named=(), session_starts=None):
         for k, s in enumerate(segs):
             h = per.setdefault(s["session"], {"session": s["session"], "start": s["start"],
                                               "active_seconds": 0.0, "_t": [0.0, 0.0], "_s": [0.0, 0.0]})
+            # Where to play this recording from: 1 s before the piece starts, like `opening`.
+            t0 = (session_starts or {}).get(s["session"], s["start"])
+            h.setdefault("offset", round(max(s["start"] - 1.0, t0) - t0, 2))
             h["active_seconds"] += s["active"]
             if tempo[k]:
                 h["_t"][0] += tempo[k] * s["active"]

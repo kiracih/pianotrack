@@ -64,7 +64,9 @@ Rules the recorder follows (see `pianotrack/recorder.py`):
   their index in `sessions` and the internal `key` is left out. A piece's per-session
   `tempo_bpm` comes from `pieces.piece_tempo`: five-note melody phrases are timed against
   the same phrases in the piece's other plays (relative speed), times one beat per piece
-  (its typical melody note, folded into 60–180 once). Since 2026-10-25; before, it was
+  (its typical melody note, folded into 60–180 once). Each history entry's `offset` is
+  where to play that recording from: 1 s before the piece's first stretch in that session (never before
+  the session start), in seconds from its start. Since 2026-10-25; before, it was
   the session tempo of each segment, which often read the left hand's double beat.
 
 ## Matching
