@@ -98,7 +98,13 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(inv(400, 1800, 300, 10), "23 min to your 30 min goal")  # ring shows 7
         self.assertEqual(inv(1795, 1800, 300, 10), "Goal met today")  # ring shows 100%
         self.assertEqual(inv(1800, 1800, 300, 10), "Goal met today")
-        for args in [(0, 1800, 300, 0), (0, 1800, 300, 40), (60, 1800, 300, 0), (1000, 1800, 300, 3)]:
+        # After a break: a welcome back, not a zero.
+        self.assertEqual(inv(0, 1800, 300, 0, 2), "One day off doesn't undo a habit. 5 min picks it back up.")
+        self.assertEqual(inv(0, 1800, 300, 0, 6), "Welcome back. 5 min is a good start.")
+        self.assertEqual(inv(0, 1800, 300, 0, None), "5 min starts a new run")
+        self.assertEqual(inv(0, 1800, 300, 4, 1), "5 min keeps your 4-day run going")
+        for args in [(0, 1800, 300, 0), (0, 1800, 300, 40), (60, 1800, 300, 0), (1000, 1800, 300, 3),
+                     (0, 1800, 300, 0, 2), (0, 1800, 300, 0, 30)]:
             line = inv(*args)
             self.assertNotIn("!", line)
             self.assertNotIn("lose", line.lower())
@@ -179,6 +185,15 @@ class BackfillTest(TmpStore):
         self.assertEqual(len(keys["histogram"]), 88)
         self.assertEqual(keys["total"], s["totals"]["notes"])
         self.assertEqual(api.keys(0)["total"], keys["total"])
+
+    def test_one_day_off_needs_a_streak_day_before_it(self):
+        api, t = Api(self.store), time.time() - 2 * 86400
+        sid = self.store.open_session(t)
+        self.store.close_session(sid, t + 60, {"active_seconds": 60, "note_count": 10})
+        self.assertEqual(api.summary()["today"]["invite"], "5 min starts a new run")
+        sid = self.store.open_session(t + 100)
+        self.store.close_session(sid, t + 500, {"active_seconds": 400, "note_count": 10})
+        self.assertTrue(api.summary()["today"]["invite"].startswith("One day off"))
 
     def test_assets_served(self):
         httpd = make_server(Api(self.store), "127.0.0.1", 0)

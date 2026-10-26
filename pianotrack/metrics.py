@@ -247,11 +247,14 @@ def streaks(days, min_seconds, today=None):
     return {"current": cur, "longest": longest}
 
 
-def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float, streak: int) -> str:
+def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float, streak: int,
+           days_since_last=None) -> str:
     """One calm line for Today: the next small step, never a scolding.
 
     `streak` is the current streak as `streaks` returns it, which counts today
-    only once today has reached `streak_min_seconds`.
+    only once today has reached `streak_min_seconds`. `days_since_last` is how
+    many days ago you last played at least `streak_min_seconds` (None if not in
+    the history), so a break is met with a welcome back rather than a zero.
     """
     # Goal minutes round the way the ring shows them, so the two always agree.
     if goal_seconds and round(100 * today_seconds / goal_seconds) >= 100:
@@ -260,6 +263,10 @@ def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float,
         need = max(1, math.ceil((streak_min_seconds - today_seconds) / 60))
         if streak:
             return f"{need} min keeps your {streak}-day run going"
+        if not today_seconds and days_since_last == 2:
+            return f"One day off doesn't undo a habit. {need} min picks it back up."
+        if not today_seconds and (days_since_last or 0) > 2:
+            return f"Welcome back. {need} min is a good start."
         return f"{need} min starts a new run" if not today_seconds else f"{need} min more starts a new run"
     goal_min = round(goal_seconds / 60)
     return f"{max(1, goal_min - round(today_seconds / 60))} min to your {goal_min} min goal"

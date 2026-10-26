@@ -104,6 +104,10 @@ class Api:
             records["best_day"] = {"date": bd[0].isoformat(),
                                    "active_seconds": round(bd[1]["active_seconds"])}
         streak = metrics.streaks(days, settings["streak_min_minutes"] * 60, today)
+        # Last day that counted toward a streak, so "one day off" only follows a real habit day.
+        played = [d for d, v in days.items()
+                  if d <= today and v["active_seconds"] >= settings["streak_min_minutes"] * 60]
+        last_played = (today - max(played)).days if played else None
         week_secs = sum(w["active_seconds"] for w in week)
         prev_week = sum(days.get(today - timedelta(days=i), empty)["active_seconds"]
                         for i in range(7, 14))
@@ -115,7 +119,7 @@ class Api:
                       "load": round(t["load"], 1), "goal_seconds": goal,
                       "goal_pct": round(100 * t["active_seconds"] / goal) if goal else 0,
                       "invite": metrics.invite(t["active_seconds"], goal, settings["streak_min_minutes"] * 60,
-                                               streak["current"])},
+                                               streak["current"], last_played)},
             "week": week,
             "week_total_seconds": round(week_secs),
             "prev_week_total_seconds": round(prev_week),
