@@ -163,6 +163,12 @@ tr.sel td { background: var(--accent-soft) !important; }
 .seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12px; background: var(--surface); color: var(--text-2); }
 .seg button + button { border-left: 1px solid var(--border); }
 .seg button.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+.keys3d[hidden], .legend[hidden] { display: none; }
+.keys3d { position: relative; height: 240px; margin: 4px 0 8px; cursor: grab; }
+.keys3d canvas { width: 100%; height: 100%; display: block; }
+.k3-tip { position: absolute; top: 6px; font-size: 13px; padding: 3px 8px; border-radius: 6px;
+  background: var(--surface); border: 1px solid var(--border); opacity: 0; transition: opacity .15s; pointer-events: none; }
+@media (max-width: 700px) { .keys3d { height: 200px; } }
 .topkeys { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--text-2); }
 .topkeys b { color: var(--text); }
 .chip { border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
@@ -303,6 +309,8 @@ footer a { color: var(--text-2); }
           <button data-days="7">7 days</button><button data-days="30" class="on">30 days</button><button data-days="90">90 days</button><button data-days="0">All</button>
         </span>
       </h2>
+      <div class="keys3d" id="keys-3d" hidden></div>
+      <div class="legend" id="keys-3d-note" hidden>Each key grows with how much you played it; brass marks your three most played keys. Drag to move along the keyboard, tap a key for its count.</div>
       <div class="scroll-x"><div id="all-keys"></div></div>
       <div class="legend" id="keys-legend"></div>
       <div class="topkeys" id="top-keys"></div>
@@ -1010,14 +1018,39 @@ $("pw-form").onsubmit = async (e) => {
 };
 
 let keyDays = 30;
+// The 3D key map loads three.js (bundled, about 720 KB) only when the card scrolls
+// into view and the browser has WebGL; otherwise the flat map is all you see.
+let k3 = null, k3hist = null, k3wait = false;
+function keys3d(hist) {
+  k3hist = hist;
+  // A range with no notes shows the flat map's message, not old columns.
+  $("keys-3d").style.display = $("keys-3d-note").style.display = hist ? "" : "none";
+  if (!hist) return;
+  if (k3) return k3.update(hist);
+  if (k3wait || !window.WebGLRenderingContext) return;
+  k3wait = true;
+  const box = $("keys-3d");
+  const io = new IntersectionObserver(async ([e]) => {
+    if (!e.isIntersecting) return;
+    io.disconnect();
+    try {
+      box.hidden = false;
+      k3 = (await import("/keys3d.js")).mount(box, { noteName, fmtNum });
+      if (k3) { if (k3hist) k3.update(k3hist); $("keys-3d-note").hidden = false; } else box.hidden = true;
+    } catch (err) { console.error(err); box.hidden = true; }
+  }, { rootMargin: "200px" });
+  io.observe(box.parentElement);
+}
 async function loadKeys() {
   const k = await get(`/api/keys?days=${keyDays}`);
   const label = keyDays ? `last ${keyDays} days` : "all time";
   if (!k.total) {
     $("all-keys").innerHTML = `<div class="empty">No notes in the ${label} yet.</div>`;
+    keys3d(null);
     $("keys-legend").innerHTML = ""; $("top-keys").innerHTML = ""; $("top-black").innerHTML = ""; return;
   }
   keyboard(k.histogram, "all-keys");
+  keys3d(k.histogram);
   $("keys-legend").innerHTML = `<span>${fmtNum(k.total)} notes in ${k.sessions} sessions, ${label}</span>` +
     [1, 2, 3, 4].map((l) => `<span><i style="background:var(--kseq-${l})"></i>${l === 1 ? "few" : l === 4 ? "most" : ""}</span>`).join("");
   const ranked = k.histogram.map((c, i) => [i + 21, c]).filter(([, c]) => c).sort((a, b) => b[1] - a[1]);

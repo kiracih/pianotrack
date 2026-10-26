@@ -12,7 +12,7 @@ const base = process.argv[2] || "http://localhost:8099";
 const executablePath = process.argv[3] || process.env.CHROMIUM_PATH || undefined;
 const out = new URL("../docs/", import.meta.url).pathname;
 
-const browser = await chromium.launch({ executablePath, args: ["--autoplay-policy=no-user-gesture-required"] });
+const browser = await chromium.launch({ executablePath, args: ["--autoplay-policy=no-user-gesture-required", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const errors = [];
 
 async function open(width, scheme) {
@@ -39,6 +39,11 @@ for (const p of await (await req.get(base + "/api/pieces")).json()) {
 
 // Main dashboard, light, desktop: everything above the session list.
 let page = await open(1100, "light");
+// The 3D key map loads when its card scrolls into view; let the columns finish rising.
+await page.locator("#all-keys").scrollIntoViewIfNeeded();
+await page.waitForSelector("#keys-3d-note:not([hidden])", { timeout: 15000 });
+await page.waitForTimeout(2500);
+await page.evaluate(() => window.scrollTo(0, 0));
 await page.screenshot({ path: out + "dashboard.png", fullPage: true, clip: await page.evaluate(() => {
   const r = document.querySelector("#all-keys").closest("section").getBoundingClientRect();
   return { x: 0, y: 0, width: 1100, height: r.bottom + window.scrollY + 16 };

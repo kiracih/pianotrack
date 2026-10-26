@@ -21,7 +21,10 @@ from .midi import write_smf
 log = logging.getLogger(__name__)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 ASSETS = {"/manifest.webmanifest": "application/manifest+json", "/icon.svg": "image/svg+xml",
-          "/icon-180.png": "image/png", "/icon-512.png": "image/png", "/replay.js": "text/javascript; charset=utf-8"}
+          "/icon-180.png": "image/png", "/icon-512.png": "image/png", "/replay.js": "text/javascript; charset=utf-8",
+          "/keys3d.js": "text/javascript; charset=utf-8"}
+# Bundled libraries (three.js, MIT). The version is in the path, so browsers may keep them.
+VENDOR = {"/vendor/three-0.180.0/three.module.min.js", "/vendor/three-0.180.0/three.core.min.js"}
 SESSION_FIELDS = ["start", "end", "duration_seconds", "active_seconds", "note_count",
                   "notes_per_minute", "velocity_mean", "dynamic_range", "tempo_bpm",
                   "steadiness", "intensity", "load", "sustain_fraction", "unique_keys",
@@ -454,6 +457,10 @@ def make_handler(api, tunnel=False, allowed_hosts=()):
                 if path in ASSETS:
                     with open(os.path.join(STATIC, path[1:]), "rb") as f:
                         return self._send(200, f.read(), ASSETS[path])
+                if path in VENDOR:
+                    with open(os.path.join(STATIC, path[1:]), "rb") as f:
+                        return self._send(200, f.read(), "text/javascript; charset=utf-8",
+                                          {"Cache-Control": "public, max-age=31536000"})
                 m = re.fullmatch(r"/piano/([A-G]s?[0-8])\.mp3", path)
                 if m and os.path.exists(os.path.join(STATIC, "piano", m.group(1) + ".mp3")):
                     with open(os.path.join(STATIC, "piano", m.group(1) + ".mp3"), "rb") as f:
