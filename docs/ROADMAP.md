@@ -136,7 +136,7 @@ are S, change no stored data and send nothing off the Pi.
 | Pieces | Demo that learns over weeks (tempo up, fewer wrong notes), so fixes can be checked against a known trend (high, S, prototype ready); pinned First / Best / Latest recordings (med, S); absolute tempo still ×1.8–2 high on eighth-note pieces (high, M); longest unbroken stretch per piece as a personal best (high, M); steady-tempo record (med, S after #1); make the demo learn over weeks (med, S) |
 | Practice insight | Steadiness as a share of the beat, fair to slow practice (high, S–M, with Now #1); "Ready for +5 bpm / Pushing too fast / Consolidating" per piece (high, M); trends within each piece (med, S) |
 | Replay & session detail | Loop a span, ±5 s, Space plays (Next #2, high, S); stumble map per piece (high, M; finds a hard bar in 4/4 pieces after 30 days with the score, only 2/4 without, so it waits for score check step 1); intensity chart seeks the replay (med, S) |
-| Trust & access | Warm Pieces in the background at startup and when a session closes (high, S: cold start still 17 s); restore refuses while the service runs and the README gets fresh-card steps (med, S); backups say what they hold (high, S) |
+| Trust & access | Pieces and session pages answer at once while Pieces warms up (warm loop every 20 s, stale view or "Finding your pieces… 120 of 406"; session page waits 16.6 s today) (high, S); smaller segment cache (about 170 MB → under 100 MB with 400 days) (med, S–M); restore refuses while the service runs and the README gets fresh-card steps (med, S); backups say what they hold (high, S) |
 | Design (lead) | Share card for the week (1080×1350, made on the device, shared via the share sheet; mockups ready) (high, S–M); Monday shows last week's octave ghosted (med, S); Today without the ring (patch ready; drops notes today and load from Today): a serif sentence, small figures (med, S); fewer boxes: records and settings on plaster (med, S); step 3 engraved dynamics and locale (med, S) |
 
 | Section | Covers | Next review's focus |
@@ -146,7 +146,7 @@ are S, change no stored data and send nothing off the Pi.
 | Pieces | matcher, Pieces card, per-piece progress, naming | Land the learning demo, then measure the longest unbroken stretch against the true stop rate |
 | Practice insight | trends, session metrics, zones, dynamics, key map | Steadiness as a share of the beat: the recompute plan for stored sessions (backup first) |
 | Replay & session detail | player, keyboard, downloads, session page | Score check step 1, so the stumble map gets bar positions it can trust |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Cold-start cost with background warm-up; memory use on the Pi with a year of data |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Keep closed sessions' segments in SQLite so a cold start skips about 11 s of rereading (new table, owner's go); time the cold start on the Pi |
 | Design (lead) | identity, layout, type, colour, motion, copy | Monday's ghosted last week, and step 3: 24-hour times and the theme toggle glyph |
 
 ## App target
