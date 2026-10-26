@@ -48,7 +48,12 @@ the same way a band's calorie count is. They are not a teacher's grade.
 ![Session replay](docs/replay.png)
 
 **Session replay:** open any session and press play to hear it back with a grand piano
-sound while the keyboard lights up the keys as you pressed them. Sustain and soft pedal
+sound. With **Falling notes** (on by default where the browser has WebGL) the notes travel
+down a lane onto a 3D keyboard, the next four seconds in view, each note as long as you
+held it and taller when played louder; while it sounds the note warms towards brass and
+its key goes down, and the view frames the range of keys the session used. Untick it for the flat
+88-key keyboard that lights up the keys as you pressed them; the choice is remembered on
+that device. While paused it redraws only when you seek, resize or switch theme. Sustain and soft pedal
 are honoured, playback speed goes from 0.5× to 2×, and "skip pauses" squeezes long
 silences so you hear only the playing. The piano samples ship with the app, so replay
 works without internet.

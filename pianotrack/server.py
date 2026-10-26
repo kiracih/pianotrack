@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 ASSETS = {"/manifest.webmanifest": "application/manifest+json", "/icon.svg": "image/svg+xml",
           "/icon-180.png": "image/png", "/icon-512.png": "image/png", "/replay.js": "text/javascript; charset=utf-8",
-          "/keys3d.js": "text/javascript; charset=utf-8"}
+          "/keys3d.js": "text/javascript; charset=utf-8", "/piano3d.js": "text/javascript; charset=utf-8",
+          "/falling3d.js": "text/javascript; charset=utf-8"}
 # Bundled libraries (three.js, MIT). The version is in the path, so browsers may keep them.
 VENDOR = {"/vendor/three-0.180.0/three.module.min.js", "/vendor/three-0.180.0/three.core.min.js"}
 SESSION_FIELDS = ["start", "end", "duration_seconds", "active_seconds", "note_count",

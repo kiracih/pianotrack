@@ -71,8 +71,8 @@ await (await page.$("#backup-box")).screenshot({ path: out + "backup.png" });
 await page.click("#sessions tr:nth-child(2)");
 await page.waitForTimeout(600);
 await page.click(".rp-play");
-await page.waitForFunction(() => document.querySelectorAll(".rp-k.on").length > 0, null, { timeout: 15000 });
-await page.waitForTimeout(400);
+// Playing for a few seconds puts falling notes on the keys (or lights the flat keyboard).
+await page.waitForFunction(() => /^0:0[3-9]/.test(document.querySelector(".rp-time").textContent), null, { timeout: 20000 });
 await page.click(".rp-play");
 await (await page.$("#replay")).screenshot({ path: out + "replay.png" });
 await (await page.$("#detail-card")).screenshot({ path: out + "session.png" });

@@ -2,65 +2,29 @@
 // rising from each key as high as you played it. The flat key map below stays the
 // exact, accessible view; this one is for the feel of it. three.js is bundled in
 // /vendor (MIT), nothing is loaded from the internet.
-import * as THREE from "/vendor/three-0.180.0/three.module.min.js";
+import { THREE, LOW, HIGH, WW, WL, BW, KH, isBlack, span, pos, css, renderer as makeRenderer, fitWidth, lights, keyboard, onTheme } from "/piano3d.js";
 
-const LOW = 21, HIGH = 108, TOP = 3;
-const isBlack = (p) => [1, 3, 6, 8, 10].includes(p % 12);
-const WW = 1, WL = 6, BW = 0.58, BL = 3.8, KH = 0.7, MAXH = 7;
-
-function css(name) {
-  return new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#999");
-}
+const TOP = 3, MAXH = 7;
 
 // Mount the view in `box`. Returns {update(hist)} or null when WebGL is missing.
 export function mount(box, { noteName, fmtNum }) {
-  let renderer;
-  try {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  } catch (e) {
-    return null;
-  }
+  const renderer = makeRenderer(box);
+  if (!renderer) return null;
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
-  renderer.domElement.setAttribute("aria-hidden", "true");
-  box.appendChild(renderer.domElement);
   const tip = document.createElement("div");
   tip.className = "k3-tip";
   box.appendChild(tip);
 
   const scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x443033, 1.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-  sun.position.set(-8, 20, 14);
-  scene.add(sun);
+  lights(scene);
+  const kb = keyboard(scene);
+  const brass = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.6 });
 
-  // Keys laid out like the flat map: white keys side by side, black keys between.
-  const whites = [];
-  for (let p = LOW; p <= HIGH; p++) if (!isBlack(p)) whites.push(p);
-  const x0 = -whites.length * WW / 2, pos = {};
-  whites.forEach((p, i) => pos[p] = x0 + i * WW + WW / 2);
-  for (let p = LOW; p <= HIGH; p++) if (isBlack(p)) pos[p] = pos[p - 1] + WW / 2;
-  const span = whites.length * WW;
-
-  const mat = {
-    white: new THREE.MeshStandardMaterial({ roughness: 0.45 }),
-    black: new THREE.MeshStandardMaterial({ roughness: 0.35 }),
-    felt: new THREE.MeshStandardMaterial({ roughness: 1 }),
-    brass: new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.6 }),
-  };
-  const felt = new THREE.Mesh(new THREE.BoxGeometry(span + 1, 0.3, 1.2), mat.felt);
-  felt.position.set(0, KH * 0.9, -WL / 2 - 0.6);
-  scene.add(felt);
-
-  const keys = [], cols = [];
+  const keys = Object.values(kb.keys), cols = [];
   const unit = new THREE.BoxGeometry(1, 1, 1);
   unit.translate(0, 0.5, 0);
   for (let p = LOW; p <= HIGH; p++) {
-    const b = isBlack(p);
-    const key = new THREE.Mesh(new THREE.BoxGeometry(b ? BW : WW * 0.94, KH, b ? BL : WL), b ? mat.black : mat.white);
-    key.position.set(pos[p], b ? KH * 0.95 : KH / 2, b ? -(WL - BL) / 2 : 0);
-    key.userData.p = p;
-    scene.add(key); keys.push(key);
+    const b = isBlack(p), key = kb.keys[p];
     // The column stands on the back of the key, so the front stays a keyboard.
     const col = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ roughness: 0.8 }));
     col.scale.set(b ? BW * 0.8 : WW * 0.62, 0.001, 1.4);
@@ -75,12 +39,11 @@ export function mount(box, { noteName, fmtNum }) {
   let hist = new Array(88).fill(0), total = 1, panX = 0, panTo = 0, fit = 1;
 
   function paint() {
-    mat.white.color = css("--key-white"); mat.black.color = css("--key-black");
-    mat.felt.color = css("--accent"); mat.brass.color = css("--good");
+    kb.paint(); brass.color = css("--good");
     const lo = css("--seq-1"), hi = css("--seq-3"), max = Math.max(...hist) || 1;
     const top = hist.map((c, i) => [c, i]).filter(([c]) => c).sort((a, b) => b[0] - a[0]).slice(0, TOP).map(([, i]) => i);
     cols.forEach((c, i) => {
-      if (top.includes(i)) c.material.color.copy(mat.brass.color);
+      if (top.includes(i)) c.material.color.copy(brass.color);
       else c.material.color.copy(lo).lerp(hi, Math.sqrt(hist[i] / max));
     });
     need();
@@ -89,16 +52,11 @@ export function mount(box, { noteName, fmtNum }) {
   // Phones see about two and a half octaves at a time and slide along the keys;
   // wider screens see the whole keyboard.
   function resize() {
-    const w = box.clientWidth, h = box.clientHeight;
-    if (!w || !h) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
-    const want = w < 700 ? 22 : span + 2;
+    const want = box.clientWidth < 700 ? 22 : span + 2;
+    const dist = fitWidth(renderer, camera, box, want);
+    if (!dist) return;
     fit = want / span;
-    const dist = (want / 2) / Math.tan(hfov / 2);
     camera.position.set(0, dist * 0.55, dist * 0.85);
-    camera.updateProjectionMatrix();
     clampPan();
     need();
   }
@@ -174,8 +132,7 @@ export function mount(box, { noteName, fmtNum }) {
   new ResizeObserver(resize).observe(box);
   new IntersectionObserver(([en]) => { onScreen = en.isIntersecting; need(); }).observe(box);
   document.addEventListener("visibilitychange", need);
-  new MutationObserver(paint).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
+  onTheme(paint);
 
   return {
     update(h) {

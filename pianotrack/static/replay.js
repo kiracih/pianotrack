@@ -163,7 +163,9 @@ class Replay {
           <option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option>
         </select>
         <label class="rp-skip"><input type="checkbox" checked> Skip pauses</label>
+        <label class="rp-skip rp-fall" hidden><input type="checkbox"> Falling notes</label>
       </div>
+      <div class="rp-3d" hidden></div>
       <div class="rp-kbd"></div>
       <div class="rp-status"><span class="rp-sus">Sustain</span><span class="rp-soft">Soft</span><span class="rp-msg"></span></div>`;
     this.$ = (sel) => r.querySelector(sel);
@@ -174,9 +176,32 @@ class Replay {
       const frac = this.prep ? this.pos / this.prep.duration : 0;
       const was = this.playing; this.pause();
       this.skip = e.target.checked; this.prep = prepare(this.data, this.skip);
+      if (this.view) this.view.setNotes(this.prep, (t) => this.firstIndexFrom(t));
       this.pos = frac * this.prep.duration; this.draw(); if (was) this.play();
     };
     this.drawKeyboard();
+  }
+
+  // An optional 3D view (falling3d.js) that follows the player. "Falling notes"
+  // swaps it with the flat keyboard; the choice is remembered on this device.
+  attachView(view) {
+    this.view = view;
+    const box = this.$(".rp-fall input");
+    let on = true;
+    try { on = localStorage.getItem("pianotrack.falling") !== "off"; } catch (e) { /* private mode */ }
+    box.checked = on;
+    this.$(".rp-fall").hidden = false;
+    const show = () => {
+      this.$(".rp-3d").hidden = !box.checked;
+      this.$(".rp-kbd").hidden = box.checked;
+      if (this.prep) this.view.setNotes(this.prep, (t) => this.firstIndexFrom(t));
+      this.draw();
+    };
+    box.onchange = () => {
+      try { localStorage.setItem("pianotrack.falling", box.checked ? "on" : "off"); } catch (e) { /* private mode */ }
+      show();
+    };
+    show();
   }
 
   drawKeyboard() {
@@ -218,6 +243,7 @@ class Replay {
     if (!r.ok || this.id !== id) return;
     this.data = await r.json();
     this.prep = prepare(this.data, this.skip);
+    if (this.view) this.view.setNotes(this.prep, (t) => this.firstIndexFrom(t));
     this.pos = 0;
     this.draw();
   }
@@ -309,15 +335,18 @@ class Replay {
   draw() {
     if (!this.prep) return;
     const t = this.pos, n = this.prep.notes;
-    const down = new Map();
-    // Notes that could still be held at t start no earlier than t - maxHold.
-    for (let i = this.firstIndexFrom(t + 1e-6) - 1; i >= 0 && n[i].on >= t - this.prep.maxHold; i--) {
-      if (n[i].on <= t && t < n[i].off) down.set(n[i].pitch, Math.max(down.get(n[i].pitch) || 0, n[i].vel));
-    }
-    for (const [p, k] of Object.entries(this.keys)) {
-      const v = down.get(+p);
-      k.classList.toggle("on", v !== undefined);
-      k.style.opacity = v !== undefined ? (0.45 + 0.55 * v / 127).toFixed(2) : "";
+    if (this.view && !this.$(".rp-3d").hidden) this.view.draw(t);
+    if (!this.$(".rp-kbd").hidden) {
+      const down = new Map();
+      // Notes that could still be held at t start no earlier than t - maxHold.
+      for (let i = this.firstIndexFrom(t + 1e-6) - 1; i >= 0 && n[i].on >= t - this.prep.maxHold; i--) {
+        if (n[i].on <= t && t < n[i].off) down.set(n[i].pitch, Math.max(down.get(n[i].pitch) || 0, n[i].vel));
+      }
+      for (const [p, k] of Object.entries(this.keys)) {
+        const v = down.get(+p);
+        k.classList.toggle("on", v !== undefined);
+        k.style.opacity = v !== undefined ? (0.45 + 0.55 * v / 127).toFixed(2) : "";
+      }
     }
     const sus = this.prep.sustain.some(([a, b]) => a <= t && t < b);
     this.$(".rp-sus").classList.toggle("on", sus);

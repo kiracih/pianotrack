@@ -179,6 +179,10 @@ tr.sel td { background: var(--accent-soft) !important; }
 .rp-speed { font: inherit; font-size: 13px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .rp-skip { font-size: 13px; color: var(--text-2); display: inline-flex; gap: 4px; align-items: center; }
 .rp-kbd { overflow-x: auto; }
+.rp-kbd[hidden], .rp-3d[hidden], .rp-fall[hidden] { display: none; }
+.rp-3d { height: 340px; border-radius: 10px; overflow: hidden; }
+.rp-3d canvas { width: 100%; height: 100%; display: block; }
+@media (max-width: 700px) { .rp-3d { height: 300px; } }
 .rp-k.rp-w { fill: var(--key-white); stroke: var(--border); }
 .rp-k.rp-b { fill: var(--key-black); }
 .rp-k.on { fill: var(--accent); }
@@ -326,7 +330,7 @@ footer a { color: var(--text-2); }
           <button id="d-close">Close</button>
         </div>
       </div>
-      <div class="sub-h" style="margin-top:0">Replay <span style="font-weight:400;color:var(--muted)">(grand piano sound, keys light up as played)</span></div>
+      <div class="sub-h" style="margin-top:0">Replay <span style="font-weight:400;color:var(--muted)">(grand piano sound, notes fall onto the keys as played)</span></div>
       <div id="replay" style="margin-bottom:18px"></div>
       <div class="dtiles" id="d-tiles"></div>
       <div class="legend" id="d-pieces"></div>
@@ -845,7 +849,7 @@ function keyboard(hist, target) {
 
 async function openSession(id) {
   selected = id;
-  if (window.replay) window.replay.load(id);
+  if (window.replay) { window.replay.load(id); falling(); }
   const d = await get(`/api/sessions/${id}`), m = d.metrics;
   $("detail-card").style.display = "";
   $("d-title").textContent = `${fmtWhen(d.start)}${d.closed ? "" : ", in progress"}`;
@@ -1111,7 +1115,21 @@ loop();
 <script src="/replay.js"></script>
 <script>
 window.replay = new Replay(document.getElementById("replay"));
-if (selected) window.replay.load(selected);
+// Falling notes load with three.js the first time a session opens, where WebGL works.
+let fallWait = false;
+function falling() {
+  if (fallWait || !window.WebGLRenderingContext) return;
+  fallWait = true;
+  const box = document.querySelector("#replay .rp-3d");
+  let off = false;
+  try { off = localStorage.getItem("pianotrack.falling") === "off"; } catch (e) { /* private mode */ }
+  if (!off) box.hidden = false;
+  import("/falling3d.js").then((m) => {
+    const view = m.mount(box);
+    if (view) window.replay.attachView(view); else box.hidden = true;
+  }).catch((e) => { console.error(e); box.hidden = true; });
+}
+if (selected) { window.replay.load(selected); falling(); }
 </script>
 </body>
 </html>

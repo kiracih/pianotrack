@@ -206,7 +206,7 @@ class BackfillTest(TmpStore):
             for path in ("/replay.js", "/piano/A0.mp3", "/piano/C8.mp3", "/piano/Fs4.mp3"):
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
-            for path in ("/keys3d.js", "/vendor/three-0.180.0/three.module.min.js", "/vendor/three-0.180.0/three.core.min.js"):
+            for path in ("/keys3d.js", "/piano3d.js", "/falling3d.js", "/vendor/three-0.180.0/three.module.min.js", "/vendor/three-0.180.0/three.core.min.js"):
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
                     self.assertIn("javascript", r.headers["Content-Type"])
