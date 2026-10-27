@@ -14,11 +14,11 @@ Previous: 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pie
 
 At most three. Proposed 2026-10-23; nothing is built until the owner says go.
 
-### 1. Steadiness that is fair to slow practice (insight, S–M) · next
+### 1. Metrics you'd actually use (insight, research 2026-10-27)
 
-The same 3.5% unevenness scores 61 at 60 bpm and 81 at 140 bpm, because steadiness uses
-absolute milliseconds. Measure it as a share of the local beat; keep `timing_error_ms`.
-Acceptance: 3.5% jitter at 60/100/140 bpm scores within ±3; vectors regenerated.
+Owner, 2026-10-27: steadiness and the other session numbers are hard to understand and
+not used. Research of clearer alternatives is in the thread and project files
+(metrics-research/); the owner picks which to build.
 
 ### 2. Does phone-only capture work? A 10-minute check (app path, no code)
 
@@ -276,6 +276,9 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Decided and rejected
 
+- 2026-10-27: **Approved and built: fair steadiness (past sessions recomputed once,
+  copy kept), session uid and device for syncing, Pieces segments kept in the
+  database so a restart never makes the page wait** (owner: "make all those 3").
 - 2026-10-25: **Approved and built: tempo per piece, the octave week, a weekly days
   target** beside the streak (owner: "make all three"). The streak stays.
 - 2026-10-22: **Rejected: "today's pieces" on the Today card** (owner didn't like it).
@@ -304,6 +307,11 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-10-27 evening (owner go): steadiness as a share of the beat (a 3.5% wobble
+  scores about 75 at any tempo; stored sessions recomputed in the background after
+  start, copy kept as `<db>.pre-metrics-v2.db`); every session has a `uid` and
+  `device`; Pieces keep each session's segments (migration 3), `/api/pieces` answers
+  503 "warming" instead of making you wait.
 - 2026-10-27: Today: on Mondays, how last week went ("Last week: 6 of 5 days, 3h 10m.
   Target met."), `last_week` in `/api/summary`. Falling notes easier to read: pressed
   keys in felt shades, a brass landing line, 230 px on phones, nothing drawn off screen.
