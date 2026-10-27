@@ -37,6 +37,12 @@ export function mount(box) {
     lines.geometry = new THREE.BufferGeometry().setFromPoints(pts);
   }
 
+  // A brass line where the notes land, so the moment a note sounds is easy to see.
+  const hitLineMat = new THREE.MeshBasicMaterial();
+  const hitLine = new THREE.Mesh(new THREE.BoxGeometry(1, 0.06, 0.14), hitLineMat);
+  hitLine.position.set(0, KH + 0.03, back - 0.07);
+  scene.add(hitLine);
+
   // Notes are instances of one box, drawn only while inside the lane.
   const unit = new THREE.BoxGeometry(1, 1, 1);
   const noteMat = new THREE.MeshStandardMaterial({ roughness: 0.5 });
@@ -51,6 +57,9 @@ export function mount(box) {
 
   const camera = new THREE.PerspectiveCamera(34, 2, 0.1, 400);
   const colour = {};
+  let onScreen = true;
+  const hits = { white: new THREE.MeshStandardMaterial({ roughness: 0.4 }),
+                 black: new THREE.MeshStandardMaterial({ roughness: 0.4 }) };
   let notes = [], first = () => 0, maxHold = 0, t = 0, centre = 0, width = 30, down = new Set();
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3();
   const tint = new THREE.Color();
@@ -58,6 +67,10 @@ export function mount(box) {
   function paint() {
     kb.paint();
     colour.white = css("--accent"); colour.black = css("--accent").lerp(css("--text"), 0.4); colour.hit = css("--good");
+    // Pressed keys take the key map's felt shades, which stay the same in both themes:
+    // the dark one on ivory, the light one on ebony, both well apart from their neighbours.
+    hits.white.color = css("--kseq-3"); hits.black.color = css("--kseq-2");
+    hitLineMat.color = css("--good");
     laneMat.color = css("--key-black").lerp(css("--accent"), 0.12);
     lineMat.color = css("--key-white");
     // The far end of the lane fades into the card, so notes arrive out of the mist.
@@ -74,6 +87,7 @@ export function mount(box) {
     camera.position.set(centre, dist * 0.8, WL / 2 + dist * 0.42);
     camera.lookAt(centre, 0, back - AHEAD * Z * 0.3);
     lane.scale.x = width + 2; lane.position.x = centre;
+    hitLine.scale.x = width + 2; hitLine.position.x = centre;
     if (scene.fog) {
       const toKeys = camera.position.distanceTo(v.set(centre, 0, back));
       scene.fog.near = toKeys + AHEAD * Z * 0.35;
@@ -83,6 +97,7 @@ export function mount(box) {
   }
 
   function render() {
+    if (!onScreen) return;  // brought up to date when it scrolls back into view
     // Notes that may still sound at t start no earlier than t - maxHold.
     let i = first(t - maxHold), n = 0;
     const end = first(t + AHEAD), now = new Set();
@@ -116,14 +131,10 @@ export function mount(box) {
     down = now;
     renderer.render(scene, camera);
   }
-  const hits = {};
-  function hitMat(p) {
-    const key = isBlack(p) ? "black" : "white";
-    if (!hits[key]) hits[key] = new THREE.MeshStandardMaterial({ roughness: 0.4 });
-    hits[key].color.copy(kb.mat[key].color).lerp(colour.white, 0.6);
-    return hits[key];
-  }
+  const hitMat = (p) => hits[isBlack(p) ? "black" : "white"];
 
+  // Scrolled out of view, the replay keeps playing but nothing is drawn.
+  new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; if (onScreen) render(); }).observe(box);
   new ResizeObserver(frame).observe(box);
   onTheme(paint);
   paint();
