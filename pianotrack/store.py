@@ -5,6 +5,7 @@ import os
 import sqlite3
 import threading
 import urllib.parse
+import uuid
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
@@ -55,8 +56,24 @@ CREATE TABLE IF NOT EXISTS settings (
 # old one; Store() brings any older database up to date when it opens it.
 MIGRATIONS = [
     SCHEMA,  # 1
+    # 2: a lasting identity for each session and the device that recorded it, so
+    # syncing the Pi with the app (or a capture stick) can be re-run without copies.
+    # Store() fills in both for existing sessions.
+    """ALTER TABLE sessions ADD COLUMN uid TEXT;
+    ALTER TABLE sessions ADD COLUMN device TEXT;
+    CREATE UNIQUE INDEX sessions_uid ON sessions(uid)""",
+    # 3: each closed session's piece segments, so Pieces needn't reread every note
+    # after a restart. Only a cache: rebuilt whenever `engine` (a hash of the
+    # segmenting code) or the session's start changes.
+    """CREATE TABLE piece_segments (
+        session_id INTEGER PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+        start      REAL NOT NULL,
+        engine     TEXT NOT NULL,
+        data       BLOB NOT NULL
+    )""",
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
+UID_NAMESPACE = uuid.UUID("5b0c1f8e-6a3d-4c2b-9e7f-2d4a8c6e1b30")
 
 
 def migrate(db, steps=MIGRATIONS):
@@ -101,6 +118,19 @@ class Store:
         self._db.execute("PRAGMA journal_mode=WAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         migrate(self._db)
+        # This database's device id, made once; sessions without one were recorded here.
+        row = self._db.execute("SELECT value FROM settings WHERE key='device_id'").fetchone()
+        self.device = json.loads(row[0]) if row else uuid.uuid4().hex
+        with self._db:
+            if not row:
+                self._db.execute("INSERT INTO settings(key, value) VALUES ('device_id', ?)",
+                                 (json.dumps(self.device),))
+            self._db.execute("UPDATE sessions SET device=? WHERE device IS NULL", (self.device,))
+            # Sessions from before uids get one made from their id and start, so a
+            # backup from before the upgrade gives the same recordings the same uids.
+            self._db.executemany("UPDATE sessions SET uid=? WHERE id=?", [
+                (str(uuid.uuid5(UID_NAMESPACE, f"{sid}/{start!r}")), sid) for sid, start in
+                self._db.execute("SELECT id, start FROM sessions WHERE uid IS NULL").fetchall()])
 
     def close(self):
         with self._lock:
@@ -119,8 +149,8 @@ class Store:
     # --- writes ---
 
     def open_session(self, start, source=None):
-        return self._x("INSERT INTO sessions(start, end, source) VALUES (?, ?, ?)",
-                       (start, start, source))
+        return self._x("INSERT INTO sessions(start, end, source, uid, device) VALUES (?, ?, ?, ?, ?)",
+                       (start, start, source, str(uuid.uuid4()), self.device))
 
     def touch_session(self, sid, end):
         self._x("UPDATE sessions SET end=? WHERE id=?", (end, sid))
@@ -128,6 +158,22 @@ class Store:
     def close_session(self, sid, end, metrics):
         self._x("UPDATE sessions SET end=?, closed=1, metrics=? WHERE id=?",
                 (end, json.dumps(metrics), sid))
+
+    # Pieces segments of closed sessions: a cache, rebuildable from the notes.
+    def stored_segments(self, engine, ids):
+        out = {}
+        for i in range(0, len(ids), 500):  # SQLite caps the number of parameters
+            part = ids[i:i + 500]
+            out.update({r["session_id"]: (r["start"], r["data"]) for r in self._q(
+                f"SELECT session_id, start, data FROM piece_segments WHERE engine=? "
+                f"AND session_id IN ({','.join('?' * len(part))})", (engine, *part))})
+        return out
+
+    def save_segments(self, rows):
+        """rows: (session id, session start, engine, packed segments)."""
+        with self._lock:
+            with self._db:
+                self._db.executemany("INSERT OR REPLACE INTO piece_segments VALUES (?, ?, ?, ?)", rows)
 
     def delete_session(self, sid):
         self._x("DELETE FROM sessions WHERE id=?", (sid,))

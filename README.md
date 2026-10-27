@@ -22,7 +22,7 @@ No phone app, no cloud, no extra Python packages.
 | Notes, notes per minute | Volume of playing and how dense it was while playing. |
 | Effort zones | Like heart-rate zones: time spent at Rest / Light / Moderate / Vigorous / Peak note density. |
 | Intensity and load | A 0 to 100 effort figure from density and loudness, and load = active minutes × intensity / 50. |
-| Steadiness, est. tempo | How evenly notes land on a rhythmic grid, measured as a share of the beat so slow practice is judged as fairly as fast playing (100 = metronomic; about 78 means notes land 3.5% of a beat early or late, at any tempo), plus the dominant tempo. Since 2026-10-27; past sessions were recomputed once, after a copy of the database was kept. |
+| Steadiness, est. tempo | How evenly notes land on a rhythmic grid, measured as a share of the beat so slow practice is judged as fairly as fast playing (100 = metronomic; about 75 means notes land 3.5% of a beat early or late, at any tempo), plus the dominant tempo. Since 2026-10-27; past sessions were recomputed once, after a copy of the database was kept. |
 | Dynamics | Mean velocity, pp to ff distribution, and dynamic range (spread between the quiet and loud 10%). |
 | Keys | Across the last 7, 30 or 90 days or all time, a 3D keyboard (three.js, bundled) where each key grows a column as tall as you played it, rising left to right like a glissando; brass marks the three most played keys, drag to move along the keyboard, tap a key for its count. It loads only when the card scrolls into view and only where WebGL works. Below it, and per session, the flat 88-key map: keys keep their piano colours and a coloured band on each key, white or black, shows how much it was played (tap a key for its count). Top keys, top black keys, lowest and highest note, share of notes below middle C. |
 | Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
@@ -105,10 +105,16 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
 * **Metrics** (`metrics.py`) are computed when a session closes and stored with it.
 * **Pieces** (`pieces.py`) cuts sessions into segments at pauses of 3.5 s, takes the
   melody (top voice), and matches segments by shared runs of pitch intervals. Pieces heard
-  3+ times are listed, recomputed from the raw notes after each new session.
+  3+ times are listed, recomputed from the raw notes after each new session. Each
+  session's segments are kept in the database (tagged with the matcher's version), so a
+  restart re-matches without re-reading every note; while the first pass runs, the
+  dashboard says the pieces are still being found instead of waiting.
 * **Store** (`store.py`) keeps everything in one SQLite file. Its schema carries a version
   number (`PRAGMA user_version`); schema changes are added as numbered steps and an older
   database is upgraded when it opens, while a database from a newer version is refused.
+  Every session carries a random `uid` and the id of the device that recorded it, so
+  sessions from several devices (a second Pi, the iOS app) can be merged later without
+  clashes.
 * **Server** (`server.py`) serves the dashboard and a JSON API on port 8080, plus a
   localhost-only entrance on 8081 for the remote link (see below).
 * **Backups** (`backup.py`) copy the database every night (see below).
@@ -286,7 +292,7 @@ whenever the dashboard changes.
 
 Other commands: `backup [--backup-dir DIR]` copies the database now, `restore FILE [--force]`
 replaces the database with a backup, `recompute [--dry-run]` brings stored session metrics
-up to the current formulas (`run` does this at start; it first keeps a checked copy as
+up to the current formulas (`run` does this in the background after it starts, while recording goes on; it first keeps a checked copy as
 `<db>.pre-metrics-v<N>.db`, writes every session in one transaction, and does nothing
 when all are current), and `devices`, `backfill`, `simulate`, `replay`
 (see above).
@@ -328,12 +334,12 @@ query values get 400 with an `error` message.
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
-| `GET /api/sessions?limit=50` | session list with headline metrics |
-| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, and the pieces played in it |
+| `GET /api/sessions?limit=50` | session list with headline metrics, each with `uid` (a UUID that stays with the session, for syncing) and `device` (the id of the database that recorded it) |
+| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, `uid`, `device`, and the pieces played in it (`pieces_pending` is true while they are still being found, e.g. after a restart) |
 | `GET /api/sessions/<id>/events` | the session as a time series for replay: notes `[on, off, pitch, velocity]` and pedals `[t, cc, value]`, seconds from start |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
 | `GET /api/sessions.csv` | all sessions as CSV |
-| `GET /api/pieces` | pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`session`, `start`, `offset` (seconds into the session to play this recording from, 1 s before the piece), `active_seconds`, `tempo_bpm`, `steadiness`) |
+| `GET /api/pieces` | 503 with `{"warming": true}` and `Retry-After: 3` while the first pass after a restart runs (the dashboard says "Finding your pieces…" and asks again), otherwise the pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`session`, `start`, `offset` (seconds into the session to play this recording from, 1 s before the piece), `active_seconds`, `tempo_bpm`, `steadiness`) |
 | `POST /api/pieces/name` | `{"key": "...", "name": "..."}` names a piece (empty name forgets it); returns the pieces |
 | `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5, "weekly_days_target": 5}` |
 

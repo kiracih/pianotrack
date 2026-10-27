@@ -1,4 +1,6 @@
+import os
 import random
+import tempfile
 import unittest
 from datetime import datetime
 
@@ -212,6 +214,72 @@ class PiecesApiTest(unittest.TestCase):
             with self.assertRaises(OSError):
                 api.pieces()
         self.assertEqual(api.pieces(), Api(store).pieces())
+
+
+class StoredSegmentsTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.dir.name, "t.db")
+        store = Store(self.path)
+        simulate.backfill(store, days=12, seed=2, beginner=True, now=datetime(2026, 1, 1, 22))
+        store.close()
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def test_restart_reads_stored_segments_and_gives_the_same_pieces(self):
+        from pianotrack.server import Api
+        store = Store(self.path)
+        first = Api(store).pieces()
+        stored = store.stored_segments(pieces.engine_id(), [s["id"] for s in store.sessions(closed_only=True)])
+        self.assertEqual(len(stored), len(store.sessions(closed_only=True)))
+        store.close()
+        store = Store(self.path)  # a restart: segments come from the table, not the notes
+        api = Api(store)
+        reads = []
+        real = store.notes
+        store.notes = lambda sid: reads.append(sid) or real(sid)
+        self.assertEqual(api.pieces(), first)
+        self.assertEqual(reads, [])
+        # Segments stored by other code are ignored and rebuilt.
+        self.assertEqual(store.stored_segments("older-engine", [sid for sid in stored]), {})
+        store.close()
+
+    def test_requests_never_wait_for_a_pieces_pass(self):
+        import threading
+        from pianotrack.server import Api
+        store = Store(self.path)
+        api = Api(store)
+        sid = store.sessions(closed_only=True)[0]["id"]
+        held, go = threading.Event(), threading.Event()
+
+        def hold():
+            with api._pieces_lock:
+                held.set()
+                go.wait(10)
+        t = threading.Thread(target=hold)
+        t.start()
+        held.wait(5)
+        try:
+            self.assertIsNone(api.pieces())  # nothing found yet: the handler sends 503
+            self.assertTrue(api.session(sid)["pieces_pending"])
+        finally:
+            go.set()
+            t.join()
+        view = api.pieces()
+        self.assertTrue(view)
+        go.clear()
+        t = threading.Thread(target=hold)
+        t.start()
+        held.clear(); held.wait(5)
+        try:
+            self.assertEqual(api.pieces(), view)  # during a later pass: the last view
+            d = api.session(sid)  # pending only if the last view lacks it
+            self.assertEqual(d["pieces_pending"], not d["pieces"])
+        finally:
+            go.set()
+            t.join()
+        store.close()
 
 
 if __name__ == "__main__":

@@ -222,7 +222,8 @@ class Api:
         out = []
         for s in self.store.sessions(limit=limit):
             m = self._metrics(s)
-            row = {"id": s["id"], "closed": bool(s["closed"]), "source": s["source"]}
+            row = {"id": s["id"], "uid": s["uid"], "device": s["device"],
+                   "closed": bool(s["closed"]), "source": s["source"]}
             row.update({k: m.get(k) for k in SESSION_FIELDS})
             row["start"], row["end"] = s["start"], s["end"]
             out.append(row)
@@ -234,14 +235,29 @@ class Api:
             return None
         m = self._metrics(s)
         found = []
-        if s["closed"]:
-            for r in self._pieces()[1]:
+        now, fresh = self._pieces_now() if s["closed"] else (None, False)
+        if now:
+            for r in now[1]:
                 for h in r["history"]:
                     if h["session"] == sid:
                         found.append({"key": r["key"], "label": r["label"],
                                       "active_seconds": h["active_seconds"]})
-        return {"id": s["id"], "closed": bool(s["closed"]), "source": s["source"],
-                "start": s["start"], "end": s["end"], "metrics": m, "pieces": found}
+        return {"id": s["id"], "uid": s["uid"], "device": s["device"],
+                "closed": bool(s["closed"]), "source": s["source"],
+                "start": s["start"], "end": s["end"], "metrics": m, "pieces": found,
+                # Not in the last view while a pass runs: it may just not be counted yet.
+                "pieces_pending": bool(s["closed"]) and (now is None or (not fresh and not found))}
+
+    def _pieces_now(self):
+        """(pieces, fresh) without waiting: while a pass runs (the first after a
+        restart can take a minute on the Pi), the last view with fresh False, or
+        None before there is one."""
+        if self._pieces_lock.acquire(blocking=False):
+            try:
+                return self._pieces(), True
+            finally:
+                self._pieces_lock.release()
+        return (self._pieces_cache[1] if self._pieces_cache else None), False
 
     def _pieces(self):
         """(matcher, view) over all closed sessions, recomputed when they or names change.
@@ -266,6 +282,7 @@ class Api:
                 done = ()
             matcher = self._matcher[1]
             if len(ids) > len(done):
+                self._load_segments(closed[len(done):])
                 self._matcher = None  # until the add succeeds: a half-fed matcher must regroup
                 piecesmod.add_sessions(matcher, self.store, closed[len(done):], self._segments)
                 self._matcher = (ids, matcher)
@@ -273,9 +290,32 @@ class Api:
             self._pieces_cache = (key, (matcher, view))
             return matcher, view
 
+    def _load_segments(self, sessions):
+        """Fill the segment cache from the database, and store the ones it lacks:
+        a restart then reads each session's notes once, not on every start."""
+        new = [s for s in sessions if s["id"] not in self._segments]
+        if not new:
+            return
+        engine = piecesmod.engine_id()
+        have = self.store.stored_segments(engine, [s["id"] for s in new]) if engine else {}
+        rows = []
+        for s in new:
+            got = have.get(s["id"])
+            if got and got[0] == s["start"]:
+                self._segments[s["id"]] = piecesmod.unpack(s["id"], got[1])
+            else:
+                segs = self._segments[s["id"]] = piecesmod.session_segments(self.store, s["id"])
+                rows.append((s["id"], s["start"], engine, piecesmod.pack(segs)))
+        if rows and engine:
+            self.store.save_segments(rows)
+
     def pieces(self):
-        """Pieces found in the practice history, most recently played first."""
-        return [{k: v for k, v in r.items() if not k.startswith("_")} for r in self._pieces()[1]]
+        """Pieces found in the practice history, most recently played first, or
+        None while the first pass after a restart is still running."""
+        now = self._pieces_now()[0]
+        if now is None:
+            return None
+        return [{k: v for k, v in r.items() if not k.startswith("_")} for r in now[1]]
 
     def name_piece(self, data):
         """Give a piece a name (an empty name forgets it). Changes no recordings."""
@@ -496,7 +536,10 @@ def make_handler(api, tunnel=False, allowed_hosts=()):
                 if path == "/api/status":
                     return self._send(200, api.collector.status if api.collector else {})
                 if path == "/api/pieces":
-                    return self._send(200, api.pieces())
+                    data = api.pieces()
+                    if data is None:  # still finding them after a restart
+                        return self._send(503, {"warming": True}, extra={"Retry-After": "3"})
+                    return self._send(200, data)
                 m = re.fullmatch(r"/api/sessions/(\d+)/events", path)
                 if m:
                     data = api.session_events(int(m.group(1)))

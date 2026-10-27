@@ -673,9 +673,23 @@ function pieceProgress(h) {
     : tempo ? `${tempo}, just as even` : steady ? `${steady} at the same tempo` : "holding steady";
   return `${Math.round(t0)} → ${Math.round(t1)} bpm, steadiness ${Math.round(s0)} → ${Math.round(s1)}: ${verdict}`;
 }
+let piecesRetry = null;
+const NO_PIECES = "Pieces appear once you have played the same music three times. Nothing to log: they are found from your playing.";
 async function loadPieces() {
   let rows;
-  try { rows = await get("/api/pieces"); } catch (e) { return; }
+  clearTimeout(piecesRetry);
+  const r = await fetch("/api/pieces").catch(() => null);
+  if (r && r.status === 503) {
+    // After a restart the Pi finds the pieces in the background; ask again shortly.
+    $("no-pieces").textContent = "Finding your pieces in your practice history…";
+    $("no-pieces").style.display = ""; $("pieces-table").style.display = "none";
+    piecesRetry = setTimeout(loadPieces, 3000);
+    return;
+  }
+  if (r && r.status === 401) return get("/api/pieces");  // sends you to the sign-in page
+  if (!r || !r.ok) return;
+  rows = await r.json();
+  $("no-pieces").textContent = NO_PIECES;
   $("no-pieces").style.display = rows.length ? "none" : "";
   $("pieces-table").style.display = rows.length ? "" : "none";
   $("pieces").innerHTML = rows.map((p) => {
@@ -851,6 +865,19 @@ function keyboard(hist, target) {
   $(target).innerHTML = ""; $(target).appendChild(s);
 }
 
+// The pieces line of the open session; while they are still being found, ask again.
+let sessionPiecesRetry = null;
+function sessionPieces(id, d) {
+  clearTimeout(sessionPiecesRetry);
+  $("d-pieces").innerHTML = d.pieces_pending ? "Pieces in this session: still being found…"
+    : (d.pieces || []).length
+    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}`).join(", ") : "";
+  if (d.pieces_pending) sessionPiecesRetry = setTimeout(async () => {
+    if (selected !== id) return;
+    const again = await get(`/api/sessions/${id}`).catch(() => null);
+    if (again && selected === id) sessionPieces(id, again);
+  }, 3000);
+}
 async function openSession(id) {
   selected = id;
   if (window.replay) { window.replay.load(id); falling(); }
@@ -870,8 +897,7 @@ async function openSession(id) {
       `${m.sustain_presses} presses, soft pedal ${m.soft_fraction != null ? Math.round(m.soft_fraction * 100) + "%" : (m.soft_pedal_used ? "used" : "0%")}`),
     tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys, ${Math.round(m.left_hand_share * 100)}% below middle C`),
   ].join("");
-  $("d-pieces").innerHTML = (d.pieces || []).length
-    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}`).join(", ") : "";
+  sessionPieces(id, d);
   timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m.key_histogram, "d-keys");
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
 }

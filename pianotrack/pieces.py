@@ -10,7 +10,11 @@ Beginners play wrong notes, miss notes and restart, so a segment only needs a
 share of its n-grams to match, not all of them.
 """
 
+import hashlib
+import inspect
+import json
 import statistics
+import zlib
 from collections import Counter, defaultdict
 
 from . import metrics
@@ -213,6 +217,45 @@ def session_segments(store, sid):
             "fp": fingerprint(pitches),
         })
     return out
+
+
+_engine = []
+
+
+def engine_id():
+    """A hash of everything that shapes a session's segments, so stored segments
+    from older code are never reused; None (store nothing) without the sources."""
+    if not _engine:
+        try:
+            consts = {k: v for k, v in vars(metrics).items() if k.isupper()}
+            src = repr((GAP, MAX_SEGMENT, MIN_NOTES, CHORD, N, sorted(consts.items()))) + "".join(
+                inspect.getsource(f) for f in (segments, top_voice, session_segments, fingerprint,
+                                               _generic, metrics.active_seconds, metrics.tempo_metrics,
+                                               metrics.onset_groups, pack, unpack))
+            _engine.append(hashlib.sha256(src.encode()).hexdigest()[:16])
+        except (OSError, TypeError):
+            _engine.append(None)
+    return _engine[0]
+
+
+def pack(segs) -> bytes:
+    """One session's segments as compact bytes for storing (fingerprints are rebuilt)."""
+    out = []
+    for g in segs:
+        d = {k: v for k, v in g.items() if k not in ("fp", "session", "piece", "melody")}
+        d["melody"] = [[round(t - g["start"], 6), p] for t, p in g["melody"]]
+        out.append(d)
+    return zlib.compress(json.dumps(out, separators=(",", ":")).encode(), 6)
+
+
+def unpack(sid, blob) -> list:
+    """The segments `pack` stored, as `session_segments` returns them."""
+    segs = json.loads(zlib.decompress(blob))
+    for d in segs:
+        d["session"] = sid
+        d["melody"] = [(d["start"] + t, p) for t, p in d["melody"]]
+        d["fp"] = fingerprint([p for _, p in d["melody"]])
+    return segs
 
 
 def closed_in_order(store, since=None):
