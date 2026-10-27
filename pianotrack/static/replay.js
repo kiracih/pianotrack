@@ -362,4 +362,5 @@ class Replay {
 // Loaded as a classic script: module scripts are fetched as CORS requests with an
 // Origin header, which Cloudflare Access sends to its sign-in page instead.
 window.Replay = Replay;
+Replay.piano = piano; Replay.prepare = prepare;  // PROTOTYPE: for videoexport.js
 })();
