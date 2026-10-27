@@ -61,6 +61,19 @@ class MetricsTest(unittest.TestCase):
         sloppy = metrics.tempo_metrics([i * 0.25 + rng.gauss(0, 0.04) for i in range(64)])
         self.assertGreater(steady["steadiness"], sloppy["steadiness"] + 20)
 
+    def test_steadiness_is_fair_to_slow_practice(self):
+        # The same 3.5% unevenness scores alike at 60, 100 and 140 bpm.
+        scores = []
+        for bpm in (60, 100, 140):
+            beat, rng = 60 / bpm, random.Random(1)
+            t, onsets = 0.0, []
+            for _ in range(200):
+                onsets.append(t)
+                t += beat * (1 + rng.choice((-1, 1)) * 0.035)
+            scores.append(metrics.tempo_metrics(onsets)["steadiness"])
+        self.assertLessEqual(max(scores) - min(scores), 6, scores)
+        self.assertTrue(60 <= scores[0] <= 90, scores)
+
     def test_session_metrics_basics(self):
         notes = [{"t_on": i * 0.5, "t_off": i * 0.5 + 0.4, "pitch": 60 + i % 12, "velocity": 40 + i}
                  for i in range(40)]
@@ -120,6 +133,25 @@ class MetricsTest(unittest.TestCase):
             line = inv(*args)
             self.assertNotIn("!", line)
             self.assertNotIn("lose", line.lower())
+
+
+class RecomputeTest(TmpStore):
+    def test_old_sessions_recomputed_once_after_a_copy(self):
+        from pianotrack import recompute
+        simulate.backfill(self.store, days=3, seed=2)
+        old = self.store.sessions(closed_only=True)
+        for s in old:  # as stored by the previous formula
+            m = json.loads(s["metrics"]); m.pop("v"); m["steadiness"] = -1
+            self.store.set_metrics(s["id"], m)
+        db = os.path.join(self.dir.name, "t.db")
+        n, copy = recompute.recompute(self.store, db)
+        self.assertEqual(n, len(old))
+        self.assertTrue(os.path.exists(copy))
+        for s in self.store.sessions(closed_only=True):
+            m = json.loads(s["metrics"])
+            self.assertEqual(m["v"], metrics.METRICS_VERSION)
+            self.assertNotEqual(m["steadiness"], -1)
+        self.assertEqual(recompute.recompute(self.store, db), (0, None))
 
 
 class RecorderTest(TmpStore):

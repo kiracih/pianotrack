@@ -46,13 +46,20 @@ def active_seconds(notes):
     return total + min(max(last["t_off"] - last["t_on"], 0.25), ACTIVE_GAP)
 
 
+# Bumped whenever a stored session metric is computed differently; sessions
+# stored with an older "v" are recomputed by recompute.py (backup first).
+METRICS_VERSION = 2
+
+
 def tempo_metrics(onsets):
     """Estimate tempo and steadiness from inter-onset intervals.
 
     Each interval is compared with the median of its neighbours and snapped to
     the nearest simple rhythmic ratio (half, double, triplet...). Steadiness
-    falls with the average timing error against that grid: 100 is metronomic,
-    about 70 is a typical 10 ms wobble, below 40 is uneven.
+    falls with the average timing error as a share of that local beat, so slow
+    practice is judged as fairly as fast playing: 100 is metronomic, about 78 is
+    a 3.5% wobble at any tempo, below 40 is uneven. `timing_error_ms` keeps the
+    same error in milliseconds.
     """
     groups = onset_groups(onsets)
     iois = [b[0] - a[0] for a, b in zip(groups, groups[1:])]
@@ -65,7 +72,7 @@ def tempo_metrics(onsets):
         bpm *= 2
     while bpm > 180:
         bpm /= 2
-    devs = []
+    devs, rels = [], []
     half = 4
     for i, x in enumerate(iois):
         window = iois[max(0, i - half):i] + iois[i + 1:i + 1 + half]
@@ -73,8 +80,9 @@ def tempo_metrics(onsets):
         r = x / local
         nearest = min(SIMPLE_RATIOS, key=lambda s: abs(math.log(r / s)))
         devs.append(min(abs(x - nearest * local), 0.15))
+        rels.append(min(abs(x - nearest * local) / local, 0.6))
     mean_err = sum(devs) / len(devs)
-    steadiness = 100.0 * math.exp(-mean_err / 0.030)
+    steadiness = 100.0 * math.exp(-(sum(rels) / len(rels)) / 0.12)
     return {"tempo_bpm": round(bpm), "steadiness": round(steadiness),
             "timing_error_ms": round(mean_err * 1000, 1)}
 
@@ -202,6 +210,7 @@ def session_metrics(notes, pedals):
         "timeline": timeline(notes, start, end),
     }
     out.update(tempo_metrics([n["t_on"] for n in notes]))
+    out["v"] = METRICS_VERSION
     out.update(pedal_metrics(pedals, start, end))
     return out
 

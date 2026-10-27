@@ -153,6 +153,13 @@ class Store:
     def set_metrics(self, sid, metrics):
         self._x("UPDATE sessions SET metrics=? WHERE id=?", (json.dumps(metrics), sid))
 
+    def set_metrics_many(self, rows):
+        """Replace the metrics of many sessions in one transaction: all or none."""
+        with self._lock:
+            with self._db:
+                self._db.executemany("UPDATE sessions SET metrics=? WHERE id=?",
+                                     [(json.dumps(m), sid) for sid, m in rows])
+
     def close_dangling(self):
         """Sessions left open by a crash or reboot are closed at their last event."""
         rows = self._q("SELECT id FROM sessions WHERE closed=0")

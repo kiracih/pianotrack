@@ -55,7 +55,11 @@ Rules the recorder follows (see `pianotrack/recorder.py`):
 **expected**:
 - `sessions`: closed sessions, oldest first, each with `start`, `end`, `notes`,
   `pedals` (`[t, cc, value]`) and `metrics` (as `pianotrack/metrics.py`
-  `session_metrics` returns them, including the key histogram and timeline).
+  `session_metrics` returns them, including the key histogram and timeline, and `v`, the
+  formula version, now 2). Since v2 steadiness is `round(100·exp(−mean(rel)/0.12))`, where
+  `rel = min(|x − r·local| / local, 0.6)` for each inter-onset interval `x`, its local beat
+  `local` (median of the 4 intervals on each side) and nearest simple ratio `r`;
+  `timing_error_ms` is still the mean of `min(|x − r·local|, 0.15 s)` in milliseconds.
 - `days`: per local date, `active_seconds`, `notes`, `sessions`, `load`.
 - `streak`: `current` and `longest` run of days with at least `streak_min_minutes`,
   as of `settings.today`. `consistency_28d`: share of the 28 days up to today with

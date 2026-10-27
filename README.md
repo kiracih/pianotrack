@@ -22,7 +22,7 @@ No phone app, no cloud, no extra Python packages.
 | Notes, notes per minute | Volume of playing and how dense it was while playing. |
 | Effort zones | Like heart-rate zones: time spent at Rest / Light / Moderate / Vigorous / Peak note density. |
 | Intensity and load | A 0 to 100 effort figure from density and loudness, and load = active minutes × intensity / 50. |
-| Steadiness, est. tempo | How evenly notes land on a rhythmic grid (100 = metronomic; about 70 means a typical ±10 ms wobble), plus the dominant tempo. |
+| Steadiness, est. tempo | How evenly notes land on a rhythmic grid, measured as a share of the beat so slow practice is judged as fairly as fast playing (100 = metronomic; about 78 means notes land 3.5% of a beat early or late, at any tempo), plus the dominant tempo. Since 2026-10-27; past sessions were recomputed once, after a copy of the database was kept. |
 | Dynamics | Mean velocity, pp to ff distribution, and dynamic range (spread between the quiet and loud 10%). |
 | Keys | Across the last 7, 30 or 90 days or all time, a 3D keyboard (three.js, bundled) where each key grows a column as tall as you played it, rising left to right like a glissando; brass marks the three most played keys, drag to move along the keyboard, tap a key for its count. It loads only when the card scrolls into view and only where WebGL works. Below it, and per session, the flat 88-key map: keys keep their piano colours and a coloured band on each key, white or black, shows how much it was played (tap a key for its count). Top keys, top black keys, lowest and highest note, share of notes below middle C. |
 | Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
@@ -285,7 +285,10 @@ whenever the dashboard changes.
 * `--backup-time` local time of the nightly copy (03:30), `--no-backup` to turn copies off
 
 Other commands: `backup [--backup-dir DIR]` copies the database now, `restore FILE [--force]`
-replaces the database with a backup, and `devices`, `backfill`, `simulate`, `replay`
+replaces the database with a backup, `recompute [--dry-run]` brings stored session metrics
+up to the current formulas (`run` does this at start; it first keeps a checked copy as
+`<db>.pre-metrics-v<N>.db`, writes every session in one transaction, and does nothing
+when all are current), and `devices`, `backfill`, `simulate`, `replay`
 (see above).
 
 The daily goal is set from the dashboard.

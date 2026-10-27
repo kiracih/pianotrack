@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 
-from . import __version__, backup, pieces, simulate
+from . import __version__, backup, pieces, recompute, simulate
 from .collector import Collector, find_device
 from .midi import read_smf
 from .recorder import Recorder
@@ -27,6 +27,9 @@ def _store(args):
 
 def cmd_run(args):
     store = _store(args)
+    # Before the collector starts writing: sessions stored under an older formula
+    # are brought up to date once (a checked copy of the database is kept first).
+    recompute.recompute(store, args.db)
     collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
     backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
     api = Api(store, collector, backups)
@@ -120,6 +123,20 @@ def cmd_restore(args):
     print(f"restored {sessions} sessions from {args.file} into {args.db}")
 
 
+def cmd_recompute(args):
+    store = _store(args)
+    try:
+        n, copy = recompute.recompute(store, args.db, dry_run=args.dry_run)
+    finally:
+        store.close()
+    if args.dry_run:
+        print(f"{n} sessions would be recomputed")
+    elif n:
+        print(f"recomputed {n} sessions; the database from before is kept as {copy}")
+    else:
+        print("every session is up to date")
+
+
 def cmd_pieces(args):
     if args.check:
         from datetime import datetime
@@ -191,6 +208,11 @@ def main(argv=None):
     rs.add_argument("file", help="a backup .db file")
     rs.add_argument("--force", action="store_true", help="replace a database that has sessions")
     rs.set_defaults(func=cmd_restore)
+
+    rc = sub.add_parser("recompute", help="update stored session metrics after a formula change "
+                                         "(run does this at start; a copy is kept first)")
+    rc.add_argument("--dry-run", action="store_true", help="only count the sessions")
+    rc.set_defaults(func=cmd_recompute)
 
     d = sub.add_parser("devices", help="list MIDI devices")
     d.add_argument("--device")
