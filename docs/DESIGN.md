@@ -148,3 +148,24 @@ Acceptance:
 - No hardcoded "AM/PM" formats remain.
 - The toggle renders the same in Safari and Chromium.
 - Dynamics labels are readable at 390 px.
+
+## Week card (proposed 2026-10-28)
+
+A picture of one Monday-to-Sunday week to post or send, drawn as one SVG and turned into a
+PNG on the phone. Post 1080×1350 (4:5) and Story 1080×1920 (the same card, centred).
+It is written in the sharer's voice ("My week at the piano", "My biggest week yet").
+From top to bottom:
+
+1. The felt strip. "My week at the piano" and the dates.
+2. The week's time, big serif figures with small units (3 h 14 min), and one kind line in
+   bold italic: brass for a record or a met target, felt otherwise, "A rest week" when empty.
+3. The octave, as on the dashboard, with each day's minutes under its letter.
+4. Three figures: days played (brass when the target is met), streak, keys pressed.
+5. The week's keys on an 88-key keyboard in the felt key ramp, with the three most played named.
+6. The most practised *named* piece with its minutes and a kind fact (stumbles fell, or its
+   longest clean run). With names hidden or none named: "3 pieces practised".
+7. A small italic product name at the bottom right.
+
+Ivory (light) and Rosewood (dark) looks; the keys stay ivory in both, as in the octave.
+No avatar, no location, no time of day. Nothing leaves the Pi unless the owner shares it.
+

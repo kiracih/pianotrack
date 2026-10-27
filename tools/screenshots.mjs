@@ -83,6 +83,20 @@ page = await open(390, "dark");
 await page.screenshot({ path: out + "phone.png", fullPage: true, clip: { x: 0, y: 0, width: 390, height: 1500 } });
 await page.close();
 
+// The week card for last week, as the PNG the phone would share.
+page = await browser.newPage({ viewport: { width: 390, height: 900 }, colorScheme: "light" });
+page.on("pageerror", (e) => errors.push(e.message));
+const lastMonday = new Date(); lastMonday.setDate(lastMonday.getDate() - (lastMonday.getDay() + 6) % 7 - 7);
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+await page.goto(base + "/recap?week=" + ymd(lastMonday));
+await page.waitForSelector("#preview svg");
+const png = await page.evaluate(async () => {
+  const b = await png();
+  return await new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
+});
+writeFileSync(out + "week-card.png", Buffer.from(png.split(",")[1], "base64"));
+await page.close();
+
 await browser.close();
 if (errors.length) { console.error("page errors:", errors); process.exit(1); }
 console.log("screenshots written to", out);

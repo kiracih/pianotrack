@@ -52,6 +52,21 @@ the same way a band's calorie count is. They are not a teacher's grade.
 
 ![Session replay](docs/replay.png)
 
+<img src="docs/week-card.png" alt="Week card: 3 h 14 min, the week as an octave, days played, streak, keys pressed, the most played keys and piece" width="320">
+
+**Week card (prototype):** "Week card" next to This week opens an image of one Monday
+to Sunday week to post or send: total time with one kind line ("My biggest week yet",
+"Weekly target met", "24 min more than last week", "5 days in a row", or "A rest week"),
+the octave with each day's minutes, days played against the target, the streak at the
+end of that week, keys pressed, the week's keys on an 88-key keyboard with the three most
+played named, and the most practised named piece (its minutes, and stumbles a minute
+first and last play if they fell, else its longest clean run). Post (1080×1350) or Story
+(1080×1920), Ivory or Rosewood, and piece names can be hidden. Arrows step through earlier
+weeks; on a Monday it opens on last week. The image is drawn on the phone (SVG to PNG):
+**Share** opens the phone's share sheet on the https remote link (the share sheet needs a
+secure page), and on the home address **Save image** downloads it. Nothing leaves the Pi
+unless you share it.
+
 **Session replay:** open any session and press play to hear it back with a grand piano
 sound. With **Falling notes** (on by default where the browser has WebGL) the notes travel
 down a lane onto a 3D keyboard, the next four seconds in view, each note as long as you
@@ -339,6 +354,7 @@ query values get 400 with an `error` message.
 | `POST /api/backup` | make a backup into the backup folder now (home network only); returns the status below |
 | `GET /api/backups` | backup folder, last backup time, `stale` (over 2 days), daily/weekly counts, last error, and `offsite`: when and by which machine the last copy was pulled (`offsite_stale` after 3 days) |
 | `GET /api/tunnel` | `{"url": ...}` the current remote link, or null when no tunnel runs |
+| `GET /api/recap?week=2026-10-19` | one Monday-to-Sunday week for the week card (`week` is any date in it; default this week, last week on a Monday): `start`, `end`, `complete`, `days` (per day `active_seconds`, `notes`, `goal_met`, `later`), `goal_seconds`, `active_seconds`, `prev_active_seconds`, `best_week` (more than any earlier week in 400 days), `played`, `target`, `streak` at the week's end, `sessions`, `notes`, `longest_session`, `histogram` (88 keys), `top_keys` (up to 3 `pitch`, `count`), `pieces` (up to 3, most time first: `key`, `label`, `named`, `active_seconds`, `plays`, `clean_run`, `stumbles_per_min` first and last play, or null; `pieces` is null while they are still being found). `GET /recap` is the card page |
 | `GET /api/days?days=365` | active seconds and notes per day |
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |

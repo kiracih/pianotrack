@@ -75,6 +75,10 @@ difference from the competing apps found on 2026-10-23 (see App target).
    good-looking image of a week (the octave), a streak, or a piece's "then → now",
    made on the device (canvas to PNG) and shared through the phone's share sheet. Nothing
    leaves the Pi unless the owner shares it. Needs design work first (design lead).
+   2026-10-28: the **week card** is designed and prototyped on branch
+   `claude/project-thread-dujwl9` (not on main or the Pi): `/recap` page and
+   `GET /api/recap`, Post and Story sizes, Ivory and Rosewood, piece names optional.
+   Waiting for the owner's go to merge and deploy; streak and "then → now" cards later.
 7. **Check playing against the score, step 1: score file** (pieces, M; owner idea
    2026-10-26, "killer feature"; owner said "add it" 2026-10-26). Problem: Pieces
    knows *what* you played but not whether the notes were right. Attach a MusicXML
