@@ -97,6 +97,44 @@ difference from the competing apps found on 2026-10-23 (see App target).
 8. **Choose the product name** (business, S). "pianotrack" sits next to the App
    Store's *Piano Tracker* and *PianoTrax*; a distinctive name is needed before any
    public launch or trademark filing. *Owner decision.*
+9. **Export falling notes as a video** (replay / sharing, S–M; owner idea 2026-10-27).
+   Problem: the owner films their hands and wants the falling notes in the same
+   video, Synthesia-style. Proposal, prototyped on demo data 2026-10-27 (branch
+   `claude/project-thread-e35a4t`, `static/videoexport.js`; sample clips in project
+   files `video-export/`):
+   - **Where it renders:** in the browser that asks (Mac or iPhone), never on the Pi.
+     The Pi only serves the notes, as for the replay; no ffmpeg, still stdlib only.
+   - **Format:** MP4 (H.264 + AAC), which Safari and Chrome record natively
+     (MediaRecorder) and Photos, iMovie, CapCut and Final Cut open directly. 30 fps,
+     1080 px on the short side; a 30 s clip is about 1.5 MB.
+   - **Looks:** *Overlay* (default): flat top-down notes over all 88 keys on chroma
+     green, so an editor keys it out and stretches it to the width of the real keyboard
+     filmed from above; *Overlay on black* for "screen" blend mode; *3D view*, today's
+     falling notes as a clip on its own (split screen or picture-in-picture). Shapes
+     16:9 and 9:16; keys "all 88" (lines up with a full-keyboard shot) or "keys used"
+     (bigger notes in portrait). True transparency works too (WebM with alpha, checked
+     in the prototype) but iPhone editors can't open WebM, so it is a desktop extra.
+   - **Sound:** the sampled piano is in the file, so editors that sync by waveform
+     can line it up with the camera's sound; mute it in the final edit.
+   - **Timing:** pauses are never skipped in an export (it must match camera time).
+     The clip starts 1.5 s before the first chosen note, and its file name carries
+     the Pi's clock time of that moment (`pianotrack-2026-10-27_21-14-05.3.mp4`) to
+     match the phone video's time; the final nudge is by the first note.
+   - **Range:** whole session, or from the replay's current position (later the
+     A–B loop of Next 2), capped at 10 minutes.
+
+   Step 2 (M), after the owner tries step 1: **Line up with my video**: choose the
+   phone video in the page; the browser finds note onsets in its sound and matches
+   them to the recorded notes (to about 10 ms), then exports exactly the camera's span.
+   Nothing is uploaded. Same step: **frame-exact rendering** with WebCodecs (faster
+   than real time, no dropped frames) plus a small in-house MP4 writer. The prototype
+   records in real time: the 2D overlay held 30 fps but the 3D view dropped to about
+   7 fps on a slow machine, and the screen has to stay on while it records.
+   Acceptance (step 1): a 60 s clip from a real session plays in iPhone Photos,
+   imports into CapCut and iMovie, the green keys out cleanly, each note reaches the
+   line when its sound plays (within one frame), and the Pi does no extra work.
+   *Owner questions:* which editor (decides green vs transparency), camera from
+   above or from the side, portrait or landscape.
 
 ## Later
 
