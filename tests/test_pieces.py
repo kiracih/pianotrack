@@ -282,5 +282,53 @@ class StoredSegmentsTest(unittest.TestCase):
         store.close()
 
 
+
+class StumblesTest(unittest.TestCase):
+    """Stumbles, the longest clean run and trouble spots, from the melody alone."""
+
+    def plays(self, n, pause_at=None, pause=1.5):
+        """n clean plays of Minuet in G at 0.6x to 1.2x speed; with `pause_at`,
+        each stops for `pause` seconds before that melody note (counted at 1x)."""
+        segs = []
+        for i in range(n):
+            v = 0.6 + 0.6 * i / max(1, n - 1)
+            ev, _ = simulate.perform(random.Random(i), 0.0, simulate.REPERTOIRE["Minuet in G"],
+                                     tempo=v, left_hand=False)
+            if pause_at is not None:
+                cut = sorted(t for t, m in ev if m[0] & 0xF0 == 0x90)[pause_at] - 0.01
+                ev = [(t + pause if t > cut else t, m) for t, m in ev]
+            segs += played(ev)
+        return segs
+
+    def test_clean_plays_at_any_speed_have_no_stumbles(self):
+        segs = self.plays(8)
+        self.assertEqual(sum(map(pieces.stumble_count, pieces.piece_stumbles(segs))), 0)
+
+    def test_a_pause_at_the_same_spot_is_a_stumble_and_a_trouble_spot(self):
+        segs = self.plays(4) + self.plays(4, pause_at=20)
+        found = pieces.piece_stumbles(segs)
+        self.assertEqual([pieces.stumble_count(x) for x in found], [0] * 4 + [1] * 4)
+        for s, f in zip(segs[4:], found[4:]):
+            m = s["melody"]
+            self.assertGreater(m[f[0] + 1][0] - m[f[0]][0], 1.5)  # the gap with the pause
+            run, _ = pieces.clean_run(s, f)
+            self.assertLess(run, s["melody"][-1][0] - s["melody"][0][0] - 1)
+        spots = pieces.trouble_spots(segs, found)
+        self.assertEqual(len(spots), 1)
+        self.assertEqual(spots[0]["stumbles"], 4)
+        i = found[4][0]
+        self.assertEqual(pieces.stumble_count([3, 4, 6, 9]), 2)  # 3-6 is one stumble
+        self.assertEqual(spots[0]["notes"], [p for _, p in segs[4]["melody"][i - 4:i + 1]])
+
+    def test_a_held_note_the_music_asks_for_is_no_stumble(self):
+        # Fur Elise holds notes for 1.5 and 3 beats between runs of eighths.
+        segs = []
+        for i in range(6):
+            ev, _ = simulate.perform(random.Random(i), 0.0, simulate.REPERTOIRE["Fur Elise"],
+                                     tempo=0.8 + 0.1 * i, left_hand=False)
+            segs += played(ev)
+        self.assertEqual(sum(map(pieces.stumble_count, pieces.piece_stumbles(segs))), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

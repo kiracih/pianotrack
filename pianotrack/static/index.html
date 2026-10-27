@@ -135,7 +135,7 @@ tr.sel td { background: var(--accent-soft) !important; }
 #pieces td.num { white-space: nowrap; }
 .pc-plays { list-style: none; margin: 4px 0 0; padding: 0; columns: 2 280px; column-gap: 24px; }
 .pc-plays li { display: flex; align-items: center; gap: 10px; padding: 3px 0; break-inside: avoid; }
-.pc-plays .pc-play { min-width: 44px; min-height: 36px; padding: 0; }
+.pc-plays .pc-play, .pc-trouble .pc-play { min-width: 44px; min-height: 36px; padding: 0; }
 .pc-when { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pc-prog { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--text-2); margin-top: 2px; }
 @media (max-width: 600px) {
@@ -197,6 +197,11 @@ footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; 
 footer a { color: var(--text-2); }
 .scroll-x { overflow-x: auto; }
 .sub-h span { font-weight: 400; color: var(--muted); }
+.d-more { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+.d-more > summary { cursor: pointer; font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--text); padding: 6px 0; }
+.d-more > summary span { font-family: var(--sans, inherit); font-weight: 400; font-size: 13px; color: var(--muted); }
+.pc-trouble { list-style: none; padding: 0; margin: 0; }
+.pc-trouble li { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
 .trends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .trends .sub-h { margin-top: 0; }
 #trend-tabs { display: none; }
@@ -303,12 +308,12 @@ footer a { color: var(--text-2); }
       <h2>Pieces <span>found from what you play, wrong notes and all (trial)</span></h2>
       <div class="scroll-x">
         <table id="pieces-table">
-          <thead><tr><th>Piece</th><th class="num hide-sm">Time</th><th class="num hide-sm">Sessions</th><th class="hide-sm">Last played</th><th>Tempo</th><th>Steadiness</th><th class="hide-sm"></th></tr></thead>
+          <thead><tr><th>Piece</th><th class="num hide-sm">Time</th><th class="num hide-sm">Sessions</th><th class="hide-sm">Last played</th><th>Tempo</th><th title="Stumbles a minute: lower is smoother">Stumbles</th><th class="hide-sm"></th></tr></thead>
           <tbody id="pieces"></tbody>
         </table>
       </div>
       <div class="empty" id="no-pieces" style="display:none">Pieces appear once you have played the same music three times. Nothing to log: they are found from your playing.</div>
-      <div class="legend">Tap a piece for its tempo and steadiness per session and every recording of it. Name it once and the name sticks. Scales and exercises can show up as pieces too.</div>
+      <div class="legend">Stumbles are counted per minute of the piece. Tap a piece for its tempo and stumbles per session, your longest clean run, the spots you stumble at most and every recording of it. A stumble is a pause in the middle of the music, far longer than the piece has there. Name it once and the name sticks. Scales and exercises can show up as pieces too.</div>
     </section>
 
     <section class="card span-12 o-keys">
@@ -338,14 +343,18 @@ footer a { color: var(--text-2); }
       <div id="replay" style="margin-bottom:18px"></div>
       <div class="dtiles" id="d-tiles"></div>
       <div class="legend" id="d-pieces"></div>
-      <div class="sub-h">Intensity over the session <span style="font-weight:400;color:var(--muted)">(notes per minute)</span></div>
-      <div id="d-timeline"></div>
-      <div class="grid" style="margin-top:4px">
-        <div class="span-6"><div class="sub-h">Time in effort zones</div><div id="d-zones"></div></div>
-        <div class="span-6"><div class="sub-h">Dynamics</div><div id="d-dyn"></div></div>
-      </div>
       <div class="sub-h">Keys played</div>
       <div class="scroll-x"><div id="d-keys"></div></div>
+      <details class="d-more" id="d-more">
+        <summary>Details <span>steadiness, tempo, intensity, dynamics, pedals, range</span></summary>
+        <div class="dtiles" id="d-tiles2"></div>
+        <div class="sub-h">Intensity over the session <span style="font-weight:400;color:var(--muted)">(notes per minute)</span></div>
+        <div id="d-timeline"></div>
+        <div class="grid" style="margin-top:4px">
+          <div class="span-6"><div class="sub-h">Time in effort zones</div><div id="d-zones"></div></div>
+          <div class="span-6"><div class="sub-h">Dynamics</div><div id="d-dyn"></div></div>
+        </div>
+      </details>
     </section>
 
     <section class="card span-8 o-sessions">
@@ -644,7 +653,7 @@ document.querySelectorAll("#trend-tabs button").forEach((b) => {
 function spark(vals, max) {
   const pts = vals.map((v, i) => [i, v]).filter(([, v]) => v != null);
   if (pts.length < 2) return `<span class="muted-s">${pts.length ? pts[0][1] : "–"}</span>`;
-  const W = 90, H = 26, hi = max ?? Math.max(...pts.map(([, v]) => v)) * 1.1, n = vals.length - 1 || 1;
+  const W = 90, H = 26, hi = max ?? (Math.max(...pts.map(([, v]) => v)) * 1.1 || 1), n = vals.length - 1 || 1;
   const xy = pts.map(([i, v]) => [2 + (W - 4) * i / n, H - 2 - (H - 4) * v / hi]);
   const d = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join("");
   const [lx, ly] = xy.at(-1);
@@ -662,16 +671,18 @@ function pieceProgress(h) {
   };
   if (h.length < 10) return "";
   const t0 = med(h.slice(0, 5).map((x) => x.tempo_bpm)), t1 = med(h.slice(-5).map((x) => x.tempo_bpm));
-  const s0 = med(h.slice(0, 5).map((x) => x.steadiness)), s1 = med(h.slice(-5).map((x) => x.steadiness));
+  const s0 = med(h.slice(0, 5).map((x) => x.stumbles_per_min)), s1 = med(h.slice(-5).map((x) => x.stumbles_per_min));
   if (t0 == null || t1 == null || s0 == null || s1 == null) return "";
   const dt = (t1 - t0) / t0, ds = s1 - s0;
   const tempo = dt >= 0.05 ? "faster" : dt <= -0.05 ? (dt <= -0.2 ? "much slower" : "slower") : "";
-  const steady = ds >= 3 ? "steadier" : ds <= -3 ? "less even" : "";
-  const verdict = tempo === "faster" && steady === "steadier" ? "faster and steadier"
-    : tempo.endsWith("slower") && steady === "steadier" ? "slowed down to clean up"
-    : tempo && steady ? `${tempo} and ${steady}`
-    : tempo ? `${tempo}, just as even` : steady ? `${steady} at the same tempo` : "holding steady";
-  return `${Math.round(t0)} → ${Math.round(t1)} bpm, steadiness ${Math.round(s0)} → ${Math.round(s1)}: ${verdict}`;
+  // Fewer stumbles: down by a fifth and by at least a few a quarter hour.
+  const smooth = ds <= -Math.max(0.2, 0.2 * s0) ? "fewer stumbles" : ds >= Math.max(0.2, 0.2 * s0) ? "more stumbles" : "";
+  const verdict = tempo === "faster" && smooth === "fewer stumbles" ? "faster, with fewer stumbles"
+    : tempo.endsWith("slower") && smooth === "fewer stumbles" ? "slowed down to clean up"
+    : tempo && smooth ? `${tempo}, ${smooth}`
+    : tempo && s1 === 0 ? `${tempo}, no stumbles` : tempo ? `${tempo}, stumbling as often` : smooth ? `${smooth} at the same tempo` : s1 === 0 ? "no stumbles" : "holding steady";
+  const f = (x) => x.toFixed(1);
+  return `${Math.round(t0)} → ${Math.round(t1)} bpm, stumbles ${f(s0)} → ${f(s1)} a minute: ${verdict}`;
 }
 let piecesRetry = null;
 const NO_PIECES = "Pieces appear once you have played the same music three times. Nothing to log: they are found from your playing.";
@@ -702,11 +713,14 @@ async function loadPieces() {
         <div class="muted-s show-sm">${fmtDur(p.active_seconds)}, last ${fmtWhen(p.last).replace(/^(Today|Yesterday)/, (d) => d.toLowerCase())}</div><div class="pc-acts show-sm">${acts}</div></td>
       <td class="num hide-sm">${fmtDur(p.active_seconds)}</td><td class="num hide-sm">${p.sessions}</td>
       <td class="hide-sm">${fmtWhen(p.last)}</td>
-      <td>${spark(h.slice(-20).map((x) => x.tempo_bpm))}</td><td>${spark(h.slice(-20).map((x) => x.steadiness), 100)}</td>
+      <td>${spark(h.slice(-20).map((x) => x.tempo_bpm))}</td><td>${spark(h.slice(-20).map((x) => x.stumbles_per_min))}</td>
       <td class="num hide-sm" style="white-space:nowrap">${acts}</td></tr>`;
     const more = p.key === pieceOpen ? `<tr class="pc-more"><td colspan="7"><div class="grid2">
       <div><div class="sub-h">Tempo per session (bpm)</div><div id="pc-tempo"></div></div>
-      <div><div class="sub-h">Steadiness per session</div><div id="pc-steady"></div></div></div>
+      <div><div class="sub-h">Stumbles a minute <span>lower is smoother</span></div><div id="pc-steady"></div></div></div>
+      <div class="grid2">
+      <div><div class="sub-h">Longest clean run <span>without a stumble</span></div><div id="pc-run"></div></div>
+      <div><div class="sub-h">Trouble spots <span>where you stumble most, last 10 sessions</span></div><ol class="pc-trouble" id="pc-trouble"></ol></div></div>
       <div class="sub-h">Recordings <span class="muted-s">newest first, ▶ plays it from where the piece starts</span></div>
       <ol class="pc-plays" id="pc-plays"></ol></td></tr>` : "";
     return main + more;
@@ -733,9 +747,35 @@ async function loadPieces() {
   if (open) {
     const pts = open.history.map((x) => ({ ...x, date: new Date(x.start * 1000).toLocaleDateString("sv") }));
     trendLine("pc-tempo", pts, "tempo_bpm", "", undefined, "session");
-    trendLine("pc-steady", pts, "steadiness", "", 100, "session");
+    // A piece played without a stumble every time still needs a scale for its chart.
+    const clean = !pts.some((x) => x.stumbles_per_min > 0);
+    trendLine("pc-steady", pts, "stumbles_per_min", "", clean ? 1 : undefined, "session");
+    pieceRuns(open);
     piecePlays(open, false);
   }
+}
+// Play a stored recording from `offset` seconds in, in the session's replay.
+async function playFrom(sid, offset) {
+  await openSession(sid);
+  $("detail-card").scrollIntoView({ behavior: "smooth" });
+  if (window.replay) window.replay.jump(sid, offset);
+}
+// The open piece's best clean run and its trouble spots, each with ▶ to hear it.
+function pieceRuns(p) {
+  const last = p.history.at(-1), b = p.best_run;
+  const row = (label, sid, off, aria) => `<li><button class="pc-play" data-s="${sid}" data-o="${off}" aria-label="${aria}">▶</button><span>${label}</span></li>`;
+  $("pc-run").innerHTML = `<ol class="pc-trouble">` +
+    row(`<b>${fmtRun(b.seconds)}</b> <span class="muted-s">your best, ${fmtWhen(p.history.find((h) => h.session === b.session)?.start ?? p.last)}</span>`,
+      b.session, b.offset, "Play your best clean run") +
+    row(`${fmtRun(last.clean_run)} <span class="muted-s">last time, ${fmtWhen(last.start)}</span>`, last.session, last.clean_run_offset ?? last.offset ?? 0, "Play your last clean run") +
+    `</ol>`;
+  $("pc-trouble").innerHTML = p.trouble.length ? p.trouble.map((t) => row(
+    `after <b>${t.notes.map(noteName).join(" ")}</b> <span class="muted-s">${t.stumbles} of ${t.passes} times</span>`,
+    t.session, t.offset, `Hear the latest stumble after ${t.notes.map(noteName).join(" ")}`)).join("")
+    : `<li class="muted-s">No spot stands out lately.</li>`;
+  document.querySelectorAll("#pc-run .pc-play, #pc-trouble .pc-play").forEach((btn) => btn.onclick = (e) => {
+    e.stopPropagation(); playFrom(+btn.dataset.s, +btn.dataset.o);
+  });
 }
 // Every recording of the open piece, so you can hear how it sounded weeks ago.
 function piecePlays(p, all) {
@@ -743,15 +783,11 @@ function piecePlays(p, all) {
   const row = (h) => `<li><button class="pc-play" data-s="${h.session}" data-o="${h.offset || 0}"
       aria-label="Play the recording from ${fmtWhen(h.start)}">▶</button>
     <span class="pc-when">${fmtWhen(h.start)}</span>
-    <span class="muted-s">${h.active_seconds < 60 ? "<1m" : fmtDur(h.active_seconds)}${h.tempo_bpm ? `, ${h.tempo_bpm} bpm` : ""}${h.steadiness != null ? `, steadiness ${h.steadiness}` : ""}</span></li>`;
+    <span class="muted-s">${h.active_seconds < 60 ? "<1m" : fmtDur(h.active_seconds)}${h.tempo_bpm ? `, ${h.tempo_bpm} bpm` : ""}, ${plural(h.stumbles, "stumble")}, clean run ${fmtRun(h.clean_run)}</span></li>`;
   $("pc-plays").innerHTML = shown.map(row).join("") +
     (plays.length > shown.length ? `<li><button class="pc-all">Show all ${plays.length}</button></li>` : "");
-  $("pc-plays").querySelectorAll(".pc-play").forEach((b) => b.onclick = async (e) => {
-    e.stopPropagation();
-    const sid = +b.dataset.s;
-    await openSession(sid);
-    $("detail-card").scrollIntoView({ behavior: "smooth" });
-    if (window.replay) window.replay.jump(sid, +b.dataset.o);
+  $("pc-plays").querySelectorAll(".pc-play").forEach((b) => b.onclick = (e) => {
+    e.stopPropagation(); playFrom(+b.dataset.s, +b.dataset.o);
   });
   const more = $("pc-plays").querySelector(".pc-all");
   if (more) more.onclick = (e) => { e.stopPropagation(); piecePlays(p, true); };
@@ -865,17 +901,33 @@ function keyboard(hist, target) {
   $(target).innerHTML = ""; $(target).appendChild(s);
 }
 
+const fmtRun = (s) => s < 60 ? `${s} s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+// The session's headline: time, notes, and from its pieces the stumbles and the
+// longest stretch played without one.
+function practiceTiles(m, d) {
+  const ps = d.pieces || [], mins = ps.reduce((a, p) => a + p.active_seconds, 0) / 60;
+  const st = ps.reduce((a, p) => a + p.stumbles, 0), best = ps.reduce((a, p) => p.clean_run > (a ? a.clean_run : -1) ? p : a, null);
+  const none = d.pieces_pending ? "still finding your pieces" : "no pieces in this session";
+  $("d-tiles").innerHTML = [
+    tile(fmtDur(m.active_seconds), "active time", `${fmtDur(m.duration_seconds)} total`),
+    tile(fmtNum(m.note_count), "notes", `${m.notes_per_minute} per minute`),
+    tile(ps.length ? st : "–", "stumbles", ps.length ? `in ${plural(ps.length, "piece")}${mins >= 0.5 ? `, ${(st / mins).toFixed(1)} a minute` : ""}` : none),
+    tile(best ? fmtRun(best.clean_run) : "–", "longest clean run", best ? escapeHtml(best.label) : none),
+  ].join("");
+}
 // The pieces line of the open session; while they are still being found, ask again.
 let sessionPiecesRetry = null;
-function sessionPieces(id, d) {
+function sessionPieces(id, d, m) {
   clearTimeout(sessionPiecesRetry);
+  if (m && m.note_count) practiceTiles(m, d);
   $("d-pieces").innerHTML = d.pieces_pending ? "Pieces in this session: still being found…"
     : (d.pieces || []).length
-    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}`).join(", ") : "";
+    ? "Pieces in this session: " + d.pieces.map((p) => `<b>${escapeHtml(p.label)}</b> ${p.active_seconds < 60 ? "<1m" : fmtDur(p.active_seconds)}, ${plural(p.stumbles, "stumble")}`).join("; ") : "";
   if (d.pieces_pending) sessionPiecesRetry = setTimeout(async () => {
     if (selected !== id) return;
     const again = await get(`/api/sessions/${id}`).catch(() => null);
-    if (again && selected === id) sessionPieces(id, again);
+    if (again && selected === id) sessionPieces(id, again, again.metrics);
   }, 3000);
 }
 async function openSession(id) {
@@ -885,10 +937,8 @@ async function openSession(id) {
   $("detail-card").style.display = "";
   $("d-title").textContent = `${fmtWhen(d.start)}${d.closed ? "" : ", in progress"}`;
   $("d-mid").href = `/api/sessions/${id}.mid`; $("d-csv").href = `/api/sessions/${id}.csv`;
-  if (!m.note_count) { $("d-tiles").innerHTML = `<div class="empty">No notes yet.</div>`; return; }
-  $("d-tiles").innerHTML = [
-    tile(fmtDur(m.active_seconds), "active time", `${fmtDur(m.duration_seconds)} total`),
-    tile(fmtNum(m.note_count), "notes", `${m.notes_per_minute} per minute`),
+  if (!m.note_count) { $("d-tiles").innerHTML = `<div class="empty">No notes yet.</div>`; $("d-tiles2").innerHTML = ""; return; }
+  $("d-tiles2").innerHTML = [
     tile(m.steadiness ?? "–", "steadiness", m.timing_error_ms != null ? `±${m.timing_error_ms} ms timing` : "not enough rhythm"),
     tile(m.tempo_bpm ? `${m.tempo_bpm}<small>bpm</small>` : "–", "est. tempo"),
     tile(m.intensity, "intensity", `load ${m.load}`),
@@ -897,7 +947,7 @@ async function openSession(id) {
       `${m.sustain_presses} presses, soft pedal ${m.soft_fraction != null ? Math.round(m.soft_fraction * 100) + "%" : (m.soft_pedal_used ? "used" : "0%")}`),
     tile(`${noteName(m.lowest_pitch)}–${noteName(m.highest_pitch)}`, "range", `${m.unique_keys} keys, ${Math.round(m.left_hand_share * 100)}% below middle C`),
   ].join("");
-  sessionPieces(id, d);
+  sessionPieces(id, d, m);
   timelineChart(m); zonesChart(m); dynamicsChart(m); keyboard(m.key_histogram, "d-keys");
   document.querySelectorAll("#sessions tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.id === id));
 }

@@ -16,6 +16,9 @@ No phone app, no cloud, no extra Python packages.
 
 | Metric | What it means |
 |---|---|
+| Stumbles | A pause in the middle of a piece far longer than the piece has at that spot: at least twice its usual length there and 0.4 s longer, the usual being how the spot goes in your better plays, scaled to each play's speed. So a note the music holds isn't a stumble, slow practice isn't one long stumble, and a spot you stumble at most of the time still counts. Shown per session and per minute of the piece, lower is smoother. Why this instead of a score: in a study of 17 pianists, practice time and repetitions didn't predict how well they played the next day, but the share of plays without mistakes did (Duke, Simmons & Cash 2009). |
+| Longest clean run | The longest stretch of a piece played without a stumble, per session, plus your best ever with ▶ to hear it. |
+| Trouble spots | The up to three places in a piece where you stumbled most in its last 10 sessions (at least 3 times), named by the five melody notes before the stumble, with how often: "after C5 D5 E5 D5 C5, 8 of 41 times", and ▶ to hear the latest one. |
 | Active time | Time actually playing. Pauses longer than 3 s stop the clock, so reading the score doesn't count. |
 | This week | The week as an octave: seven white keys, Monday to Sunday, each filling with felt up to the daily goal and brass when it is met; today's key is outlined. Tap a key for its minutes. Plus days played this week against a weekly target (5 by default, set under Goals), which forgives a missed day the streak would not. |
 | Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today"; after one missed day it says "One day off doesn't undo a habit. 5 min picks it back up.", after a longer break "Welcome back. 5 min is a good start.", instead of greeting you with a zero. On Mondays a line under it says how last week went, so a fresh week doesn't start from a blank octave: "Last week: 6 of 5 days, 3h 10m. Target met." |
@@ -26,7 +29,7 @@ No phone app, no cloud, no extra Python packages.
 | Dynamics | Mean velocity, pp to ff distribution, and dynamic range (spread between the quiet and loud 10%). |
 | Keys | Across the last 7, 30 or 90 days or all time, a 3D keyboard (three.js, bundled) where each key grows a column as tall as you played it, rising left to right like a glissando; brass marks the three most played keys, drag to move along the keyboard, tap a key for its count. It loads only when the card scrolls into view and only where WebGL works. Below it, and per session, the flat 88-key map: keys keep their piano colours and a coloured band on each key, white or black, shows how much it was played (tap a key for its count). Top keys, top black keys, lowest and highest note, share of notes below middle C. |
 | Pedal | Sustain presses and share of time on sustain, soft pedal presses and share of time. |
-| Pieces | Per piece: active time, sessions, last played, and per-session tempo and steadiness (active-time weighted over the stretches of that piece). A piece's tempo times its melody phrases against the same phrases in its other plays, so the left hand can't make it read double and a session never jumps 2×; it is counted in the piece's typical melody note. |
+| Pieces | Per piece: active time, sessions, last played, and per-session tempo, stumbles, longest clean run and steadiness (tempo and steadiness active-time weighted over the stretches of that piece). A piece's tempo times its melody phrases against the same phrases in its other plays, so the left hand can't make it read double and a session never jumps 2×; it is counted in the piece's typical melody note. |
 
 **On a phone** the page puts what changes day to day first: Today, This week, Pieces and
 recent sessions, then the slower views (trends, calendar, keys, records). Steadiness,
@@ -40,7 +43,9 @@ Felt claret and brass on plaster and ivory (rosewood in dark mode), serif headin
 figures (New York on Apple devices), goal-met days in brass, and a felt focus ring for
 keyboard use.
 
-Tempo, steadiness and intensity are heuristics for following trends over weeks,
+A session's detail leads with active time, notes, stumbles and the longest clean run;
+steadiness, tempo, intensity, effort zones, dynamics, pedals and range sit under
+**Details**, folded away. Tempo, steadiness and intensity are heuristics for following trends over weeks,
 the same way a band's calorie count is. They are not a teacher's grade.
 
 ![Most used keys](docs/keys.png)
@@ -71,12 +76,14 @@ command. See [Backups](#backups).
 **Pieces (trial):** the dashboard groups the stretches of playing that are the same
 piece, found from the notes alone, with wrong notes, restarts, slow tempos and all.
 Nothing to log. Each piece shows its total time, sessions and when you last played it,
-and its tempo and steadiness per session (tap a piece for the charts). From 10 sessions
+and its tempo and stumbles a minute per session (tap a piece for the charts). From 10 sessions
 on, a line under the piece compares its first 5 sessions with its last 5 (medians), e.g.
-"153 → 109 bpm, steadiness 59 → 69: slowed down to clean up". Pieces show as
+"153 → 109 bpm, stumbles 3.1 → 1.4 a minute: slowed down to clean up". Pieces show as
 "Piece A, B…" with their most played phrase; **Listen** jumps the replay to that phrase
 so you can recognise it. Tap a piece to open its tempo and
-steadiness charts and a list of every recording of it, newest first; ▶ plays one from
+stumbles charts, its longest clean run (your best and last time, ▶ to hear them), its
+trouble spots (▶ plays from 2 s before the latest stumble there) and a list of every
+recording of it with its stumbles and clean run, newest first; ▶ plays one from
 where the piece starts, so you can hear how it sounded weeks ago. **Name** names it once ("Chopin waltz"). The name follows
 the music into later sessions. A session's detail lists the pieces played in it.
 A session that closes after everything already grouped is added to the existing
@@ -104,7 +111,8 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
   written in batches every 2 s to spare the SD card.
 * **Metrics** (`metrics.py`) are computed when a session closes and stored with it.
 * **Pieces** (`pieces.py`) cuts sessions into segments at pauses of 3.5 s, takes the
-  melody (top voice), and matches segments by shared runs of pitch intervals. Pieces heard
+  melody (top voice), and matches segments by shared runs of pitch intervals, then finds
+  stumbles in each play against how that spot usually goes. Pieces heard
   3+ times are listed, recomputed from the raw notes after each new session. Each
   session's segments are kept in the database (tagged with the matcher's version), so a
   restart re-matches without re-reading every note; while the first pass runs, the
@@ -335,11 +343,11 @@ query values get 400 with an `error` message.
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
 | `GET /api/sessions?limit=50` | session list with headline metrics, each with `uid` (a UUID that stays with the session, for syncing) and `device` (the id of the database that recorded it) |
-| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, `uid`, `device`, and the pieces played in it (`pieces_pending` is true while they are still being found, e.g. after a restart) |
+| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, `uid`, `device`, and the pieces played in it with their `stumbles` and `clean_run` (`pieces_pending` is true while they are still being found, e.g. after a restart) |
 | `GET /api/sessions/<id>/events` | the session as a time series for replay: notes `[on, off, pitch, velocity]` and pedals `[t, cc, value]`, seconds from start |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
 | `GET /api/sessions.csv` | all sessions as CSV |
-| `GET /api/pieces` | 503 with `{"warming": true}` and `Retry-After: 3` while the first pass after a restart runs (the dashboard says "Finding your pieces…" and asks again), otherwise the pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`session`, `start`, `offset` (seconds into the session to play this recording from, 1 s before the piece), `active_seconds`, `tempo_bpm`, `steadiness`) |
+| `GET /api/pieces` | 503 with `{"warming": true}` and `Retry-After: 3` while the first pass after a restart runs (the dashboard says "Finding your pieces…" and asks again), otherwise the pieces found in the history, most recently played first: `key`, `label`, `name`, `active_seconds`, `sessions`, `last`, `opening` (most played phrase and where to hear it), `history` per session (`session`, `start`, `offset` (seconds into the session to play this recording from, 1 s before the piece), `active_seconds`, `tempo_bpm`, `steadiness`, `stumbles`, `stumbles_per_min` (null under 30 s), `clean_run` in seconds and `clean_run_offset` to play it from), `best_run` (`seconds`, `session`, `offset`), `trouble` (up to 3: `notes`, `stumbles`, `passes`, `session`, `offset`) |
 | `POST /api/pieces/name` | `{"key": "...", "name": "..."}` names a piece (empty name forgets it); returns the pieces |
 | `GET/POST /api/settings` | `{"daily_goal_minutes": 30, "streak_min_minutes": 5, "weekly_days_target": 5}` |
 

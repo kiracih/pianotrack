@@ -241,7 +241,8 @@ class Api:
                 for h in r["history"]:
                     if h["session"] == sid:
                         found.append({"key": r["key"], "label": r["label"],
-                                      "active_seconds": h["active_seconds"]})
+                                      "active_seconds": h["active_seconds"],
+                                      "stumbles": h["stumbles"], "clean_run": h["clean_run"]})
         return {"id": s["id"], "uid": s["uid"], "device": s["device"],
                 "closed": bool(s["closed"]), "source": s["source"],
                 "start": s["start"], "end": s["end"], "metrics": m, "pieces": found,

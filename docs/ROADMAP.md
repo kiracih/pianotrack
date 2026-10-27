@@ -14,12 +14,6 @@ Previous: 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pie
 
 At most three. Proposed 2026-10-23; nothing is built until the owner says go.
 
-### 1. Metrics you'd actually use (insight, research 2026-10-27)
-
-Owner, 2026-10-27: steadiness and the other session numbers are hard to understand and
-not used. Research of clearer alternatives is in the thread and project files
-(metrics-research/); the owner picks which to build.
-
 ### 2. Does phone-only capture work? A 10-minute check (app path, no code)
 
 **Problem.** The native iOS app only replaces the Pi if the iPhone keeps receiving
@@ -307,6 +301,10 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-10-28 (owner: "do all those 3 new metrics"): stumbles per piece (pauses far longer
+  than the piece has at that spot), longest clean run with your best, trouble spots with
+  ▶; the session page leads with stumbles and clean run, steadiness and the rest under
+  Details. Not yet: restarts without a pause, and the Trends card still shows steadiness.
 - 2026-10-27 evening (owner go): steadiness as a share of the beat (a 3.5% wobble
   scores about 75 at any tempo; stored sessions recomputed in the background after
   start, copy kept as `<db>.pre-metrics-v2.db`); every session has a `uid` and

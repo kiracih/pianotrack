@@ -422,6 +422,112 @@ def piece_tempo(segs):
     return {i: (beat * speed[i] if i in speed else None) for i in range(len(segs))}
 
 
+STUMBLE_RATIO = 2.0  # a gap this many times its usual length at that spot is a stumble
+STUMBLE_MIN = 0.4  # and at least this many seconds longer than usual
+STUMBLE_LOW = 0.3  # "usual" = this quantile of the spot's gaps, how it goes when it goes well
+STUMBLE_FALLBACK = 3.0  # x the play's typical gap, at a spot the piece doesn't know
+TROUBLE_RECENT = 10  # trouble spots come from this many latest sessions of a piece
+TROUBLE_MIN = 3  # stumbles at one spot before it is a trouble spot
+
+
+def _gap_key(pitches, i):
+    """Where in the music the gap after note i sits: the intervals of the four
+    notes up to it and the one after (the same in any key)."""
+    if i < 3:
+        return None
+    return tuple(b - a for a, b in zip(pitches[i - 3:i + 1], pitches[i - 2:i + 2]))
+
+
+def _quantile(xs, q):
+    xs = sorted(xs)
+    return xs[min(len(xs) - 1, int(q * len(xs)))]
+
+
+def stumble_count(found) -> int:
+    """Stumbles in one play: gaps within 2 notes of the previous one are the same stumble."""
+    return sum(1 for k, i in enumerate(found) if k == 0 or i - found[k - 1] > 2)
+
+
+def piece_stumbles(segs):
+    """Stumbling gaps in each play of one piece, as [[note index, ...] per segment];
+    `stumble_count` counts them, since one stumble can be felt over a couple of notes.
+
+    A stumble is a gap between two melody notes far longer than the piece
+    usually has at that spot (a hesitation, or a stop to find the place again).
+    The usual gap is how the spot goes in the piece's better plays, so a spot
+    you stumble at most of the time still counts; a held note that the music
+    asks for is long in every play and doesn't. Each play is first scaled to
+    its own speed, so slow practice isn't one long stumble.
+    """
+    mels = [([t for t, _ in s["melody"]], [p for _, p in s["melody"]]) for s in segs]
+    pooled = defaultdict(list)
+    for ts, ps in mels:
+        for i in range(len(ts) - 1):
+            k = _gap_key(ps, i)
+            if k:
+                pooled[k].append(ts[i + 1] - ts[i])
+    ref = {k: q for k, v in pooled.items() if len(v) >= 3 and (q := _quantile(v, STUMBLE_LOW)) > 0}
+    out = []
+    for ts, ps in mels:
+        gaps = [b - a for a, b in zip(ts, ts[1:])]
+        keys = [_gap_key(ps, i) for i in range(len(gaps))]
+        ratios = [g / ref[k] for g, k in zip(gaps, keys) if k in ref]
+        speed = statistics.median(ratios) if len(ratios) >= 8 else 1.0
+        typical = statistics.median(gaps) if gaps else 0.0
+        found = []
+        for i, (g, k) in enumerate(zip(gaps, keys)):
+            usual = ref[k] * speed if k in ref else typical
+            ratio = STUMBLE_RATIO if k in ref else STUMBLE_FALLBACK
+            if g > ratio * usual and g - usual > STUMBLE_MIN:
+                found.append(i)
+        out.append(found)
+    return out
+
+
+def clean_run(seg, stumbles):
+    """(seconds, start time) of the longest stretch of a play with no stumble."""
+    ts = [t for t, _ in seg["melody"]]
+    if not ts:
+        return 0.0, seg["start"]
+    best, at, a = 0.0, ts[0], 0
+    for b in list(stumbles) + [len(ts) - 1]:
+        if ts[b] - ts[a] > best:
+            best, at = ts[b] - ts[a], ts[a]
+        a = min(b + 1, len(ts) - 1)
+    return best, at
+
+
+def trouble_spots(segs, stumbles, session_starts=None, n=3):
+    """The spots in a piece you stumble at most in its latest sessions: the five
+    melody notes before the stumble, how many times you stopped there out of the
+    times you got there, and where to hear the latest one."""
+    latest = {}
+    for s in segs:
+        latest[s["session"]] = max(latest.get(s["session"], s["start"]), s["start"])
+    recent = set(sorted(latest, key=latest.get)[-TROUBLE_RECENT:])
+    stops, passes, last = Counter(), Counter(), {}
+    for s, found in zip(segs, stumbles):
+        if s["session"] not in recent:
+            continue
+        ps = [p for _, p in s["melody"]]
+        for i in range(4, len(ps)):
+            passes[tuple(ps[i - 4:i + 1])] += 1
+        for j, i in enumerate(found):
+            if i >= 4 and (j == 0 or i - found[j - 1] > 2):
+                k = tuple(ps[i - 4:i + 1])
+                stops[k] += 1
+                last[k] = (s["session"], s["melody"][i - 4][0])
+    rows = []
+    for k, c in stops.most_common():
+        if c < TROUBLE_MIN or len(rows) >= n:
+            break
+        sid, t = last[k]
+        t0 = (session_starts or {}).get(sid, t)
+        rows.append({"notes": list(k), "stumbles": c, "passes": max(c, passes[k]),
+                     "session": sid, "offset": round(max(t - 2.0, t0) - t0, 2)})
+    return rows
+
+
 def pieces_view(matcher, named=(), session_starts=None):
     """Pieces for the dashboard: groups heard three or more times, plus their
     named matches merged under one name, most recently played first."""
@@ -444,6 +550,8 @@ def pieces_view(matcher, named=(), session_starts=None):
     for g in groups.values():
         segs = sorted(g["segments"], key=lambda s: s["start"])
         tempo = piece_tempo(segs)
+        stumbles = piece_stumbles(segs)
+        best_run = None
         per = {}
         for k, s in enumerate(segs):
             h = per.setdefault(s["session"], {"session": s["session"], "start": s["start"],
@@ -452,6 +560,13 @@ def pieces_view(matcher, named=(), session_starts=None):
             t0 = (session_starts or {}).get(s["session"], s["start"])
             h.setdefault("offset", round(max(s["start"] - 1.0, t0) - t0, 2))
             h["active_seconds"] += s["active"]
+            h["stumbles"] = h.get("stumbles", 0) + stumble_count(stumbles[k])
+            run, run_at = clean_run(s, stumbles[k])
+            if run > h.get("clean_run", -1.0):
+                h["clean_run"] = run
+                h["clean_run_offset"] = round(max(run_at - 1.0, t0) - t0, 2)
+            if best_run is None or run > best_run[0]:
+                best_run = (run, s["session"], max(run_at - 1.0, t0) - t0)
             if tempo[k]:
                 h["_t"][0] += tempo[k] * s["active"]
                 h["_t"][1] += s["active"]
@@ -463,7 +578,11 @@ def pieces_view(matcher, named=(), session_starts=None):
             t, st = h.pop("_t"), h.pop("_s")
             h["tempo_bpm"] = round(t[0] / t[1]) if t[1] else None
             h["steadiness"] = round(st[0] / st[1]) if st[1] else None
+            # Stumbles a minute, so a long session and a short one compare.
+            h["stumbles_per_min"] = round(h["stumbles"] / (h["active_seconds"] / 60), 1) \
+                if h["active_seconds"] >= 30 else None
             h["active_seconds"] = round(h["active_seconds"])
+            h["clean_run"] = round(h["clean_run"])
             history.append(h)
         first = segs[0]
         motif, rep, at = _motif(segs, g["rep"])
@@ -480,6 +599,10 @@ def pieces_view(matcher, named=(), session_starts=None):
             "opening": {"session": rep["session"], "offset": round(max(at - 1.0, rep["start"]) - t0, 2),
                         "notes": list(motif)},
             "history": history,
+            # The longest stretch ever played without a stumble, and where to hear it.
+            "best_run": {"seconds": round(best_run[0]), "session": best_run[1],
+                         "offset": round(best_run[2], 2)},
+            "trouble": trouble_spots(segs, stumbles, session_starts),
             "_groups": [i for i, p in matcher.groups() if _key(p) in g["keys"]],
             "_keys": g["keys"],
             "_name_id": g["name_id"],

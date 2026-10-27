@@ -72,6 +72,17 @@ Rules the recorder follows (see `pianotrack/recorder.py`):
   where to play that recording from: 1 s before the piece's first stretch in that session (never before
   the session start), in seconds from its start. Since 2026-10-25; before, it was
   the session tempo of each segment, which often read the left hand's double beat.
+  Stumbles (since 2026-10-28) come from `pieces.piece_stumbles`: for each gap between
+  melody notes, its spot is the four intervals up to and across it; the usual gap at a
+  spot is the 30th percentile of that spot's gaps over all plays of the piece (spots seen
+  3+ times), each play scaled by its median ratio to those (when it has 8+ known gaps).
+  A gap is a stumble when it is over 2× the usual and 0.4 s longer (at an unknown spot:
+  3× the play's median gap; a spot whose usual gap is 0 counts as unknown); stumbling gaps
+  within 2 notes of the previous one count as one stumble. `clean_run` is the longest
+  melody stretch between stumbling gaps; it and `best_run` play from 1 s before that
+  stretch (`clean_run_offset`, `best_run.offset`); `trouble` counts the five melody notes up to each stumble
+  over the piece's last 10 sessions (3+ stumbles, at most 3 spots, `passes` = times
+  those five notes were played), `offset` 2 s before the latest stumble's first note.
 
 ## Matching
 

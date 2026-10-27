@@ -169,8 +169,9 @@ def run(events, today):
         p = {k: v for k, v in p.items() if not k.startswith("_") and k != "key"}
         # Session ids are storage details; refer to sessions by their index above.
         p["opening"]["session"] = order[p["opening"]["session"]]
-        for h in p["history"]:
-            h["session"] = order[h["session"]]
+        p["best_run"]["session"] = order[p["best_run"]["session"]]
+        for x in p["history"] + p["trouble"]:
+            x["session"] = order[x["session"]]
         found.append(p)
     store.close()
     return {
