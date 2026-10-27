@@ -5,10 +5,9 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 (an evening), M (a few days), L (a week or more). Nothing here is built until the
 owner says so.
 
-Last review: 2026-10-26 (built: every recording of a piece with ▶, welcome back after
-a break; found that steadiness can be made fair to slow tempo, and that a stumble map
-needs the score check first).
-Previous: 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
+Last review: 2026-10-27 (built: Monday "last week" line, clearer falling notes; the
+owner's 3D key map and falling notes shipped the evening before).
+Previous: 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
 2026-10-22 (app target added), 2026-10-21 (first run).
 
 ## Now
@@ -131,23 +130,23 @@ are S, change no stored data and send nothing off the Pi.
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | One connection per piano: USB first, Bluetooth only if USB drops, drop identical note-ons within 15 ms (high, S); merge the same session recorded on Pi and phone, Pi ranked first (high, M); show where each session was recorded (med, S) |
-| Today & habits | Last week's summary line on Monday (med, S, new API field); weeks in a row at target (med, S); reminder rules: usual start time minus 30 min, at most one a day, none once 5 min are in, weekly summary after 3 ignored days (high, M); weekly days count beside the streak (high, S, owner decision) |
-| Pieces | Demo that learns over weeks (tempo up, fewer wrong notes), so fixes can be checked against a known trend (high, S, prototype ready); pinned First / Best / Latest recordings (med, S); absolute tempo still ×1.8–2 high on eighth-note pieces (high, M); longest unbroken stretch per piece as a personal best (high, M); steady-tempo record (med, S after #1); make the demo learn over weeks (med, S) |
-| Practice insight | Steadiness as a share of the beat, fair to slow practice (high, S–M, with Now #1); "Ready for +5 bpm / Pushing too fast / Consolidating" per piece (high, M); trends within each piece (med, S) |
-| Replay & session detail | Loop a span, ±5 s, Space plays (Next #2, high, S); stumble map per piece (high, M; finds a hard bar in 4/4 pieces after 30 days with the score, only 2/4 without, so it waits for score check step 1); intensity chart seeks the replay (med, S) |
+| Capture & setup | Session uid + device id per session (schema v2, needs the owner's go; a re-run `replay x.mid` today stores the session twice) (high, S); imports upsert by uid so they can be re-run (high, S–M, after uid); show where each session was recorded (med, S); one connection per piano, USB first (high, S) |
+| Today & habits | Weeks in a row at target (med, S); brass tick on calendar weeks that met the target (low–med, S); reminder rules with the usual start time from history (high, M) |
+| Pieces | Demo that learns over weeks: patch ready, vectors and default demo byte-identical (high, S); absolute tempo ×1.8–2 high on eighth-note pieces, beat from the longer-note cluster (high, M, gated on the learning demo); longest unbroken stretch counted in bars after score check step 1 (high, M); pinned First / Best / Latest recordings (med, S) |
+| Practice insight | Steadiness as a share of the beat: 3.5% jitter scores 78 at 60/100/140 bpm (was 37/55/66); recompute plan ready, 30–40 s on the Pi, backup first (high, S, owner's go); timing as a share of the beat on the tile (med, S, with it); steadiness trend per piece on Trends (med, S–M) |
+| Replay & session detail | A–B loop and ±5 s that work with falling notes, Space plays (Next #2, high, S–M); bar lines on the lane and seek bar once score check step 1 exists (high, M); intensity chart seeks the replay (med, S) |
 | Trust & access | Pieces and session pages answer at once while Pieces warms up (warm loop every 20 s, stale view or "Finding your pieces… 120 of 406"; session page waits 16.6 s today) (high, S); smaller segment cache (about 170 MB → under 100 MB with 400 days) (med, S–M); restore refuses while the service runs and the README gets fresh-card steps (med, S); backups say what they hold (high, S) |
-| Design (lead) | Share card for the week (1080×1350, made on the device, shared via the share sheet; mockups ready) (high, S–M); Monday shows last week's octave ghosted (med, S); Today without the ring (patch ready; drops notes today and load from Today): a serif sentence, small figures (med, S); fewer boxes: records and settings on plaster (med, S); step 3 engraved dynamics and locale (med, S) |
+| Design (lead) | Last week ghosted in the octave's days still to come (med, S, patch ready); step 3: 24-hour times and an SVG theme toggle with aria-pressed (med, S, patch ready); the goal moment: brass rises once a day in today's key, SVG only (med, S, patch ready); week share card (high, S–M); no 3D on the first screen (keeps the octave portable to SwiftUI and the page light) |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Session identity for sync: a UUID and device id per session so Pi-to-app and stick sync can re-run without copies |
-| Today & habits | ring, streak, week, calendar, goals, reminders | The Monday "last week" line and weeks in a row at target |
-| Pieces | matcher, Pieces card, per-piece progress, naming | Land the learning demo, then measure the longest unbroken stretch against the true stop rate |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Steadiness as a share of the beat: the recompute plan for stored sessions (backup first) |
-| Replay & session detail | player, keyboard, downloads, session page | Score check step 1, so the stumble map gets bar positions it can trust |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | A sync change feed `GET /api/sync?since=<rev>` with tombstones for deleted short sessions |
+| Today & habits | ring, streak, week, calendar, goals, reminders | Reminder rules: the usual start time from history, ready for iOS local notifications |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Land the learning demo, then use it as the gate for the absolute tempo fix |
+| Practice insight | trends, session metrics, zones, dynamics, key map | A demo where steadiness improves over weeks, to check the trend marker and per-piece trends |
+| Replay & session detail | player, keyboard, downloads, session page | The output format of score check step 1 (bar start times per session), so loops can snap to bars |
 | Trust & access | backups, remote login, privacy, Pi speed, reliability | Keep closed sessions' segments in SQLite so a cold start skips about 11 s of rereading (new table, owner's go); time the cold start on the Pi |
-| Design (lead) | identity, layout, type, colour, motion, copy | Monday's ghosted last week, and step 3: 24-hour times and the theme toggle glyph |
+| Design (lead) | identity, layout, type, colour, motion, copy | Falling notes in light mode (a lighter lane) and phone framing, then the week share card |
 
 ## App target
 
@@ -168,6 +167,11 @@ Must have for a first public version:
 - **Reminders**: streak at risk, weekly summary (native push, no third party).
 - **Local-first data** with backup/export and restore; no account needed to start.
 - **Onboarding**: pair the piano in under a minute, choose a daily goal, done.
+
+2026-10-27: the two 3D views (key map, falling notes) are web-only for now; on iOS they
+map to SceneKit or RealityKit, and the octave, ring and charts stay 2D so they port to
+SwiftUI and widgets as they are. Session uid + device id (Capture) is the first step
+of Pi-to-app sync and needs the owner's go (schema v2).
 
 Later / paid tier:
 - Teacher or parent share link (read-only weekly view) and teacher plan.
@@ -299,6 +303,12 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
   Pi unless the owner opts in.
 
 ## Done
+
+- 2026-10-27: Today: on Mondays, how last week went ("Last week: 6 of 5 days, 3h 10m.
+  Target met."), `last_week` in `/api/summary`. Falling notes easier to read: pressed
+  keys in felt shades, a brass landing line, 230 px on phones, nothing drawn off screen.
+- 2026-10-26 evening (owner request): 3D key map and falling notes in the replay
+  (three.js 0.180.0 bundled, served from the Pi); deployed to the Pi.
 
 - 2026-10-26: Pieces: every recording of a piece, newest first, each with ▶ from where the
   piece starts (owner idea); `history[].offset` in `/api/pieces`. Today: "One day off
