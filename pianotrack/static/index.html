@@ -223,6 +223,9 @@ footer a { color: var(--text-2); }
 :root[data-theme="dark"] { --oct-brass: #8c6a1f; --oct-edge: #120d0e; }
 .o-week { background: transparent; border: 0; padding: 8px 0 16px; }
 .octave { max-width: 460px; }
+.o-week h2 span { margin-right: auto; }
+.week-share { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: var(--accent);
+  min-height: 44px; display: inline-flex; align-items: center; margin: -14px 0; }
 .octave svg { touch-action: manipulation; }
 .oct-face { fill: var(--key-white); stroke: var(--oct-edge); stroke-width: 1; }
 .oct-k { cursor: default; outline: none; transition: transform 180ms ease-out; }
@@ -282,7 +285,7 @@ body.demo #settings, body.demo #goals-h, body.demo .pc-name { display: none; }
     </section>
 
     <section class="card span-5 o-week">
-      <h2>This week <span id="week-total"></span></h2>
+      <h2>This week <span id="week-total"></span><a class="week-share" href="/recap">Week card</a></h2>
       <div class="octave" id="week"></div>
     </section>
 

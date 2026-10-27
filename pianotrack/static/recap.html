@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#edeeea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1416" media="(prefers-color-scheme: dark)">
+<title>Week card</title>
+<link rel="icon" href="/icon.svg">
+<style>
+/* The weekly share card (docs/DESIGN.md, "Week card"). The card is one SVG, drawn
+   here and turned into a PNG on the phone; nothing leaves the Pi unless you share it. */
+:root {
+  color-scheme: light;
+  --bg: #edeeea; --surface: #fbfaf6; --border: #dcdbd4; --text: #1f1a1c; --text-2: #55514f;
+  --muted: #6e6965; --accent: #9b2335; --accent-soft: #f3dde0;
+  --serif: ui-serif, "New York", "Iowan Old Style", Charter, "Bitstream Charter", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1b1416; --surface: #251c1e; --border: #3a2e30; --text: #f2ece4; --text-2: #c2b6b0;
+    --muted: #988b86; --accent: #e57a8a; --accent-soft: #4a2229;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; touch-action: manipulation;
+}
+body::before { content: ""; display: block; height: 6px; background: var(--accent); }
+main { max-width: 560px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-left)) 32px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--serif); font-weight: 600; font-size: 22px; margin: 0; }
+a { color: var(--accent); }
+.week { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; }
+.week b { font-family: var(--serif); font-weight: 600; font-size: 17px; }
+button {
+  font: inherit; min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
+}
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+:root:not([data-theme="light"]) button.primary { color: #fff; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: transparent; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); font-weight: 600; }
+#preview { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+#preview svg { display: block; width: 100%; height: auto; border-radius: 10px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 14px 0; }
+.opts label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.opts input { width: 20px; height: 20px; accent-color: var(--accent); }
+.actions { display: flex; gap: 10px; }
+.actions button { flex: 1; }
+.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Week card</h1><a href="/">Back</a></header>
+  <div class="week">
+    <button id="prev" aria-label="Previous week">‹</button>
+    <b id="week-label" aria-live="polite"></b>
+    <button id="next" aria-label="Next week">›</button>
+  </div>
+  <div id="preview" role="img"></div>
+  <div class="opts">
+    <span class="seg" role="group" aria-label="Shape">
+      <button data-fmt="post" aria-pressed="true">Post</button><button data-fmt="story" aria-pressed="false">Story</button>
+    </span>
+    <span class="seg" role="group" aria-label="Colours">
+      <button data-look="ivory" aria-pressed="true">Ivory</button><button data-look="rosewood" aria-pressed="false">Rosewood</button>
+    </span>
+    <label><input type="checkbox" id="names" checked> Piece names</label>
+  </div>
+  <div class="actions">
+    <button class="primary" id="share">Share</button>
+    <button id="save">Save image</button>
+  </div>
+  <p class="note" id="note">The image is made on this phone. Nothing is sent anywhere unless you share it.</p>
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const NOTE = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
+const noteName = (p) => NOTE[p % 12] + (Math.floor(p / 12) - 1);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const SERIF = 'ui-serif, &quot;New York&quot;, &quot;Iowan Old Style&quot;, Charter, Georgia, serif';
+const SANS = 'system-ui, -apple-system, &quot;Segoe UI&quot;, Roboto, sans-serif';
+const W = 1080, M = 80;
+// The card's own colours: it is a picture, so it does not follow the page theme.
+// The keys stay ivory on both, as in the octave on the dashboard.
+const LOOKS = {
+  ivory: { bg: "#fbfaf6", ink: "#1f1a1c", ink2: "#55514f", muted: "#6e6965", felt: "#9b2335",
+           brass: "#a8822f", brassText: "#7a5a1c", key: "#fffefa", edge: "#d4d2ca", black: "#1f1a1c", rule: "#e6e5df" },
+  rosewood: { bg: "#1b1416", ink: "#f2ece4", ink2: "#c2b6b0", muted: "#988b86", felt: "#9b2335",
+              brass: "#8c6a1f", brassText: "#d6aa52", key: "#e9e2d8", edge: "#120d0e", black: "#120d0e", rule: "#33282a" },
+};
+const KSEQ = ["#ebc3c9", "#d27d8b", "#9b2335", "#5e1320"];
+
+function dur(s) {
+  s = Math.round(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
+}
+function mins(s) { const m = Math.round((s || 0) / 60); return `${m} min`; }
+const num = (n) => (n ?? 0).toLocaleString();
+const day = (iso) => new Date(iso + "T12:00:00");
+function rangeLabel(r) {
+  return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).formatRange(day(r.start), day(r.end));
+}
+
+// One line that says what was good about the week, in the sharer's own voice. It
+// invites, never grades: a quiet week still gets a kind sentence.
+function headline(r) {
+  const gain = r.active_seconds - r.prev_active_seconds;
+  if (!r.active_seconds) return ["A rest week", "muted"];
+  if (r.best_week && r.prev_active_seconds) return ["My biggest week yet", "brass"];
+  if (r.played >= r.target && r.complete) return [`Weekly target met`, "brass"];
+  if (gain >= 60 && r.prev_active_seconds) return [`${mins(gain)} more than last week`, "felt"];
+  if (r.streak.current >= 3) return [`${r.streak.current} days in a row`, "felt"];
+  return [`${r.played} ${r.played === 1 ? "day" : "days"} at the piano`, "felt"];
+}
+
+function octave(r, c, x0, y0, w, h) {
+  const kw = w / 7, bw = kw * 0.58, bh = h * 0.6, R = 10;
+  const narrow = new Intl.DateTimeFormat(undefined, { weekday: "narrow" });
+  let s = `<rect x="${x0}" y="${y0 - 12}" width="${w}" height="8" fill="${c.felt}"/>`;
+  r.days.forEach((d, i) => {
+    const x = x0 + i * kw;
+    const path = `M${x + 2},${y0} H${x + kw - 2} V${y0 + h - R} q0,${R} -${R},${R} H${x + 2 + R} q-${R},0 -${R},-${R} Z`;
+    s += `<clipPath id="k${i}"><path d="${path}"/></clipPath><path d="${path}" fill="${c.key}" stroke="${c.edge}" stroke-width="2"/>`;
+    const frac = r.goal_seconds ? Math.min(d.active_seconds / r.goal_seconds, 1) : 0;
+    if (frac > 0) {
+      const fh = Math.max(8, frac * h);
+      s += `<rect x="${x}" y="${y0 + h - fh}" width="${kw}" height="${fh}" fill="${d.goal_met ? c.brass : c.felt}" clip-path="url(#k${i})"/>`;
+    }
+    s += `<text x="${x + kw / 2}" y="${y0 + h + 48}" text-anchor="middle" font-family="${SANS}" font-size="30" font-weight="600" fill="${c.ink2}">${esc(narrow.format(day(d.date)))}</text>`;
+    s += `<text x="${x + kw / 2}" y="${y0 + h + 86}" text-anchor="middle" font-family="${SANS}" font-size="26" fill="${c.muted}">${d.later ? "" : d.active_seconds >= 60 ? `${Math.round(d.active_seconds / 60)} min` : d.active_seconds ? "<1 min" : "–"}</text>`;
+  });
+  for (const b of [1, 2, 4, 5, 6])
+    s += `<path d="M${x0 + b * kw - bw / 2},${y0} h${bw} V${y0 + bh - 6} q0,6 -6,6 h-${bw - 12} q-6,0 -6,-6 Z" fill="${c.black}"/>`;
+  return s;
+}
+
+// The week's keys on a whole 88-key keyboard, coloured by how often each was played.
+function keyboard(r, c, x0, y0, w, h) {
+  const LO = 21, HI = 108, max = Math.max(...r.histogram, 1);
+  const black = (p) => [1, 3, 6, 8, 10].includes(p % 12);
+  const whites = []; for (let p = LO; p <= HI; p++) if (!black(p)) whites.push(p);
+  const ww = w / whites.length, pos = {};
+  whites.forEach((p, i) => { pos[p] = x0 + i * ww; });
+  const shade = (n) => { const f = n / max; return f > .66 ? KSEQ[3] : f > .33 ? KSEQ[2] : f > .1 ? KSEQ[1] : KSEQ[0]; };
+  let s = "";
+  for (const p of whites) {
+    const n = r.histogram[p - LO];
+    s += `<rect x="${pos[p] + .75}" y="${y0}" width="${ww - 1.5}" height="${h}" rx="2" fill="${n ? shade(n) : c.key}"/>`;
+  }
+  for (let p = LO; p <= HI; p++) {
+    if (!black(p)) continue;
+    const n = r.histogram[p - LO], x = pos[p - 1] + ww - ww * 0.32;
+    s += `<rect x="${x}" y="${y0}" width="${ww * 0.64}" height="${h * 0.6}" rx="1.5" fill="${n ? shade(n) : c.black}"/>`;
+  }
+  return s;
+}
+
+function card(r, opt) {
+  const c = LOOKS[opt.look], H = opt.fmt === "story" ? 1920 : 1350;
+  const top = opt.fmt === "story" ? 250 : 0;   // a story keeps the same card, centred
+  const [line, tone] = headline(r);
+  const lineFill = tone === "brass" ? c.brassText : tone === "felt" ? (opt.look === "rosewood" ? "#e57a8a" : c.felt) : c.muted;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  s += `<rect width="${W}" height="${H}" fill="${c.bg}"/><rect width="${W}" height="20" fill="${c.felt}"/>`;
+  s += `<g transform="translate(0 ${top})">`;
+  s += `<text x="${M}" y="118" font-family="${SANS}" font-size="30" fill="${c.ink2}">${r.complete ? "My week at the piano" : "My week so far"}</text>`;
+  s += `<text x="${W - M}" y="118" text-anchor="end" font-family="${SANS}" font-size="30" fill="${c.ink2}">${esc(rangeLabel(r))}</text>`;
+  // The figures big, their units small: 3 h 14 min.
+  const t = Math.round(r.active_seconds / 60), unit = (u) => `<tspan font-size="64" font-weight="400" fill="${c.ink2}">${u}</tspan>`;
+  const big = t >= 60 ? `${Math.floor(t / 60)}${unit(" h ")}${t % 60}${unit(" min")}` : `${t}${unit(" min")}`;
+  s += `<text x="${M - 6}" y="268" font-family="${SERIF}" font-size="150" font-weight="600" fill="${c.ink}" style="font-variant-numeric: lining-nums tabular-nums">${big}</text>`;
+  s += `<text x="${M}" y="334" font-family="${SERIF}" font-size="38" font-style="italic" font-weight="600" fill="${lineFill}">${esc(line)}</text>`;
+  s += octave(r, c, M, 400, W - 2 * M, 330);
+  // Three figures: days, streak, keys pressed.
+  const col = (W - 2 * M) / 3, figs = [
+    [`${r.played}`, `days played, target ${r.target}`, r.played >= r.target ? c.brassText : c.ink],
+    [`${r.streak.current}`, "day streak", c.ink],
+    [num(r.notes), "keys pressed", c.ink],
+  ];
+  s += `<line x1="${M}" x2="${W - M}" y1="872" y2="872" stroke="${c.rule}" stroke-width="2"/>`;
+  figs.forEach(([v, l, fill], i) => {
+    const x = M + i * col;
+    s += `<text x="${x}" y="964" font-family="${SERIF}" font-size="76" font-weight="600" fill="${fill}" style="font-variant-numeric: lining-nums tabular-nums">${esc(v)}</text>`;
+    s += `<text x="${x}" y="1006" font-family="${SANS}" font-size="27" fill="${c.ink2}">${esc(l)}</text>`;
+  });
+  s += keyboard(r, c, M, 1052, W - 2 * M, 84);
+  const tk = r.top_keys.map((k) => noteName(k.pitch));
+  const keysLine = tk.length ? `Most played: ${tk.length > 1 ? tk.slice(0, -1).join(", ") + " and " + tk[tk.length - 1] : tk[0]}` : "";
+  s += `<text x="${M}" y="1180" font-family="${SANS}" font-size="27" fill="${c.ink2}">${esc(keysLine)}</text>`;
+  // A piece by its name, or (names hidden, or none named yet) just how many.
+  const ps = r.pieces || [], p = opt.names && ps.find((x) => x.named);
+  let head = "", sub = "";
+  if (p) {
+    head = `Most practised: ${p.label}`;
+    sub = mins(p.active_seconds);
+    if (p.stumbles_per_min && p.stumbles_per_min[1] < p.stumbles_per_min[0])
+      sub += `, stumbles ${p.stumbles_per_min[0]} → ${p.stumbles_per_min[1]} a minute`;
+    else if (p.clean_run >= 20) sub += `, ${p.clean_run} s without a stumble`;
+  } else if (ps.length) {
+    const run = Math.max(...ps.map((x) => x.clean_run));
+    head = `${ps.length} ${ps.length === 1 ? "piece" : "pieces"} practised`;
+    if (run >= 20) sub = `longest run without a stumble ${run} s`;
+  }
+  if (head) s += `<text x="${M}" y="1250" font-family="${SERIF}" font-size="34" font-weight="600" fill="${c.ink}">${esc(head)}<tspan font-family="${SANS}" font-weight="400" font-size="27" fill="${c.ink2}">  ${esc(sub)}</tspan></text>`;
+  s += `</g>`;
+  s += `<text x="${W - M}" y="${H - 34}" text-anchor="end" font-family="${SERIF}" font-size="24" font-style="italic" fill="${c.muted}">pianotrack</text>`;
+  return s + `</svg>`;
+}
+
+// --- state, preview and sharing ----------------------------------------------------
+const opt = { fmt: "post", look: matchMedia("(prefers-color-scheme: dark)").matches ? "rosewood" : "ivory", names: true };
+let recap = null, weekParam = new URLSearchParams(location.search).get("week");
+
+function iso(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+async function load() {
+  const r = await fetch("/api/recap" + (weekParam ? "?week=" + weekParam : ""));
+  if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
+  recap = await r.json();
+  $("week-label").textContent = rangeLabel(recap);
+  const next = day(recap.end); next.setDate(next.getDate() + 1);
+  $("next").disabled = next > new Date();
+  draw();
+}
+function draw() {
+  for (const b of document.querySelectorAll("[data-fmt]")) b.setAttribute("aria-pressed", b.dataset.fmt === opt.fmt);
+  for (const b of document.querySelectorAll("[data-look]")) b.setAttribute("aria-pressed", b.dataset.look === opt.look);
+  $("preview").innerHTML = card(recap, opt);
+  $("preview").setAttribute("aria-label", `Week card: ${dur(recap.active_seconds)}, ${recap.played} of ${recap.target} days, ${recap.streak.current} day streak, ${num(recap.notes)} keys pressed`);
+}
+function shift(days) {
+  const d = day(recap.start); d.setDate(d.getDate() + days);
+  weekParam = iso(d); history.replaceState(null, "", "?week=" + weekParam); load();
+}
+async function png() {
+  const svg = card(recap, opt), H = opt.fmt === "story" ? 1920 : 1350;
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  try {
+    const img = new Image();
+    await new Promise((ok, fail) => { img.onload = ok; img.onerror = fail; img.src = url; });
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    cv.getContext("2d").drawImage(img, 0, 0, W, H);
+    return await new Promise((ok) => cv.toBlob(ok, "image/png"));
+  } finally { URL.revokeObjectURL(url); }
+}
+const fileName = () => `piano-week-${recap.start}.png`;
+async function save() {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(await png()); a.download = fileName(); a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+// The share sheet needs a secure page: it works on the https (tunnel) link, while
+// the home address (http) falls back to saving the image.
+const canShareFiles = () => window.isSecureContext && navigator.canShare &&
+  navigator.canShare({ files: [new File([""], "x.png", { type: "image/png" })] });
+$("share").addEventListener("click", async () => {
+  if (!canShareFiles()) return save();
+  const file = new File([await png()], fileName(), { type: "image/png" });
+  try { await navigator.share({ files: [file] }); } catch (e) { if (e.name !== "AbortError") save(); }
+});
+$("save").addEventListener("click", save);
+$("prev").addEventListener("click", () => shift(-7));
+$("next").addEventListener("click", () => shift(7));
+for (const b of document.querySelectorAll("[data-fmt]")) b.addEventListener("click", () => { opt.fmt = b.dataset.fmt; draw(); });
+for (const b of document.querySelectorAll("[data-look]")) b.addEventListener("click", () => { opt.look = b.dataset.look; draw(); });
+$("names").addEventListener("change", (e) => { opt.names = e.target.checked; draw(); });
+if (!canShareFiles()) {
+  $("share").hidden = true;
+  $("note").textContent += " To share straight to an app, open the dashboard through its remote (https) link.";
+}
+load();
+</script>
+</body>
+</html>

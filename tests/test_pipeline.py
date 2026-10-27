@@ -7,6 +7,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
+from datetime import date, timedelta
 
 from pianotrack import metrics, simulate
 from pianotrack.collector import Collector
@@ -230,6 +231,23 @@ class BackfillTest(TmpStore):
         self.assertEqual(keys["total"], s["totals"]["notes"])
         self.assertEqual(api.keys(0)["total"], keys["total"])
 
+    def test_recap_is_one_monday_to_sunday_week(self):
+        simulate.backfill(self.store, days=21, seed=2)
+        api = Api(self.store)
+        today = date.today()
+        r = api.recap(today - timedelta(days=7))
+        start = date.fromisoformat(r["start"])
+        self.assertEqual(start.weekday(), 0)
+        self.assertEqual(len(r["days"]), 7)
+        self.assertTrue(r["complete"])
+        self.assertEqual(r["active_seconds"], sum(d["active_seconds"] for d in r["days"]))
+        self.assertEqual(sum(r["histogram"]), r["notes"])
+        self.assertLessEqual(len(r["top_keys"]), 3)
+        cur = api.recap()
+        self.assertEqual(cur["start"], r["start"] if today.weekday() == 0
+                         else (today - timedelta(days=today.weekday())).isoformat())
+        self.assertFalse(api.recap(today)["complete"])
+
     def test_one_day_off_needs_a_streak_day_before_it(self):
         api, t = Api(self.store), time.time() - 2 * 86400
         sid = self.store.open_session(t)
@@ -244,7 +262,7 @@ class BackfillTest(TmpStore):
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         base = f"http://127.0.0.1:{httpd.server_address[1]}"
         try:
-            for path in ("/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-512.png"):
+            for path in ("/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-512.png", "/recap", "/api/recap?week=2026-10-26"):
                 with urllib.request.urlopen(base + path) as r:
                     self.assertEqual(r.status, 200)
             for path in ("/replay.js", "/piano/A0.mp3", "/piano/C8.mp3", "/piano/Fs4.mp3"):

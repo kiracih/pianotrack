@@ -148,6 +148,89 @@ class Api:
             "demo": self.demo,
         }
 
+    def recap(self, day=None):
+        """One calendar week (Monday to Sunday) for the share card: the octave, time,
+        days played, streak, keys pressed, the most played keys and pieces.
+
+        `day` is any date in the week; by default this week, or last week on a
+        Monday, when this one has only just begun.
+        """
+        settings = self.store.settings()
+        today = date.today()
+        if day is None:
+            day = today - timedelta(days=7) if today.weekday() == 0 else today
+        start = day - timedelta(days=day.weekday())
+        end = start + timedelta(days=6)
+        lo = datetime.combine(start - timedelta(days=400), datetime.min.time()).timestamp()
+        sessions = self._sessions_with_metrics(lo)
+        days = metrics.daily_totals(sessions)
+        min_secs = settings["streak_min_minutes"] * 60
+        goal = settings["daily_goal_minutes"] * 60
+        empty = {"active_seconds": 0, "notes": 0, "sessions": 0}
+        week = []
+        for i in range(7):
+            d = start + timedelta(days=i)
+            v = days.get(d, empty)
+            week.append({"date": d.isoformat(), "active_seconds": round(v["active_seconds"]),
+                         "notes": v["notes"], "goal_met": v["active_seconds"] >= goal,
+                         "later": d > today})
+        total = sum(w["active_seconds"] for w in week)
+        prev = sum(days.get(start - timedelta(days=i), empty)["active_seconds"] for i in range(1, 8))
+        # Every earlier week in the window, to tell a record week.
+        weeks = {}
+        for d, v in days.items():
+            if d < start:
+                k = d - timedelta(days=d.weekday())
+                weeks[k] = weeks.get(k, 0) + v["active_seconds"]
+        mine = [s for s in sessions if s["closed"] and s["metrics"].get("note_count")
+                and start <= metrics.local_day(s["start"]) <= end]
+        hist = [0] * (metrics.HIGHEST_KEY - metrics.LOWEST_KEY + 1)
+        for s in mine:
+            for i, c in enumerate(s["metrics"].get("key_histogram") or []):
+                hist[i] += c
+        top = sorted(range(len(hist)), key=lambda i: -hist[i])[:3]
+        longest = max(mine, key=lambda s: s["metrics"]["active_seconds"], default=None)
+        return {
+            "start": start.isoformat(), "end": end.isoformat(),
+            "complete": end < today,
+            "days": week,
+            "goal_seconds": goal,
+            "active_seconds": total,
+            "prev_active_seconds": round(prev),
+            "best_week": total > 0 and all(total > w for w in weeks.values()),
+            "played": sum(1 for w in week if w["active_seconds"] >= min_secs),
+            "target": settings["weekly_days_target"],
+            "streak": metrics.streaks(days, min_secs, min(end, today)),
+            "sessions": len(mine),
+            "notes": sum(s["metrics"]["note_count"] for s in mine),
+            "longest_session": ({"session_id": longest["id"], "start": longest["start"],
+                                 "active_seconds": longest["metrics"]["active_seconds"]}
+                                if longest else None),
+            "histogram": hist,
+            "top_keys": [{"pitch": metrics.LOWEST_KEY + i, "count": hist[i]} for i in top if hist[i]],
+            "pieces": self._recap_pieces({s["id"] for s in mine}),
+        }
+
+    def _recap_pieces(self, ids):
+        """The week's most played pieces, with stumbles a minute at the first and
+        last play of the week. None while the pieces are still being found."""
+        now = self._pieces_now()[0]
+        if now is None:
+            return None
+        out = []
+        for r in now[1]:
+            hs = [h for h in r["history"] if h["session"] in ids]
+            if not hs:
+                continue
+            rated = [h["stumbles_per_min"] for h in hs if h["stumbles_per_min"] is not None]
+            out.append({"key": r["key"], "label": r["label"], "named": bool(r["name"]),
+                        "active_seconds": sum(h["active_seconds"] for h in hs),
+                        "plays": len(hs),
+                        "clean_run": max(h["clean_run"] for h in hs),
+                        "stumbles_per_min": [rated[0], rated[-1]] if len(rated) > 1 else None})
+        out.sort(key=lambda p: -p["active_seconds"])
+        return out[:3]
+
     def days(self, n=365):
         today = date.today()
         since = datetime.combine(today - timedelta(days=n), datetime.min.time()).timestamp()
@@ -442,6 +525,16 @@ def _int_param(q, name, default, lo, hi):
     return max(lo, min(v, hi))
 
 
+def _date_param(q, name):
+    raw = q.get(name)
+    if raw is None:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        raise BadRequest(f"{name} must be a date like 2026-10-26") from None
+
+
 def _safe_next(target):
     """Only allow redirects to a path on this site after login."""
     return target if target.startswith("/") and not target.startswith("//") else "/"
@@ -553,6 +646,11 @@ def make_handler(api, tunnel=False, allowed_hosts=()):
                     return self._send(200, api.keys(_int_param(q, "days", 30, 0, 5000)))
                 if path == "/api/summary":
                     return self._send(200, api.summary())
+                if path == "/api/recap":
+                    return self._send(200, api.recap(_date_param(q, "week")))
+                if path in ("/recap", "/recap.html"):
+                    with open(os.path.join(STATIC, "recap.html"), "rb") as f:
+                        return self._send(200, f.read(), "text/html; charset=utf-8")
                 if path == "/api/days":
                     return self._send(200, api.days(_int_param(q, "days", 365, 1, 2000)))
                 if path == "/api/trends":
