@@ -272,6 +272,20 @@ def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float,
     return f"{max(1, goal_min - round(today_seconds / 60))} min to your {goal_min} min goal"
 
 
+def last_week(days, min_seconds: float, target: int, today=None) -> dict:
+    """Last calendar week (Monday to Sunday): days with at least `min_seconds`,
+    whether that met the weekly `target`, and the time played.
+
+    Shown on Monday, when this week's octave is still empty.
+    """
+    today = today or date.today()
+    start = today - timedelta(days=today.weekday() + 7)
+    week = [days.get(start + timedelta(days=i), {}).get("active_seconds", 0) for i in range(7)]
+    played = sum(1 for s in week if s >= min_seconds)
+    return {"start": start.isoformat(), "played": played, "target": target,
+            "met": played >= target, "active_seconds": round(sum(week))}
+
+
 def week_days(days, min_seconds, today=None):
     """Days this calendar week (Monday to today) with at least `min_seconds`.
 

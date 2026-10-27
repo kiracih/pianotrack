@@ -90,6 +90,18 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(metrics.week_days(days, 300, thu), 3)
         self.assertEqual(metrics.week_days({}, 300, thu), 0)
 
+    def test_last_week_counts_monday_to_sunday(self):
+        from datetime import date, timedelta
+        monday = date(2026, 10, 26)
+        days = {monday - timedelta(days=i): {"active_seconds": s}
+                for i, s in [(1, 600), (2, 60), (3, 400), (7, 900), (8, 900)]}
+        lw = metrics.last_week(days, 300, 2, monday)
+        self.assertEqual(lw, {"start": "2026-10-19", "played": 3, "target": 2, "met": True,
+                              "active_seconds": 1960})
+        # The same week seen from Sunday is "this week", so last week is the one before.
+        self.assertEqual(metrics.last_week(days, 300, 2, monday - timedelta(days=1))["start"], "2026-10-12")
+        self.assertFalse(metrics.last_week({}, 300, 2, monday)["met"])
+
     def test_invite_offers_the_next_small_step(self):
         inv = metrics.invite
         self.assertEqual(inv(0, 1800, 300, 9), "5 min keeps your 9-day run going")

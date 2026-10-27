@@ -130,6 +130,11 @@ class Api:
             "streak": streak,
             "week_days": {"played": metrics.week_days(days, settings["streak_min_minutes"] * 60, today),
                           "target": settings["weekly_days_target"]},
+            # Mondays only (the Pi's date, the day boundary everywhere): the week
+            # starts afresh, so say how last week went.
+            "last_week": (metrics.last_week(days, settings["streak_min_minutes"] * 60,
+                                            settings["weekly_days_target"], today)
+                          if today.weekday() == 0 else None),
             "consistency_28d": metrics.consistency(days, today),
             "totals": {"sessions": len(closed),
                        "active_seconds": round(sum(s["metrics"]["active_seconds"] for s in closed)),

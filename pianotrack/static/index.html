@@ -100,6 +100,9 @@ button:hover, .btn:hover { border-color: var(--muted); }
 .ring { position: relative; width: 160px; height: 160px; flex: none; }
 .goal-label { pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .invite { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--accent); margin: -4px 0 12px; }
+.lastweek { font-size: 14px; color: var(--text-2); margin: -6px 0 12px; }
+.lastweek b { color: var(--good-text); font-weight: 600; }
+.lastweek[hidden] { display: none; }
 .ring .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ring .big { font-family: var(--serif); font-size: 44px; font-weight: 600; line-height: 1; font-variant-numeric: lining-nums tabular-nums; }
 .ring .sub { font-size: 12px; color: var(--text-2); margin-top: 4px; }
@@ -260,6 +263,7 @@ footer a { color: var(--text-2); }
     <section class="card span-7 o-today">
       <h2>Today <span id="today-date"></span></h2>
       <p class="invite" id="t-invite"></p>
+      <p class="lastweek" id="t-lastweek" hidden></p>
       <div class="today">
         <div class="ring" id="ring"></div>
         <div class="tiles">
@@ -897,6 +901,14 @@ async function refresh() {
   $("today-date").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
   ring(t.goal_pct, Math.round(t.active_seconds / 60), goalMin, t.active_seconds);
   $("t-invite").textContent = t.invite || "";
+  const lw = sum.last_week;
+  $("t-lastweek").hidden = !lw;
+  if (lw) {
+    $("t-lastweek").textContent = `Last week: ${lw.played} of ${lw.target} days, ${fmtDur(lw.active_seconds)}. `;
+    const end = document.createElement(lw.met ? "b" : "span");
+    end.textContent = lw.met ? "Target met." : lw.played ? "A fresh week starts today." : "A fresh week starts today, no catching up needed.";
+    $("t-lastweek").appendChild(end);
+  }
   $("t-streak").innerHTML = `${sum.streak.current}<small>${sum.streak.current === 1 ? "day" : "days"}</small>`;
   $("t-streak-best").textContent = `best ${sum.streak.longest}`;
   $("t-notes").textContent = fmtNum(t.notes);

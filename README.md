@@ -18,7 +18,7 @@ No phone app, no cloud, no extra Python packages.
 |---|---|
 | Active time | Time actually playing. Pauses longer than 3 s stop the clock, so reading the score doesn't count. |
 | This week | The week as an octave: seven white keys, Monday to Sunday, each filling with felt up to the daily goal and brass when it is met; today's key is outlined. Tap a key for its minutes. Plus days played this week against a weekly target (5 by default, set under Goals), which forgives a missed day the streak would not. |
-| Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today"; after one missed day it says "One day off doesn't undo a habit. 5 min picks it back up.", after a longer break "Welcome back. 5 min is a good start.", instead of greeting you with a zero. |
+| Daily goal ring, streak, consistency | Minutes against your goal, consecutive days with at least 5 min, and the share of the last 28 days you played. A line above the ring names the next small step: "5 min keeps your 9-day run going", "24 min to your 30 min goal" or "Goal met today"; after one missed day it says "One day off doesn't undo a habit. 5 min picks it back up.", after a longer break "Welcome back. 5 min is a good start.", instead of greeting you with a zero. On Mondays a line under it says how last week went, so a fresh week doesn't start from a blank octave: "Last week: 6 of 5 days, 3h 10m. Target met." |
 | Notes, notes per minute | Volume of playing and how dense it was while playing. |
 | Effort zones | Like heart-rate zones: time spent at Rest / Light / Moderate / Vigorous / Peak note density. |
 | Intensity and load | A 0 to 100 effort figure from density and loudness, and load = active minutes × intensity / 50. |
@@ -312,7 +312,7 @@ query values get 400 with an `error` message.
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, `week_days` (played and target, Monday to today), records, totals, live session, collector status |
+| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, `week_days` (played and target, Monday to today), `last_week` on Mondays only, else null (`start`, `played`, `target`, `met`, `active_seconds` for last Monday to Sunday), records, totals, live session, collector status |
 | `GET /api/status` | collector state: piano connected, device, last MIDI event |
 | `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
