@@ -135,7 +135,7 @@ are S, change no stored data and send nothing off the Pi.
 | Pieces | Demo that learns over weeks: patch ready, vectors and default demo byte-identical (high, S); absolute tempo ×1.8–2 high on eighth-note pieces, beat from the longer-note cluster (high, M, gated on the learning demo); longest unbroken stretch counted in bars after score check step 1 (high, M); pinned First / Best / Latest recordings (med, S) |
 | Practice insight | Steadiness as a share of the beat: 3.5% jitter scores 78 at 60/100/140 bpm (was 37/55/66); recompute plan ready, 30–40 s on the Pi, backup first (high, S, owner's go); timing as a share of the beat on the tile (med, S, with it); steadiness trend per piece on Trends (med, S–M) |
 | Replay & session detail | A–B loop and ±5 s that work with falling notes, Space plays (Next #2, high, S–M); bar lines on the lane and seek bar once score check step 1 exists (high, M); intensity chart seeks the replay (med, S) |
-| Trust & access | Pieces and session pages answer at once while Pieces warms up (warm loop every 20 s, stale view or "Finding your pieces… 120 of 406"; session page waits 16.6 s today) (high, S); smaller segment cache (about 170 MB → under 100 MB with 400 days) (med, S–M); restore refuses while the service runs and the README gets fresh-card steps (med, S); backups say what they hold (high, S) |
+| Trust & access | Requests never wait for Pieces: session page 21.9 s → 12 ms after a restart in the prototype, `/api/pieces` gives the last view or 503 with progress (high, S); keep segments in SQLite: cold start 18.8 → 9.9 s, +4.4 MB, identical output (high, M, new table, owner's go); `no-cache` + ETag for our pages and gzip for text (1243 → 313 KB) (med, S); backups say what they hold (high, S) |
 | Design (lead) | Last week ghosted in the octave's days still to come (med, S, patch ready); step 3: 24-hour times and an SVG theme toggle with aria-pressed (med, S, patch ready); the goal moment: brass rises once a day in today's key, SVG only (med, S, patch ready); week share card (high, S–M); no 3D on the first screen (keeps the octave portable to SwiftUI and the page light) |
 
 | Section | Covers | Next review's focus |
@@ -145,7 +145,7 @@ are S, change no stored data and send nothing off the Pi.
 | Pieces | matcher, Pieces card, per-piece progress, naming | Land the learning demo, then use it as the gate for the absolute tempo fix |
 | Practice insight | trends, session metrics, zones, dynamics, key map | A demo where steadiness improves over weeks, to check the trend marker and per-piece trends |
 | Replay & session detail | player, keyboard, downloads, session page | The output format of score check step 1 (bar start times per session), so loops can snap to bars |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Keep closed sessions' segments in SQLite so a cold start skips about 11 s of rereading (new table, owner's go); time the cold start on the Pi |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Time the cold start on the Pi, speed up the 7 s of matching or make it resumable; whether backups should skip a rebuildable segments table |
 | Design (lead) | identity, layout, type, colour, motion, copy | Falling notes in light mode (a lighter lane) and phone framing, then the week share card |
 
 ## App target
