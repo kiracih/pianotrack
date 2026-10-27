@@ -27,13 +27,19 @@ def _store(args):
 
 def cmd_run(args):
     store = _store(args)
-    # Before the collector starts writing: sessions stored under an older formula
-    # are brought up to date once (a checked copy of the database is kept first).
-    recompute.recompute(store, args.db)
     collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
     backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
     api = Api(store, collector, backups)
-    threading.Thread(target=api.pieces, daemon=True).start()  # first pieces pass is slow
+
+    def warm_up():
+        api.pieces()  # the first pieces pass is slow; requests meanwhile get "warming"
+        # Sessions stored under an older metrics formula are brought up to date once
+        # (a checked copy of the database is kept first). Recording never waits for it.
+        try:
+            recompute.recompute(store, args.db)
+        except Exception:
+            logging.exception("recomputing session metrics failed; the stored ones are kept")
+    threading.Thread(target=warm_up, daemon=True).start()
     servers = [make_server(api, args.host, args.port, allowed_hosts=args.allowed_host)]
     logging.info("dashboard on http://%s:%d", args.host, args.port)
     if args.tunnel_port:

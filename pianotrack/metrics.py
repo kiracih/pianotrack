@@ -57,7 +57,7 @@ def tempo_metrics(onsets):
     Each interval is compared with the median of its neighbours and snapped to
     the nearest simple rhythmic ratio (half, double, triplet...). Steadiness
     falls with the average timing error as a share of that local beat, so slow
-    practice is judged as fairly as fast playing: 100 is metronomic, about 78 is
+    practice is judged as fairly as fast playing: 100 is metronomic, about 75 is
     a 3.5% wobble at any tempo, below 40 is uneven. `timing_error_ms` keeps the
     same error in milliseconds.
     """
