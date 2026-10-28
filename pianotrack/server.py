@@ -35,8 +35,9 @@ SESSION_FIELDS = ["start", "end", "duration_seconds", "active_seconds", "note_co
 class Api:
     """Pure functions over the store, kept apart from HTTP for testing."""
 
-    def __init__(self, store, collector=None, backups=None):
+    def __init__(self, store, collector=None, backups=None, demo=False):
         self.store = store
+        self.demo = demo  # simulated data, shown to anyone, changed by no one
         self.collector = collector
         self.backups = backups
         self._live_cache = {}
@@ -142,6 +143,7 @@ class Api:
             "records": records,
             "live": live,
             "collector": self.collector.status if self.collector else None,
+            "demo": self.demo,
         }
 
     def days(self, n=365):
@@ -419,7 +421,8 @@ def _safe_next(target):
 
 def make_handler(api, tunnel=False, allowed_hosts=()):
     """Request handler class. `tunnel` marks the port cloudflared forwards to:
-    every request there is remote and needs the password."""
+    every request there is remote and needs the password. A demo API needs no
+    password anywhere and refuses every change."""
     auth = authmod.Auth(api.store)
 
     class Handler(BaseHTTPRequestHandler):
@@ -455,6 +458,11 @@ def make_handler(api, tunnel=False, allowed_hosts=()):
 
         def _allowed(self, path, write=False):
             """Gate every request. Sends the refusal itself."""
+            if api.demo:
+                if write or path == "/api/backup":
+                    self._send(403, {"error": "this is a demo; nothing can be changed or downloaded"})
+                    return False
+                return True
             if not self.remote:
                 # Home network: no password, but only for requests addressed to
                 # this machine (stops DNS rebinding) and, for changes, sent by
@@ -497,7 +505,7 @@ def make_handler(api, tunnel=False, allowed_hosts=()):
                         "Location": "/login", "Set-Cookie": authmod.Auth.clear_cookie_header()})
                 if path == "/api/auth":
                     return self._send(200, {"password_set": auth.password_set,
-                                            "remote": self.remote})
+                                            "remote": self.remote, "demo": api.demo})
                 if path in ("/", "/index.html"):
                     with open(os.path.join(STATIC, "index.html"), "rb") as f:
                         return self._send(200, f.read(), "text/html; charset=utf-8")

@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 
-from . import __version__, backup, pieces, recompute, simulate
+from . import __version__, backup, demo, pieces, recompute, simulate
 from .collector import Collector, find_device
 from .midi import read_smf
 from .recorder import Recorder
@@ -26,10 +26,17 @@ def _store(args):
 
 
 def cmd_run(args):
+    if args.demo:
+        # Fresh simulated history ending now; no piano, no backups, no password, no changes.
+        try:
+            demo.build(args.db, days=args.demo_days)
+        except ValueError as e:
+            sys.exit(f"demo refused: {e}")
+        args.no_collector = args.no_backup = True
     store = _store(args)
     collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
     backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
-    api = Api(store, collector, backups)
+    api = Api(store, collector, backups, demo=args.demo)
 
     def warm_up():
         api.pieces()  # the first pieces pass is slow; requests meanwhile get "warming"
@@ -204,6 +211,10 @@ def main(argv=None):
                         "(default: backups/ next to the database)")
     r.add_argument("--backup-time", default="03:30", help="local time of the nightly copy (HH:MM)")
     r.add_argument("--no-backup", action="store_true", help="no nightly copies")
+    r.add_argument("--demo", action="store_true",
+                   help="rebuild --db with simulated practice and serve it read-only to anyone "
+                        "(refuses a database with real recordings)")
+    r.add_argument("--demo-days", type=int, default=120, help="days of history for --demo")
     r.set_defaults(func=cmd_run)
 
     bk = sub.add_parser("backup", help="copy the database into the backup folder now")

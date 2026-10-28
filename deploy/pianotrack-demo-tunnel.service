@@ -1,0 +1,19 @@
+[Unit]
+Description=Cloudflare Quick Tunnel to the piano dashboard demo
+After=network-online.target pianotrack-demo.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+Environment=PORT=@TUNNEL_PORT@
+Environment=URL_FILE=/var/lib/pianotrack-demo/tunnel-url
+Environment=EMAILS_FILE=/dev/null
+ExecStart=@DIR@/deploy/tunnel.sh
+Restart=always
+RestartSec=10
+StateDirectory=pianotrack-demo
+StateDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

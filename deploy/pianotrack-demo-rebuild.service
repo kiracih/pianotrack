@@ -1,0 +1,6 @@
+[Unit]
+Description=Rebuild the piano dashboard demo so its history ends today
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl try-restart pianotrack-demo.service

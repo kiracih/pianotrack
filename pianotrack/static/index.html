@@ -243,6 +243,7 @@ footer a { color: var(--text-2); }
 .tile .v.met { color: var(--good-text); }
 .oct-black { fill: var(--key-black); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .oct-k, .oct-lip, .oct-brass { transition: none; } }
+body.demo #settings, body.demo #goals-h, body.demo .pc-name { display: none; }
 .ring .ready { font-family: var(--serif); font-size: 19px; font-weight: 600; line-height: 1.2; text-align: center; max-width: 112px; text-wrap: balance; }
 </style>
 </head>
@@ -373,7 +374,7 @@ footer a { color: var(--text-2); }
       <div class="records" id="records"></div>
       <h2 style="margin-top:20px">All time</h2>
       <div class="records" id="totals"></div>
-      <h2 style="margin-top:20px">Goals</h2>
+      <h2 style="margin-top:20px" id="goals-h">Goals</h2>
       <form class="settings" id="settings">
         <label>Daily goal <input type="number" id="goal" min="1" max="600"> min</label>
         <label>Weekly target <input type="number" id="wdays" min="1" max="7"> days</label>
@@ -404,7 +405,7 @@ footer a { color: var(--text-2); }
 
   <footer>
     <span id="remote-link"></span>
-    <span>Data stays on this device.</span>
+    <span id="privacy">Data stays on this device.</span>
     <a href="/api/summary">JSON API</a>
     <span>Piano sound: Salamander Grand Piano by Alexander Holm, CC-BY 3.0.</span>
     <span id="updated"></span>
@@ -959,6 +960,7 @@ async function refresh() {
   const [sum, sessions] = await Promise.all([get("/api/summary"), get("/api/sessions?limit=15")]);
   const st = $("status"), c = sum.collector;
   if (sum.live) st.innerHTML = `<span class="dot live"></span><span>Recording</span>`;
+  else if (sum.demo) st.innerHTML = `<span class="dot"></span><span>Demo · simulated practice</span>`;
   else if (!c) st.innerHTML = `<span class="dot"></span><span>Dashboard only</span>`;
   else if (c.connected) st.innerHTML = `<span class="dot on"></span><span>${escapeHtml(c.name || "Piano")} connected</span>`;
   else st.innerHTML = `<span class="dot"></span><span>Piano off</span>`;
@@ -1036,6 +1038,12 @@ async function refresh() {
 async function showAuth() {
   try {
     const a = await get("/api/auth");
+    if (a.demo) {
+      // Nothing here can be changed: no goals, names, password or backups.
+      document.body.classList.add("demo");
+      $("privacy").textContent = "Demo: simulated practice by a made-up beginner, rebuilt every day. Nothing here can be changed.";
+      return;
+    }
     if (a.remote) {
       $("remote-link").innerHTML = `<a href="/logout">Sign out</a> or <a href="#" id="signout-all-link">sign out all devices</a>`;
       $("signout-all-link").onclick = (e) => { e.preventDefault(); signOutAll().then(() => location.reload()); };
@@ -1187,7 +1195,7 @@ try { const t = localStorage.getItem("theme"); if (t) setTheme(t); } catch (e) {
 async function showTunnel() {
   try {
     const { url } = await get("/api/tunnel");
-    if (url && !location.href.startsWith(url))
+    if (url && !location.href.startsWith(url) && !document.body.classList.contains("demo"))
       $("remote-link").innerHTML = `Away from home: <a href="${url}">${url.replace("https://", "")}</a>`;
   } catch (e) { /* older server */ }
 }

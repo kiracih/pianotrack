@@ -207,6 +207,31 @@ off by default.
 
 To stop remote access: `sudo systemctl disable --now pianotrack-tunnel`.
 
+## Public demo
+
+To show the dashboard to other people without showing your own practice, run a demo
+next to the real one. It serves four months of simulated practice by a made-up beginner
+(the four repertoire pieces, named, with wrong notes and restarts), needs no password,
+and refuses every change: goals, piece names, password and backups are hidden, and their
+API calls get 403.
+
+```bash
+./deploy/install-demo.sh          # prints the demo's own https://….trycloudflare.com link
+./deploy/install-demo.sh --remove # takes it down again
+```
+
+It runs as its own services, `pianotrack-demo` (ports 8090 on the home network and 8091
+for its tunnel) and `pianotrack-demo-tunnel`, with its own database in
+`/var/lib/pianotrack-demo/`. The real service, database, password and link are not
+touched, and `run --demo` refuses a database that holds any session the simulator did
+not make, so pointing it at the real one by mistake changes nothing. The history is
+rebuilt on the first start of each day, so it always ends today; a timer restarts the
+demo at 04:15 for that (the rebuild takes a few minutes on a Pi 4, while the link
+answers with an error). Like the real one, the link changes when its tunnel restarts:
+`cat /var/lib/pianotrack-demo/tunnel-url` prints it.
+
+Locally: `python3 -m pianotrack --db /tmp/demo.db run --demo --port 8099`.
+
 ## Backups
 
 Every night at 03:30 (or within a few minutes of starting, if the last copy is more
@@ -297,6 +322,7 @@ whenever the dashboard changes.
 * `--db` or `PIANOTRACK_DB` for the database path
 * `--backup-dir` or `PIANOTRACK_BACKUP_DIR` folder for the nightly copies (default `backups/` next to the database)
 * `--backup-time` local time of the nightly copy (03:30), `--no-backup` to turn copies off
+* `--demo` rebuild `--db` with simulated practice (once a day) and serve it read-only with no password, no collector and no backups; refused on a database with real recordings. `--demo-days` sets the history length (120)
 
 Other commands: `backup [--backup-dir DIR]` copies the database now, `restore FILE [--force]`
 replaces the database with a backup, `recompute [--dry-run]` brings stored session metrics
@@ -329,9 +355,9 @@ query values get 400 with an `error` message.
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, `week_days` (played and target, Monday to today), `last_week` on Mondays only, else null (`start`, `played`, `target`, `met`, `active_seconds` for last Monday to Sunday), records, totals, live session, collector status |
+| `GET /api/summary` | today (with `invite`, the line above the ring), week, streak, `week_days` (played and target, Monday to today), `last_week` on Mondays only, else null (`start`, `played`, `target`, `met`, `active_seconds` for last Monday to Sunday), records, totals, live session, collector status, `demo` |
 | `GET /api/status` | collector state: piano connected, device, last MIDI event |
-| `GET /api/auth` | `{"password_set": ..., "remote": ...}` whether a remote password exists and whether this request came through the tunnel |
+| `GET /api/auth` | `{"password_set": ..., "remote": ..., "demo": ...}` whether a remote password exists, whether this request came through the tunnel, and whether this is the read-only demo |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
 | `GET /login`, `POST /login`, `GET /logout` | sign-in page for tunnel visitors |
 | `POST /api/signout-all` | signs every remote device out (the password stays) |

@@ -1,0 +1,22 @@
+[Unit]
+Description=Piano practice tracker demo (simulated practice, read-only, no password)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@DIR@
+Environment=PYTHONUNBUFFERED=1
+# Its own database and ports: the real recordings are never opened, and pianotrack
+# refuses --demo on a database that holds anything but simulated sessions.
+# Each start on a new day rebuilds the history so it ends today (a few minutes on a Pi 4).
+ExecStart=/usr/bin/python3 -m pianotrack --db /var/lib/pianotrack-demo/demo.db run --demo --port @PORT@ --tunnel-port @TUNNEL_PORT@
+Restart=always
+RestartSec=5
+Nice=10
+StateDirectory=pianotrack-demo
+StateDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target
