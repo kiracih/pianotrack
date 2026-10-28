@@ -25,6 +25,22 @@ DAILY = re.compile(r"daily-(\d{4}-\d{2}-\d{2})\.db$")
 WEEKLY = re.compile(r"weekly-(\d{4}-W\d{2})\.db$")
 
 
+def _forget_logins(db):
+    """Leave the remote login's cookie key out of a copy: anyone holding a backup
+    could otherwise sign their own 30-day cookie. Restoring a copy signs every
+    device out; the password stays."""
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='secrets'").fetchone():
+        return
+    # Rewritten in memory and vacuumed, so no trace of the key is left in a free page
+    # of the copy or in a journal file next to it.
+    db.execute("PRAGMA journal_mode=MEMORY")
+    db.execute("PRAGMA secure_delete=ON")
+    with db:
+        db.execute("DELETE FROM secrets WHERE key='session_key'")
+    db.execute("VACUUM")
+    db.execute("PRAGMA journal_mode=DELETE")
+
+
 def snapshot(src_path, dest_path):
     """Copy the database at src_path to dest_path, consistent and verified."""
     if not os.path.isfile(src_path):
@@ -38,6 +54,7 @@ def snapshot(src_path, dest_path):
         try:
             src.backup(dst)
             dst.execute("PRAGMA journal_mode=DELETE")  # one self-contained file
+            _forget_logins(dst)
             check = dst.execute("PRAGMA quick_check").fetchone()[0]
         finally:
             dst.close()

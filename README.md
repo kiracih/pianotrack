@@ -82,7 +82,7 @@ on, a line under the piece compares its first 5 sessions with its last 5 (median
 "Piece A, B…" with their most played phrase; **Listen** jumps the replay to that phrase
 so you can recognise it. Tap a piece to open its tempo and
 stumbles charts, its longest clean run (your best and last time, ▶ to hear them), its
-trouble spots (▶ plays from 2 s before the latest stumble there) and a list of every
+trouble spots (▶ opens the session and starts playing 2 s before the latest stumble there) and a list of every
 recording of it with its stumbles and clean run, newest first; ▶ plays one from
 where the piece starts, so you can hear how it sounded weeks ago. **Name** names it once ("Chopin waltz"). The name follows
 the music into later sessions. A session's detail lists the pieces played in it.
@@ -237,7 +237,9 @@ Locally: `python3 -m pianotrack --db /tmp/demo.db run --demo --port 8099`.
 Every night at 03:30 (or within a few minutes of starting, if the last copy is more
 than a day old) the Pi copies the database with SQLite's online backup, which is
 consistent even while you play. Each copy passes an integrity check before it is put
-in place. The backup folder keeps **7 daily and 4 weekly** copies
+in place. Copies (and the dashboard download) leave out the remote login's cookie key, so
+someone holding a copy can't make their own login; restoring one signs every device out,
+and your password still works. The backup folder keeps **7 daily and 4 weekly** copies
 (`daily-2026-10-21.db`, `weekly-2026-W43.db`); by default it is
 `/var/lib/pianotrack/backups`, set with `--backup-dir` or `PIANOTRACK_BACKUP_DIR`.
 
@@ -369,7 +371,7 @@ query values get 400 with an `error` message.
 | `GET /api/trends?days=60` | daily steadiness, notes/min, velocity, dynamic range, tempo |
 | `GET /api/keys?days=30` | key usage summed over the period (`days=0` for all time) |
 | `GET /api/sessions?limit=50` | session list with headline metrics, each with `uid` (a UUID that stays with the session, for syncing) and `device` (the id of the database that recorded it) |
-| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, `uid`, `device`, and the pieces played in it with their `stumbles` and `clean_run` (`pieces_pending` is true while they are still being found, e.g. after a restart) |
+| `GET /api/sessions/<id>` | full metrics, timeline, key histogram, `uid`, `device`, and the pieces played in it with their `stumbles` and `clean_run` (`pieces_pending` is true while they are still being found, e.g. after a restart or right after the session closes: this request never runs a Pieces pass itself, it starts one in the background and the dashboard asks again) |
 | `GET /api/sessions/<id>/events` | the session as a time series for replay: notes `[on, off, pitch, velocity]` and pedals `[t, cc, value]`, seconds from start |
 | `GET /api/sessions/<id>.mid` / `.csv` | the session as MIDI or notes CSV |
 | `GET /api/sessions.csv` | all sessions as CSV |

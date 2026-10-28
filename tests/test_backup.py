@@ -51,6 +51,25 @@ class BackupTest(unittest.TestCase):
         self.assertEqual(sessions, len(self.store.sessions()))
         self.assertEqual(summary(target), before)
 
+    def test_copy_leaves_out_the_login_key(self):
+        from pianotrack.auth import Auth
+        auth = Auth(self.store)
+        auth.set_password("correct horse battery")
+        cookie = auth.new_session()
+        key = self.store.secret("session_key")
+        self.store.close()
+        copy = backup.snapshot(self.db, os.path.join(self.dir.name, "copy.db"))
+        with open(copy, "rb") as f:
+            self.assertNotIn(key.encode(), f.read())  # not even in a free page
+        restored = Store(copy)
+        self.assertIsNone(restored.secret("session_key"))
+        auth = Auth(restored)
+        self.assertFalse(auth.valid_session(cookie))  # a restore signs everyone out
+        self.assertTrue(auth.check_password("correct horse battery"))
+        restored.close()
+        self.store = Store(self.db)
+        self.assertEqual(self.store.secret("session_key"), key)  # the live database keeps it
+
     def test_restore_keeps_the_replaced_database(self):
         path = backup.Backups(self.db, self.bdir).run()
         other = os.path.join(self.dir.name, "other.db")
