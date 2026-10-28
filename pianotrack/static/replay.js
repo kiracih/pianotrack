@@ -248,12 +248,18 @@ class Replay {
     this.draw();
   }
 
-  // Load a session and move to `t` seconds after its start (real time, before pause skipping).
-  async jump(id, t) {
+  // Load a session and move to `t` seconds after its start (real time, before pause
+  // skipping); with `play`, start playing from there.
+  async jump(id, t, play = false) {
     await this.load(id);
     if (this.id !== id || !this.prep) return;
-    this.seek(this.prep.map(t));
+    const was = this.playing;
+    this.seek(this.prep.map(t));  // carries on playing if it was
+    if (play && !was) this.play();
   }
+
+  // Call straight from a tap, before anything awaited: Safari only starts audio there.
+  unlock() { piano.unlock(); }
 
   async play() {
     if (!this.prep || !this.prep.notes.length) return;

@@ -45,6 +45,8 @@ class Api:
         self._matcher = None  # (session ids in the order added, matcher) kept between calls
         self._pieces_cache = None
         self._pieces_lock = threading.RLock()  # also held while name_piece reads the matcher
+        self._refresh, self._refresh_guard = None, threading.Lock()  # background pieces pass
+        self._refresh_failed = float("-inf")
 
     def _metrics(self, s):
         if s["metrics"] and s["closed"]:
@@ -237,7 +239,7 @@ class Api:
             return None
         m = self._metrics(s)
         found = []
-        now, fresh = self._pieces_now() if s["closed"] else (None, False)
+        now, fresh = self._pieces_peek() if s["closed"] else (None, False)
         if now:
             for r in now[1]:
                 for h in r["history"]:
@@ -262,6 +264,34 @@ class Api:
                 self._pieces_lock.release()
         return (self._pieces_cache[1] if self._pieces_cache else None), False
 
+    def _pieces_peek(self):
+        """(pieces, fresh) from the last view, never running a pass here: opening a
+        session right after practice must not wait for Pieces. A stale view starts
+        a pass in the background and is returned with fresh False."""
+        cache = self._pieces_cache
+        if cache and cache[0] == self._pieces_key()[2]:
+            return cache[1], True
+        with self._refresh_guard:
+            # After a failed pass, wait a minute: the page asks every 3 s.
+            if not (self._refresh and self._refresh.is_alive()) and time.monotonic() - self._refresh_failed > 60:
+                self._refresh = threading.Thread(target=self._refresh_pass, daemon=True)
+                self._refresh.start()
+        return (cache[1] if cache else None), False
+
+    def _refresh_pass(self):
+        try:
+            self._pieces()
+        except Exception:
+            log.exception("finding pieces failed; trying again in a minute")
+            self._refresh_failed = time.monotonic()
+
+    def _pieces_key(self):
+        """(closed sessions oldest first, piece names, the key a view is valid for)."""
+        closed = piecesmod.closed_in_order(self.store)
+        ids = tuple((s["id"], s["start"]) for s in closed)  # ids alone can be reused after a delete
+        named = self.store.piece_names()
+        return closed, named, (ids, tuple((n[0], n[1]) for n in named))
+
     def _pieces(self):
         """(matcher, view) over all closed sessions, recomputed when they or names change.
 
@@ -270,10 +300,8 @@ class Api:
         long history. A deleted or out-of-order session regroups from scratch.
         """
         with self._pieces_lock:
-            closed = piecesmod.closed_in_order(self.store)
-            ids = tuple((s["id"], s["start"]) for s in closed)  # ids alone can be reused after a delete
-            named = self.store.piece_names()
-            key = (ids, tuple((n[0], n[1]) for n in named))
+            closed, named, key = self._pieces_key()
+            ids = key[0]
             if self._pieces_cache and self._pieces_cache[0] == key:
                 return self._pieces_cache[1]
             done = self._matcher[0] if self._matcher else None

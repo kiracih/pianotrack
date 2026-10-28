@@ -731,9 +731,10 @@ async function loadPieces() {
     tr.onclick = () => { pieceOpen = pieceOpen === p.key ? null : p.key; loadPieces(); };
     tr.querySelectorAll(".pc-listen").forEach((b) => b.onclick = async (e) => {
       e.stopPropagation();
+      if (window.replay) window.replay.unlock();
       await openSession(p.opening.session);
       $("detail-card").scrollIntoView({ behavior: "smooth" });
-      if (window.replay) window.replay.jump(p.opening.session, p.opening.offset);
+      if (window.replay) window.replay.jump(p.opening.session, p.opening.offset, true);
     });
     tr.querySelectorAll(".pc-name").forEach((b) => b.onclick = async (e) => {
       e.stopPropagation();
@@ -757,9 +758,10 @@ async function loadPieces() {
 }
 // Play a stored recording from `offset` seconds in, in the session's replay.
 async function playFrom(sid, offset) {
+  if (window.replay) window.replay.unlock();
   await openSession(sid);
   $("detail-card").scrollIntoView({ behavior: "smooth" });
-  if (window.replay) window.replay.jump(sid, offset);
+  if (window.replay) window.replay.jump(sid, offset, true);
 }
 // The open piece's best clean run and its trouble spots, each with ▶ to hear it.
 function pieceRuns(p) {

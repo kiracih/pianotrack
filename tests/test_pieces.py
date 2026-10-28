@@ -245,6 +245,24 @@ class StoredSegmentsTest(unittest.TestCase):
         self.assertEqual(store.stored_segments("older-engine", [sid for sid in stored]), {})
         store.close()
 
+    def test_opening_a_new_session_finds_its_pieces_in_the_background(self):
+        from pianotrack.server import Api
+        store = Store(self.path)
+        api = Api(store)
+        api.pieces()
+        simulate.backfill(store, days=1, seed=5, beginner=True, now=datetime(2026, 1, 3, 22))
+        sid = max(store.sessions(closed_only=True), key=lambda s: s["start"])["id"]
+        with api._pieces_lock:  # a pass would have to wait for this: the request must not
+            d = api.session(sid)
+        self.assertTrue(d["pieces_pending"])
+        self.assertEqual(d["pieces"], [])
+        api._refresh.join(60)
+        self.assertFalse(api._refresh.is_alive())
+        d = api.session(sid)
+        self.assertFalse(d["pieces_pending"])
+        self.assertTrue(d["pieces"])
+        store.close()
+
     def test_requests_never_wait_for_a_pieces_pass(self):
         import threading
         from pianotrack.server import Api
@@ -266,6 +284,8 @@ class StoredSegmentsTest(unittest.TestCase):
         finally:
             go.set()
             t.join()
+        api._refresh.join(60)  # the pass the session request started in the background
+        self.assertFalse(api._refresh.is_alive())
         view = api.pieces()
         self.assertTrue(view)
         go.clear()
