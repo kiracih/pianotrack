@@ -157,6 +157,142 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
+Ideas found 2026-10-28 (best first; S = an evening). Ideas the PM builds without asking
+are S, change no stored data and send nothing off the Pi.
+
+| Section | Ideas waiting (impact, effort) |
+|---|---|
+| Capture & setup | Sync change feed `GET /api/sync?since=` with `rev` and tombstones (schema v4, owner's go) (high, S–M); re-running `replay x.mid` stores nothing new: uid from the file's hash (high, S; today 3 runs give 3 sessions); "Recorded on Pi · FP-30X" / "Imported from x.mid" on the session (med, S) |
+| Today & habits | `usual_start` (weekday/weekend circular median of the first session, 28 days; demo ≈ 07:00) in `/api/summary` with vectors (high, S); reminder rules that fade: once at usual start + 45 min, never after 21:30, quiet after 3 ignored (high, M; iOS local notifications, no ntfy); "and cleaner than the week before" on the Monday line when stumbles fell 15%+ (med, S) |
+| Pieces | `backfill --learning`: errors 12% → 3%, tempo 0.6 → 0.95 over 60 plays, default demo and vectors unchanged, plus a truth log of hesitations and restarts (high, S, prototype ready); stumble precision: on Ode to Joy 39% of stumbles match no simulated hesitation or restart (63% in the learning demo); longer spot context, other quantiles tried, none helps, cause still open (high, M); trouble spot needs 10%+ of passes and 2+ sessions (med, S) |
+| Practice insight | Trends: "stumbles a minute" across pieces and weekly minutes per piece instead of Steadiness and Notes/min (high, S, owner's go: removes a chart); clean run as a share of the piece ("whole piece clean ✓"), since seconds shrink as you speed up (med, S–M) |
+| Replay & session detail | Loop this spot: Loop (jump ±4 s), −5 s / +5 s at 44 px, Space plays (Next #2, high, S); stumble ticks on the seek bar (high, S–M); two-row transport on phones, all targets 44 px (med, S) |
+| Trust & access | `pieces_view` incremental: every new session pays a 2.9 s full view rebuild (high, M); demo guard: `run --demo` on a fresh real database with only a password passes the check and replaces it; `InaccessiblePaths=/var/lib/pianotrack` for the demo unit (med, S, deploy/: security review) |
+| Design (lead) | Light lane (plaster) and 4:5 full-bleed phone framing for falling notes (med, S, diff ready); one figure system: tiles with a hairline, serif figure and a round ▶ for clean runs and trouble spots too (med, S); week share card, 1080×1350 PNG via `navigator.share` (high, S–M) |
+
+| Section | Covers | Next review's focus |
+|---|---|---|
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | The other direction of sync: `POST /api/sessions` upsert by uid, and which copy wins when two devices recorded the same piano |
+| Today & habits | ring, streak, week, calendar, goals, reminders | What the reminder says and when it stays quiet; what the weekly summary notification holds |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Land the learning demo and its truth log, then find why a third of stumbles have no cause |
+| Practice insight | trends, session metrics, zones, dynamics, key map | With the learning demo: do stumbles fall as the player improves, and is "stumbles a minute" clear on Trends |
+| Replay & session detail | player, keyboard, downloads, session page | Build the loop around the trouble-spot ▶, then stumble ticks |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Time cold start and a new session's pieces on the real Pi; an incremental `pieces_view` |
+| Design (lead) | identity, layout, type, colour, motion, copy | The stats under the octave as one row in the figure system; can a "most improved piece" line replace two tiles |
+
+## Next
+
+1. **Streak-at-risk nudge to the phone** (habit, S–M). Problem: the streak breaks
+   on evenings you simply forget. A notification at a chosen time ("12 min to
+   your goal, streak 9 days") when today is short. Needs a push channel: ntfy
+   (one HTTP POST, stdlib only) is easiest but sends the message text through a
+   third-party server unless self-hosted. *Owner decision needed.*
+2. **Loop a passage in the replay** (replay, S). Problem: re-hearing a stumble means
+   dragging a 164 px seek bar on the phone. Add −5 s / +5 s and an A–B loop button
+   (44 px), shade the loop on the seek bar, Space plays while the session is open.
+   Acceptance: ±5 s clamps at both ends; a loop repeats 3 times at 0.5× and 1× with no
+   hanging notes; Space doesn't scroll; no horizontal scroll at 390 px; downloads
+   byte-identical.
+3. **Ignore accompaniment and split channels** (setup / data quality, S).
+   Problem: notes from every MIDI channel count, so rhythm or song playback sent
+   over MIDI inflates practice. Add a channel filter setting (default: all) and
+   count song-playback channels separately.
+4. **Pedal held before the first note** (bug, S). Problem: pedal events are only
+   recorded once a session is open, so a pedal pressed just before the first
+   note is lost and sustain share reads low. Remember the last pedal state and
+   write it at session start.
+5. **Merge and split pieces** (pieces, M; owner idea 2026-10-26). Problem: the
+   matcher sometimes keeps one piece as two (or joins two). "Merge" on a piece joins
+   it with another; "Split" separates a play or a group back out. Stored as user
+   corrections next to piece names (a new table, so a migration and the owner's go
+   on the data change); recordings untouched, the matcher re-applies the
+   corrections after every regroup. Carries over to the iOS app.
+6. **Share cards for social media** (motivation, M; owner idea 2026-10-26). A
+   good-looking image of a week (the octave), a streak, or a piece's "then → now",
+   made on the device (canvas to PNG) and shared through the phone's share sheet. Nothing
+   leaves the Pi unless the owner shares it. Needs design work first (design lead).
+7. **Check playing against the score, step 1: score file** (pieces, M; owner idea
+   2026-10-26, "killer feature"; owner said "add it" 2026-10-26). Problem: Pieces
+   knows *what* you played but not whether the notes were right. Attach a MusicXML
+   (`.xml`/`.mxl`, read with stdlib xml.etree + zipfile) or `.mid` file to a piece;
+   every play of that piece is aligned note by note (edit distance over pitches,
+   chords as sets, jumps back allowed for restarts) and the piece shows accuracy
+   over time and its trouble bars. Counted kindly: a wrong note fixed at once is
+   "fixed", hands-alone plays judged on that hand, partial plays on the bars played,
+   pedal/dynamics ignored; notes first, rhythm later. Places where your consistent
+   playing (the piece's core n-grams) disagrees with the score show as "score or
+   you?", not mistakes. Raw replay, `.mid` and `.csv` untouched; score stored next to
+   the piece name; engine vectors for the iOS port. Acceptance: on `simulate.py
+   --beginner` at least 90% of injected wrong/missed notes found and under 5% of
+   correct notes flagged; owner tries it on the Chopin A minor waltz.
+   Later steps, decided after step 1: find a score by name (small public-domain
+   list, candidates shown with opening notes, S–M), then photo via hosted OMR from
+   the iOS app with a listen-and-confirm step (M–L; best OMR still misreads about
+   1 symbol in 5 on real scans). Research:
+   [Score check research](https://claude.ai/artifact/N3eacvxdqMVHEuWRiNaYGC).
+8. **Choose the product name** (business, S). "pianotrack" sits next to the App
+   Store's *Piano Tracker* and *PianoTrax*; a distinctive name is needed before any
+   public launch or trademark filing. *Owner decision.*
+9. **Export falling notes as a video** (replay / sharing, S–M; owner idea 2026-10-27).
+   Problem: the owner films their hands and wants the falling notes in the same
+   video, Synthesia-style. Proposal, prototyped on demo data 2026-10-27 (branch
+   `claude/project-thread-e35a4t`, `static/videoexport.js`; sample clips in project
+   files `video-export/`):
+   - **Where it renders:** in the browser that asks (Mac or iPhone), never on the Pi.
+     The Pi only serves the notes, as for the replay; no ffmpeg, still stdlib only.
+   - **Format:** MP4 (H.264 + AAC), which Safari and Chrome record natively
+     (MediaRecorder) and Photos, iMovie, CapCut and Final Cut open directly. 30 fps,
+     1080 px on the short side; a 30 s clip is about 1.5 MB.
+   - **Looks:** *Overlay* (default): flat top-down notes over all 88 keys on chroma
+     green, so an editor keys it out and stretches it to the width of the real keyboard
+     filmed from above; *Overlay on black* for "screen" blend mode; *3D view*, today's
+     falling notes as a clip on its own (split screen or picture-in-picture). Shapes
+     16:9 and 9:16; keys "all 88" (lines up with a full-keyboard shot) or "keys used"
+     (bigger notes in portrait). True transparency works too (WebM with alpha, checked
+     in the prototype) but iPhone editors can't open WebM, so it is a desktop extra.
+   - **Sound:** the sampled piano is in the file, so editors that sync by waveform
+     can line it up with the camera's sound; mute it in the final edit.
+   - **Timing:** pauses are never skipped in an export (it must match camera time).
+     The clip starts 1.5 s before the first chosen note, and its file name carries
+     the Pi's clock time of that moment (`pianotrack-2026-10-27_21-14-05.3.mp4`) to
+     match the phone video's time; the final nudge is by the first note.
+   - **Range:** whole session, or from the replay's current position (later the
+     A–B loop of Next 2), capped at 10 minutes.
+
+   Step 2 (M), after the owner tries step 1: **Line up with my video**: choose the
+   phone video in the page; the browser finds note onsets in its sound and matches
+   them to the recorded notes (to about 10 ms), then exports exactly the camera's span.
+   Nothing is uploaded. Same step: **frame-exact rendering** with WebCodecs (faster
+   than real time, no dropped frames) plus a small in-house MP4 writer. The prototype
+   records in real time: the 2D overlay held 30 fps but the 3D view dropped to about
+   7 fps on a slow machine, and the screen has to stay on while it records.
+   Acceptance (step 1): a 60 s clip from a real session plays in iPhone Photos,
+   imports into CapCut and iMovie, the green keys out cleanly, each note reaches the
+   line when its sound plays (within one frame), and the Pi does no extra work.
+   *Owner questions:* which editor (decides green vs transparency), camera from
+   above or from the side, portrait or landscape.
+
+## Later
+
+- **Browser mode (Web MIDI)**: same dashboard, capture from a Chrome/Edge tab, no
+  Pi. First step toward a product others can try (see the
+  [Pianotrack beyond the Pi](https://claude.ai/artifact/3tuwsgPuDxTURj3R45KrAs) analysis).
+- **Teacher/parent share link**: read-only weekly view for a teacher.
+- **Summary scales with history**: `/api/summary` recomputes over 400 days of
+  sessions on every load; cache daily totals before it gets slow on the Pi.
+- **Repeated passage drill view**: once Pieces exist, show the bars you repeat
+  most (where you get stuck) and whether they're getting steadier.
+- **Android app / plug-in box / pricing**: see App target; hardware only after preorders.
+- **Bluetooth MIDI and other ALSA sequencer sources** (setup, L). Problem: the collector only reads raw USB MIDI, so the FP-30X's own Bluetooth, a second instrument, or software ports can't be tracked. Needs reading `/dev/snd/seq` with stdlib ioctls.
+- **Per-piece goals**: "Waltz at 120 bpm, steady 60" with a progress bar, once the
+  Pieces trial graduates.
+
+## Sections
+
+From 2026-10-24 the daily review runs one agent per section plus a design lead in
+parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
+the next review is set here at the end of every review.
+
 Ideas found 2026-10-25 (best first; S = an evening). Ideas the PM builds without asking
 are S, change no stored data and send nothing off the Pi.
 
@@ -339,6 +475,9 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-10-28 review: opening a session never runs a Pieces pass (it answers pending and
+  finds them in the background); ▶ on a trouble spot, a recording or Listen starts
+  playing; backups and the dashboard download leave out the remote login's cookie key.
 - 2026-10-28 (owner: "do all those 3 new metrics"): stumbles per piece (pauses far longer
   than the piece has at that spot), longest clean run with your best, trouble spots with
   ▶; the session page leads with stumbles and clean run, steadiness and the rest under
