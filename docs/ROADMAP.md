@@ -2,8 +2,9 @@
 
 Kept by the product review (one PM cycle per run). Every item ties to one of three
 outcomes: **practise better**, **practise more**, or **easier setup**. Effort is S
-(an evening), M (a few days), L (a week or more). Nothing here is built until the
-owner says so.
+(an evening), M (a few days), L (a week or more). Owner decision 2026-10-29:
+the review builds bigger items from the plan below, one at a time, without asking; it
+still asks before stored-data changes, costs, data leaving the owner's devices, or the Pi.
 
 Last review: 2026-10-29 (built: replay Loop, demo guard; owner asks: outstanding days,
 week card keys in 3D). Previous: 2026-10-28, 2026-10-27, 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
@@ -14,9 +15,7 @@ week card keys in 3D). Previous: 2026-10-28, 2026-10-27, 2026-10-26 (every recor
 tracks from 30 Oct: iOS (1 Swift engine passing tests/vectors, 2 capture test app with
 the locked-screen check, 3 first real app, 4 Pi sync, 5 Pieces and replay, 6 TestFlight
 beta about 10 Jan 2027; Swift builds run on the owner's Mac, Xcode 26.5) and Pi/web
-(pieces drift fix, merge and split pieces, score check step 1). Proposed to the owner:
-the review builds one bigger item at a time from this plan without being asked; still
-asks before stored-data changes, costs, data leaving devices, or the Pi.
+(pieces drift fix, merge and split pieces, score check step 1). Owner said yes (2026-10-29).
 
 ## Now
 
