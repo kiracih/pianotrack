@@ -623,7 +623,8 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 - 2026-10-29 review: Loop this spot in the replay (Loop ±4 s around a ▶ jump, −5 s / +5 s,
   Space plays, no double start while the piano loads); the public demo only replaces a
-  database it built itself.
+  database it built itself. Owner ask: This week days at 1.5× the goal or more turn deep
+  brass with the multiple engraved (1.5×, 2×, 3×), on the dashboard and the week card.
 - 2026-10-28 review: opening a session never runs a Pieces pass (it answers pending and
   finds them in the background); ▶ on a trouble spot, a recording or Listen starts
   playing; backups and the dashboard download leave out the remote login's cookie key.
