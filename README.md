@@ -52,14 +52,16 @@ the same way a band's calorie count is. They are not a teacher's grade.
 
 ![Session replay](docs/replay.png)
 
-<img src="docs/week-card.png" alt="Week card: 3 h 14 min, the week as an octave, days played, streak, keys pressed, the most played keys and piece" width="320">
+<img src="docs/week-card.png" alt="Week card: 3 h 14 min, the week as an octave, days played, streak, keys pressed, the week's keys in 3D, the most played keys and piece" width="320">
 
 **Week card (prototype):** "Week card" next to This week opens an image of one Monday
 to Sunday week to post or send: total time with one kind line ("My biggest week yet",
 "Weekly target met", "24 min more than last week", "5 days in a row", or "A rest week"),
 the octave with each day's minutes, days played against the target, the streak at the
-end of that week, keys pressed, the week's keys on an 88-key keyboard with the three most
-played named, and the most practised named piece (its minutes, and stumbles a minute
+end of that week, keys pressed, the week's keys as the same 3D keyboard as Most used keys
+(a column on each key as high as you played it, the three most played in brass and named;
+a flat keyboard where the phone has no WebGL, black keys staying black with their colour
+set in), and the most practised named piece (its minutes, and stumbles a minute
 first and last play if they fell, else its longest clean run). Post (1080×1350) or Story
 (1080×1920), Ivory or Rosewood, and piece names can be hidden. Arrows step through earlier
 weeks; on a Monday it opens on last week. The image is drawn on the phone (SVG to PNG):

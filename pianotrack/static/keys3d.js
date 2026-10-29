@@ -6,6 +6,64 @@ import { THREE, LOW, HIGH, WW, WL, BW, KH, isBlack, span, pos, css, renderer as 
 
 const TOP = 3, MAXH = 7;
 
+// A column of felt for each key, standing on its back so the front stays a keyboard.
+function columns(scene, kb) {
+  const cols = [], unit = new THREE.BoxGeometry(1, 1, 1);
+  unit.translate(0, 0.5, 0);
+  for (let p = LOW; p <= HIGH; p++) {
+    const b = isBlack(p), key = kb.keys[p];
+    const col = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ roughness: 0.8 }));
+    col.scale.set(b ? BW * 0.8 : WW * 0.62, 0.001, 1.4);
+    col.position.set(pos[p], key.position.y + KH / 2, -WL / 2 + 1.0);
+    col.userData = { p, from: 0, to: 0 };
+    col.visible = false;
+    scene.add(col); cols.push(col);
+  }
+  return cols;
+}
+const height = (hist, i) => hist[i] ? 0.25 + MAXH * Math.sqrt(hist[i] / (Math.max(...hist) || 1)) : 0;
+// Light to deep by how much a key was played; the three most played in brass.
+function colour(cols, hist, lo, hi, brass) {
+  const max = Math.max(...hist) || 1;
+  const top = hist.map((c, i) => [c, i]).filter(([c]) => c).sort((a, b) => b[0] - a[0]).slice(0, TOP).map(([, i]) => i);
+  cols.forEach((c, i) => {
+    if (top.includes(i)) c.material.color.copy(brass);
+    else c.material.color.copy(lo).lerp(hi, Math.sqrt(hist[i] / max));
+  });
+}
+
+// One still picture of the whole keyboard for the week card, as a PNG data URL of
+// `width` x `height` (drawn at twice that), or null where WebGL is missing.
+// `look` gives the colours as hex: white, black, felt, lo, hi, brass.
+export function picture(hist, look, width, height_) {
+  let r;
+  try {
+    r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  } catch (e) {
+    return null;
+  }
+  try {
+    r.setPixelRatio(2);
+    r.setSize(width, height_, false);
+    const scene = new THREE.Scene();
+    lights(scene);
+    const kb = keyboard(scene);
+    kb.mat.white.color.set(look.white); kb.mat.black.color.set(look.black); kb.mat.felt.color.set(look.felt);
+    const cols = columns(scene, kb);
+    cols.forEach((c, i) => { const h = height(hist, i); c.scale.y = Math.max(0.001, h); c.visible = h > 0; });
+    colour(cols, hist, new THREE.Color(look.lo), new THREE.Color(look.hi), new THREE.Color(look.brass));
+    const camera = new THREE.PerspectiveCamera(28, width / height_, 0.1, 400);
+    const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(14)) * camera.aspect);
+    const dist = ((span + 1) / 2) / Math.tan(hfov / 2);
+    camera.position.set(0, dist * 0.55, dist * 0.85);
+    camera.lookAt(0, 3.4, -1.5);
+    r.render(scene, camera);
+    return r.domElement.toDataURL("image/png");
+  } finally {
+    r.dispose(); r.forceContextLoss();
+  }
+}
+
 // Mount the view in `box`. Returns {update(hist)} or null when WebGL is missing.
 export function mount(box, { noteName, fmtNum }) {
   const renderer = makeRenderer(box);
@@ -20,19 +78,7 @@ export function mount(box, { noteName, fmtNum }) {
   const kb = keyboard(scene);
   const brass = new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.6 });
 
-  const keys = Object.values(kb.keys), cols = [];
-  const unit = new THREE.BoxGeometry(1, 1, 1);
-  unit.translate(0, 0.5, 0);
-  for (let p = LOW; p <= HIGH; p++) {
-    const b = isBlack(p), key = kb.keys[p];
-    // The column stands on the back of the key, so the front stays a keyboard.
-    const col = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ roughness: 0.8 }));
-    col.scale.set(b ? BW * 0.8 : WW * 0.62, 0.001, 1.4);
-    col.position.set(pos[p], key.position.y + KH / 2, -WL / 2 + 1.0);
-    col.userData = { p, from: 0, to: 0 };
-    col.visible = false;
-    scene.add(col); cols.push(col);
-  }
+  const keys = Object.values(kb.keys), cols = columns(scene, kb);
 
   const camera = new THREE.PerspectiveCamera(28, 2, 0.1, 400);
   const look = new THREE.Vector3(0, 3.4, -1.5);
@@ -40,12 +86,7 @@ export function mount(box, { noteName, fmtNum }) {
 
   function paint() {
     kb.paint(); brass.color = css("--good");
-    const lo = css("--seq-1"), hi = css("--seq-3"), max = Math.max(...hist) || 1;
-    const top = hist.map((c, i) => [c, i]).filter(([c]) => c).sort((a, b) => b[0] - a[0]).slice(0, TOP).map(([, i]) => i);
-    cols.forEach((c, i) => {
-      if (top.includes(i)) c.material.color.copy(brass.color);
-      else c.material.color.copy(lo).lerp(hi, Math.sqrt(hist[i] / max));
-    });
+    colour(cols, hist, css("--seq-1"), css("--seq-3"), brass.color);
     need();
   }
 
@@ -137,10 +178,9 @@ export function mount(box, { noteName, fmtNum }) {
   return {
     update(h) {
       hist = h.slice(); total = hist.reduce((a, b) => a + b, 0) || 1;
-      const max = Math.max(...hist) || 1;
       cols.forEach((c, i) => {
         c.userData.from = c.visible ? c.scale.y : 0;
-        c.userData.to = hist[i] ? 0.25 + MAXH * Math.sqrt(hist[i] / max) : 0;
+        c.userData.to = height(hist, i);
       });
       // Start where you play most, so a phone opens on your part of the keyboard.
       let best = 0, at = 0;

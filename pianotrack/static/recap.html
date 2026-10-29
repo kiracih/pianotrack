@@ -148,7 +148,8 @@ function octave(r, c, x0, y0, w, h) {
   return s;
 }
 
-// The week's keys on a whole 88-key keyboard, coloured by how often each was played.
+// The week's keys on a whole 88-key keyboard, coloured by how often each was played:
+// the flat view, where the 3D picture (keys3d.js) can't be drawn.
 function keyboard(r, c, x0, y0, w, h) {
   const LO = 21, HI = 108, max = Math.max(...r.histogram, 1);
   const black = (p) => [1, 3, 6, 8, 10].includes(p % 12);
@@ -164,7 +165,9 @@ function keyboard(r, c, x0, y0, w, h) {
   for (let p = LO; p <= HI; p++) {
     if (!black(p)) continue;
     const n = r.histogram[p - LO], x = pos[p - 1] + ww - ww * 0.32;
-    s += `<rect x="${x}" y="${y0}" width="${ww * 0.64}" height="${h * 0.6}" rx="1.5" fill="${n ? shade(n) : c.black}"/>`;
+    // A played black key stays black, with its colour set in, as on the dashboard.
+    s += `<rect x="${x}" y="${y0}" width="${ww * 0.64}" height="${h * 0.6}" rx="1.5" fill="${c.black}"/>`;
+    if (n) s += `<rect x="${x + ww * 0.12}" y="${y0 + h * 0.3}" width="${ww * 0.4}" height="${h * 0.26}" rx="1" fill="${shade(n)}"/>`;
   }
   return s;
 }
@@ -184,23 +187,26 @@ function card(r, opt) {
   const big = t >= 60 ? `${Math.floor(t / 60)}${unit(" h ")}${t % 60}${unit(" min")}` : `${t}${unit(" min")}`;
   s += `<text x="${M - 6}" y="268" font-family="${SERIF}" font-size="150" font-weight="600" fill="${c.ink}" style="font-variant-numeric: lining-nums tabular-nums">${big}</text>`;
   s += `<text x="${M}" y="334" font-family="${SERIF}" font-size="38" font-style="italic" font-weight="600" fill="${lineFill}">${esc(line)}</text>`;
-  s += octave(r, c, M, 400, W - 2 * M, 330);
+  s += octave(r, c, M, 400, W - 2 * M, 290);
   // Three figures: days, streak, keys pressed.
   const col = (W - 2 * M) / 3, figs = [
     [`${r.played}`, `days played, target ${r.target}`, r.played >= r.target ? c.brassText : c.ink],
     [`${r.streak.current}`, "day streak", c.ink],
     [num(r.notes), "keys pressed", c.ink],
   ];
-  s += `<line x1="${M}" x2="${W - M}" y1="872" y2="872" stroke="${c.rule}" stroke-width="2"/>`;
+  s += `<line x1="${M}" x2="${W - M}" y1="830" y2="830" stroke="${c.rule}" stroke-width="2"/>`;
   figs.forEach(([v, l, fill], i) => {
     const x = M + i * col;
-    s += `<text x="${x}" y="964" font-family="${SERIF}" font-size="76" font-weight="600" fill="${fill}" style="font-variant-numeric: lining-nums tabular-nums">${esc(v)}</text>`;
-    s += `<text x="${x}" y="1006" font-family="${SANS}" font-size="27" fill="${c.ink2}">${esc(l)}</text>`;
+    s += `<text x="${x}" y="918" font-family="${SERIF}" font-size="76" font-weight="600" fill="${fill}" style="font-variant-numeric: lining-nums tabular-nums">${esc(v)}</text>`;
+    s += `<text x="${x}" y="960" font-family="${SANS}" font-size="27" fill="${c.ink2}">${esc(l)}</text>`;
   });
-  s += keyboard(r, c, M, 1052, W - 2 * M, 84);
+  // The week's keys in 3D, as on the dashboard, each with a column as high as you played it.
+  const pic = picFor(r, opt.look);
+  if (pic) s += `<image href="${pic}" x="${M - 20}" y="975" width="${PIC_W}" height="${PIC_H}"/>`;
+  else s += keyboard(r, c, M, 1040, W - 2 * M, 110);
   const tk = r.top_keys.map((k) => noteName(k.pitch));
   const keysLine = tk.length ? `Most played: ${tk.length > 1 ? tk.slice(0, -1).join(", ") + " and " + tk[tk.length - 1] : tk[0]}` : "";
-  s += `<text x="${M}" y="1180" font-family="${SANS}" font-size="27" fill="${c.ink2}">${esc(keysLine)}</text>`;
+  s += `<text x="${M}" y="1234" font-family="${SANS}" font-size="27" fill="${c.ink2}">${esc(keysLine)}</text>`;
   // A piece by its name, or (names hidden, or none named yet) just how many.
   const ps = r.pieces || [], p = opt.names && ps.find((x) => x.named);
   let head = "", sub = "";
@@ -215,10 +221,26 @@ function card(r, opt) {
     head = `${ps.length} ${ps.length === 1 ? "piece" : "pieces"} practised`;
     if (run >= 20) sub = `longest run without a stumble ${run} s`;
   }
-  if (head) s += `<text x="${M}" y="1250" font-family="${SERIF}" font-size="34" font-weight="600" fill="${c.ink}">${esc(head)}<tspan font-family="${SANS}" font-weight="400" font-size="27" fill="${c.ink2}">  ${esc(sub)}</tspan></text>`;
+  if (head) s += `<text x="${M}" y="1284" font-family="${SERIF}" font-size="34" font-weight="600" fill="${c.ink}">${esc(head)}<tspan font-family="${SANS}" font-weight="400" font-size="27" fill="${c.ink2}">  ${esc(sub)}</tspan></text>`;
   s += `</g>`;
   s += `<text x="${W - M}" y="${H - 34}" text-anchor="end" font-family="${SERIF}" font-size="24" font-style="italic" fill="${c.muted}">pianotrack</text>`;
   return s + `</svg>`;
+}
+
+// The 3D picture, drawn once per week and look; three.js loads only for it.
+const PIC_W = W - 2 * M + 40, PIC_H = 210, pics = {};
+const picKey = (r, look) => `${r.start}/${r.notes}/${look}`;
+const picFor = (r, look) => pics[picKey(r, look)] || null;
+async function makePic(r, look) {
+  const k = picKey(r, look);
+  if (!(k in pics)) {
+    const c = LOOKS[look];
+    try {
+      const m = await import("/keys3d.js");
+      pics[k] = m.picture(r.histogram, { white: c.key, black: c.black, felt: c.felt, lo: KSEQ[1], hi: KSEQ[3], brass: c.brass }, PIC_W, PIC_H);
+    } catch (e) { pics[k] = null; }
+  }
+  return pics[k];
 }
 
 // --- state, preview and sharing ----------------------------------------------------
@@ -239,6 +261,7 @@ function draw() {
   for (const b of document.querySelectorAll("[data-fmt]")) b.setAttribute("aria-pressed", b.dataset.fmt === opt.fmt);
   for (const b of document.querySelectorAll("[data-look]")) b.setAttribute("aria-pressed", b.dataset.look === opt.look);
   $("preview").innerHTML = card(recap, opt);
+  if (!(picKey(recap, opt.look) in pics)) makePic(recap, opt.look).then((p) => { if (p) draw(); });
   $("preview").setAttribute("aria-label", `Week card: ${dur(recap.active_seconds)}, ${recap.played} of ${recap.target} days, ${recap.streak.current} day streak, ${num(recap.notes)} keys pressed`);
 }
 function shift(days) {
@@ -246,6 +269,7 @@ function shift(days) {
   weekParam = iso(d); history.replaceState(null, "", "?week=" + weekParam); load();
 }
 async function png() {
+  await makePic(recap, opt.look);
   const svg = card(recap, opt), H = opt.fmt === "story" ? 1920 : 1350;
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   try {
