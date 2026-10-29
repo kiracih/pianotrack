@@ -39,6 +39,16 @@ class DemoTest(unittest.TestCase):
         store.close()
         with self.assertRaises(ValueError):
             demo.build(self.db, days=3)
+        # A fresh real database: no recordings yet, but a password and settings.
+        fresh = os.path.join(self.dir.name, "fresh.db")
+        store = Store(fresh)
+        store.set_secret("password_hash", "x")
+        store.close()
+        with self.assertRaises(ValueError):
+            demo.build(fresh, days=3)
+        store = Store(fresh, readonly=True)
+        self.assertEqual(store.secret("password_hash"), "x")
+        store.close()
         with open(self.db + "x", "w") as f:
             f.write("not a database")
         with self.assertRaises(ValueError):

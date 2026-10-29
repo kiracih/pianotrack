@@ -76,7 +76,10 @@ black key), and the view frames the range of keys the session used. Untick it fo
 88-key keyboard that lights up the keys as you pressed them; the choice is remembered on
 that device. While paused it redraws only when you seek, resize or switch theme. Sustain and soft pedal
 are honoured, playback speed goes from 0.5× to 2×, and "skip pauses" squeezes long
-silences so you hear only the playing. The piano samples ship with the app, so replay
+silences so you hear only the playing. **−5 / +5** step back and forward, **Loop**
+repeats 4 s either side of where you are (or of the spot a ▶ jumped to, such as a
+trouble spot) until you tap it again or seek outside it, shaded on the seek bar, and
+**Space** plays and pauses while a session is open. The piano samples ship with the app, so replay
 works without internet.
 
 Every session can be downloaded as a `.mid` file (handy for replaying what you
@@ -238,8 +241,9 @@ API calls get 403.
 It runs as its own services, `pianotrack-demo` (ports 8090 on the home network and 8091
 for its tunnel) and `pianotrack-demo-tunnel`, with its own database in
 `/var/lib/pianotrack-demo/`. The real service, database, password and link are not
-touched, and `run --demo` refuses a database that holds any session the simulator did
-not make, so pointing it at the real one by mistake changes nothing. The history is
+touched, and `run --demo` only replaces a database it built itself (marked as a demo,
+simulated sessions only), so pointing it at the real one by mistake changes nothing,
+even on a fresh install that has a password but no recordings yet. The history is
 rebuilt on the first start of each day, so it always ends today; a timer restarts the
 demo at 04:15 for that (the rebuild takes a few minutes on a Pi 4, while the link
 answers with an error). Like the real one, the link changes when its tunnel restarts:
@@ -339,7 +343,7 @@ whenever the dashboard changes.
 * `--db` or `PIANOTRACK_DB` for the database path
 * `--backup-dir` or `PIANOTRACK_BACKUP_DIR` folder for the nightly copies (default `backups/` next to the database)
 * `--backup-time` local time of the nightly copy (03:30), `--no-backup` to turn copies off
-* `--demo` rebuild `--db` with simulated practice (once a day) and serve it read-only with no password, no collector and no backups; refused on a database with real recordings. `--demo-days` sets the history length (120)
+* `--demo` rebuild `--db` with simulated practice (once a day) and serve it read-only with no password, no collector and no backups; refused on any database it didn't build itself. `--demo-days` sets the history length (120)
 
 Other commands: `backup [--backup-dir DIR]` copies the database now, `restore FILE [--force]`
 replaces the database with a backup, `recompute [--dry-run]` brings stored session metrics

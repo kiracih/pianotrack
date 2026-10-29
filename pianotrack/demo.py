@@ -20,17 +20,20 @@ DISPLAY = {"Fur Elise": "Für Elise"}
 
 
 def is_simulated(path):
-    """True when the database is missing or every session in it came from the simulator."""
+    """True when the database is missing, or is a demo this module built (it carries
+    the `demo_built` mark) with only simulated sessions. A real database without
+    recordings yet still holds the password and settings, so it is never replaced."""
     if not os.path.exists(path):
         return True
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
+        marked = con.execute("SELECT 1 FROM secrets WHERE key='demo_built'").fetchone()
         n = con.execute("SELECT COUNT(*) FROM sessions WHERE COALESCE(source, '') != 'simulator'").fetchone()[0]
     except sqlite3.DatabaseError:
         return False  # not ours to replace
     finally:
         con.close()
-    return n == 0
+    return bool(marked) and n == 0
 
 
 def built_today(path):
@@ -47,7 +50,7 @@ def build(path, days=120, seed=3, force=False):
     """Write a fresh demo database at `path`, ending now, with the pieces named.
     Keeps one already built today unless `force`. True when it built one."""
     if not is_simulated(path):
-        raise ValueError(f"{path} holds real recordings; the demo needs its own --db")
+        raise ValueError(f"{path} is not a demo database built by pianotrack; the demo needs its own --db")
     if not force and built_today(path):
         return False
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
