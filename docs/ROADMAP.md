@@ -326,6 +326,13 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Decided and rejected
 
+- 2026-10-29: **Owner answers on the roadmap doc:** the review builds the plan's bigger
+  items without asking; pieces drift fix approved (before/after on a copy of the Pi's
+  data first); merge and split pieces approved (new corrections table); streak reminder
+  waits for the iOS app's own notifications (no ntfy); keep the Pi 4 (no hardware
+  change); product name still open. The iOS app lives in a new **private** repo
+  `pianotrack-ios` (owner creates it), with tests/vectors copied in from this repo.
+
 - 2026-10-27: **Approved and built: fair steadiness (past sessions recomputed once,
   copy kept), session uid and device for syncing, Pieces segments kept in the
   database so a restart never makes the page wait** (owner: "make all those 3").
