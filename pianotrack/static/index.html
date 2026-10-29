@@ -176,9 +176,15 @@ tr.sel td { background: var(--accent-soft) !important; }
 .topkeys b { color: var(--text); }
 .chip { border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px; font-variant-numeric: tabular-nums; }
 .rp-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-.rp-play { width: 44px; height: 36px; font-size: 15px; background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.rp-play { width: 44px; height: 44px; font-size: 15px; background: var(--accent); color: var(--surface); border-color: var(--accent); }
 .rp-time { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-2); min-width: 92px; }
-.rp-seek { flex: 1; min-width: 140px; accent-color: var(--accent); }
+.rp-seekbox { flex: 1; min-width: 140px; position: relative; display: flex; align-items: center; }
+.rp-seek { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); position: relative; }
+.rp-band { position: absolute; top: 50%; height: 16px; transform: translateY(-50%); border-radius: 4px;
+  background: var(--accent-soft); outline: 1px solid var(--accent); pointer-events: none; }
+.rp-band[hidden] { display: none; }
+.rp-step, .rp-loop { min-width: 44px; height: 44px; padding: 0 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rp-loop[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
 .rp-speed { font: inherit; font-size: 13px; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .rp-skip { font-size: 13px; color: var(--text-2); display: inline-flex; gap: 4px; align-items: center; }
 .rp-kbd { overflow-x: auto; }
@@ -197,7 +203,7 @@ footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: flex; 
 footer a { color: var(--text-2); }
 .scroll-x { overflow-x: auto; }
 .sub-h span { font-weight: 400; color: var(--muted); }
-.d-more { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+.d-more { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 10px; }
 .d-more > summary { cursor: pointer; font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--text); padding: 6px 0; }
 .d-more > summary span { font-family: var(--sans, inherit); font-weight: 400; font-size: 13px; color: var(--muted); }
 .pc-trouble { list-style: none; padding: 0; margin: 0; }
@@ -1231,6 +1237,16 @@ function falling() {
   }).catch((e) => { console.error(e); box.hidden = true; });
 }
 if (selected) { window.replay.load(selected); falling(); }
+// Space plays and pauses while a session is open, except where Space already
+// means something (typing, a focused button or link).
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.repeat || e.altKey || e.ctrlKey || e.metaKey || !selected || !window.replay) return;
+  const card = $("detail-card"), r = card.getBoundingClientRect();
+  if (card.style.display === "none" || r.bottom < 0 || r.top > innerHeight) return;  // scrolled away: Space scrolls
+  if (e.target.closest("input:not(.rp-seek), select, textarea, button, a, summary, label, [role=button], [contenteditable]")) return;
+  e.preventDefault();
+  window.replay.toggle();
+});
 </script>
 </body>
 </html>

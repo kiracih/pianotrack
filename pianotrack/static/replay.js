@@ -9,6 +9,8 @@ const LOWEST = 21, HIGHEST = 108;
 const PAUSE_LIMIT = 3.0;   // "skip pauses" squeezes silences longer than this...
 const PAUSE_KEEP = 1.5;    // ...down to this
 const LOOKAHEAD = 0.25;    // seconds of audio scheduled ahead
+const LOOP_HALF = 4;       // "Loop" repeats this many seconds either side of the spot
+const STEP = 5;            // the −5 s / +5 s buttons
 
 class PianoSampler {
   constructor() {
@@ -148,6 +150,9 @@ class Replay {
     this.voices = [];
     this.timer = null;
     this.raf = null;
+    this.loop = null;   // {a, b} in player time while looping
+    this.mark = null;   // where the last jump() landed; Loop centres on it
+    this.starting = false; this.startToken = 0;  // a play() waiting for the piano
     this.build();
   }
 
@@ -156,8 +161,12 @@ class Replay {
     r.innerHTML = `
       <div class="rp-bar">
         <button class="rp-play" aria-label="Play">▶</button>
+        <button class="rp-step" data-d="-${STEP}" aria-label="Back ${STEP} seconds">−${STEP}</button>
+        <button class="rp-step" data-d="${STEP}" aria-label="Forward ${STEP} seconds">+${STEP}</button>
+        <button class="rp-loop" aria-pressed="false" title="Repeat ${LOOP_HALF} s either side of this spot">Loop</button>
         <span class="rp-time">0:00 / 0:00</span>
-        <input class="rp-seek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+        <span class="rp-seekbox"><span class="rp-band" hidden></span>
+          <input class="rp-seek" type="range" min="0" max="1000" value="0" aria-label="Seek"></span>
         <select class="rp-speed" aria-label="Speed">
           <option value="0.5">0.5×</option><option value="0.75">0.75×</option>
           <option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option>
@@ -169,13 +178,15 @@ class Replay {
       <div class="rp-kbd"></div>
       <div class="rp-status"><span class="rp-sus">Sustain</span><span class="rp-soft">Soft</span><span class="rp-msg"></span></div>`;
     this.$ = (sel) => r.querySelector(sel);
-    this.$(".rp-play").onclick = () => (this.playing ? this.pause() : this.play());
-    this.$(".rp-seek").oninput = (e) => this.seek(e.target.value / 1000 * (this.prep ? this.prep.duration : 0));
+    this.$(".rp-play").onclick = () => this.toggle();
+    this.root.querySelectorAll(".rp-step").forEach((b) => b.onclick = () => { this.mark = null; this.seek(this.pos + +b.dataset.d); });
+    this.$(".rp-loop").onclick = () => this.toggleLoop();
+    this.$(".rp-seek").oninput = (e) => { this.mark = null; this.seek(e.target.value / 1000 * (this.prep ? this.prep.duration : 0)); };
     this.$(".rp-speed").onchange = (e) => { const was = this.playing; this.pause(); this.speed = +e.target.value; if (was) this.play(); };
     this.$(".rp-skip input").onchange = (e) => {
       const frac = this.prep ? this.pos / this.prep.duration : 0;
       const was = this.playing; this.pause();
-      this.skip = e.target.checked; this.prep = prepare(this.data, this.skip);
+      this.skip = e.target.checked; this.prep = prepare(this.data, this.skip); this.setLoop(null); this.mark = null;
       if (this.view) this.view.setNotes(this.prep, (t) => this.firstIndexFrom(t));
       this.pos = frac * this.prep.duration; this.draw(); if (was) this.play();
     };
@@ -244,7 +255,7 @@ class Replay {
     this.data = await r.json();
     this.prep = prepare(this.data, this.skip);
     if (this.view) this.view.setNotes(this.prep, (t) => this.firstIndexFrom(t));
-    this.pos = 0;
+    this.pos = 0; this.mark = null; this.setLoop(null);
     this.draw();
   }
 
@@ -254,8 +265,49 @@ class Replay {
     await this.load(id);
     if (this.id !== id || !this.prep) return;
     const was = this.playing;
-    this.seek(this.prep.map(t));  // carries on playing if it was
+    this.mark = this.prep.map(t);
+    this.seek(this.mark);  // carries on playing if it was
     if (play && !was) this.play();
+  }
+
+  toggle() { if (this.playing || this.starting) this.pause(); else this.play(); }
+
+  // Loop: repeat LOOP_HALF seconds either side of the last jump point (or of where
+  // you are), until Loop is tapped again or you seek outside it.
+  toggleLoop() {
+    if (!this.prep) return;
+    if (this.loop) { this.setLoop(null); return; }
+    piano.unlock();
+    // The spot a ▶ jumped to, unless playback has since moved well past it.
+    const near = this.mark != null && Math.abs(this.pos - this.mark) <= 2 * LOOP_HALF;
+    const c = near ? this.mark : this.pos, d = this.prep.duration;
+    this.setLoop({ a: Math.max(0, c - LOOP_HALF), b: Math.min(d, c + LOOP_HALF) });
+    this.seek(this.loop.a);
+    if (!this.playing) this.play();
+  }
+
+  setLoop(loop) {
+    this.loop = loop;
+    if (!this.$) return;
+    const btn = this.$(".rp-loop"), band = this.$(".rp-band");
+    btn.setAttribute("aria-pressed", loop ? "true" : "false");
+    band.hidden = !loop;
+    if (loop) {
+      const d = this.prep.duration || 1;
+      // The thumb is 16 px wide, so the track runs from 8 px to width − 8 px.
+      band.style.left = `calc(8px + (100% - 16px) * ${loop.a / d})`;
+      band.style.width = `calc((100% - 16px) * ${(loop.b - loop.a) / d})`;
+    }
+  }
+
+  // Back to A without stopping the clock: notes past B were never scheduled and
+  // every voice was already released at B, so nothing hangs over the jump.
+  wrap() {
+    for (const v of this.voices) piano.release(v.voice, 0);
+    this.voices = [];
+    this.ctxStart = piano.ctx.currentTime + 0.02;
+    this.posStart = this.pos = this.loop.a;
+    this.next = this.firstIndexFrom(this.loop.a);
   }
 
   // Call straight from a tap, before anything awaited: Safari only starts audio there.
@@ -263,17 +315,27 @@ class Replay {
 
   async play() {
     if (!this.prep || !this.prep.notes.length) return;
+    // One start at a time: a tap, Space or Loop while the piano loads must not
+    // start a second clock. halt() cancels a start still waiting here.
+    if (this.playing || this.starting) return;
     piano.unlock();
-    if (Object.keys(piano.buffers).length < 30) {
-      this.$(".rp-msg").textContent = "Loading piano…";
-      try { await piano.load(); } catch (e) {
-        console.error(e);
-        this.$(".rp-msg").textContent = "Could not load the piano sound. Reload the page and try again.";
-        return;
+    this.starting = true;
+    const token = ++this.startToken;
+    try {
+      if (Object.keys(piano.buffers).length < 30) {
+        this.$(".rp-msg").textContent = "Loading piano…";
+        try { await piano.load(); } catch (e) {
+          console.error(e);
+          this.$(".rp-msg").textContent = "Could not load the piano sound. Reload the page and try again.";
+          return;
+        }
+        this.$(".rp-msg").textContent = "";
       }
-      this.$(".rp-msg").textContent = "";
+      await piano.ctx.resume();
+    } finally {
+      if (token === this.startToken) this.starting = false;
     }
-    await piano.ctx.resume();
+    if (token !== this.startToken || this.playing) return;
     if (this.pos >= this.prep.duration - 0.05) this.pos = 0;
     this.playing = true;
     this.$(".rp-play").textContent = "❚❚";
@@ -283,13 +345,14 @@ class Replay {
     this.next = this.firstIndexFrom(this.pos);
     this.timer = setInterval(() => this.schedule(), 50);
     this.schedule();
-    const tick = () => { if (!this.playing) return; this.pos = this.now(); this.draw(); this.raf = requestAnimationFrame(tick); };
+    const tick = () => { if (!this.playing) return; this.pos = this.loop ? Math.min(this.now(), this.loop.b) : this.now(); this.draw(); this.raf = requestAnimationFrame(tick); };
     this.raf = requestAnimationFrame(tick);
   }
 
   pause() {
-    if (!this.playing) return;
-    this.pos = this.now();
+    if (!this.playing) { if (this.starting) this.halt(); return; }
+    this.pos = this.loop ? Math.min(this.now(), this.loop.b) : this.now();
+    if (this.loop && this.pos >= this.loop.b) this.pos = this.loop.a;
     this.halt();
     this.draw();
   }
@@ -298,6 +361,7 @@ class Replay {
 
   halt() {
     this.playing = false;
+    this.starting = false; this.startToken++;  // a start still loading the piano is called off
     clearInterval(this.timer); cancelAnimationFrame(this.raf);
     piano.silence();
     for (const v of this.voices) piano.release(v.voice, 0);
@@ -306,9 +370,10 @@ class Replay {
   }
 
   seek(t) {
-    const was = this.playing;
+    const was = this.playing || this.starting;
     this.halt();
     this.pos = Math.max(0, Math.min(t, this.prep ? this.prep.duration : 0));
+    if (this.loop && (this.pos < this.loop.a - 0.01 || this.pos > this.loop.b)) this.setLoop(null);
     this.draw();
     if (was) this.play();
   }
@@ -323,14 +388,16 @@ class Replay {
   }
 
   schedule() {
-    const until = this.now() + LOOKAHEAD * this.speed;
+    if (this.loop && this.now() >= this.loop.b) this.wrap();
+    const end = this.loop ? this.loop.b : Infinity;
+    const until = Math.min(end, this.now() + LOOKAHEAD * this.speed);
     const notes = this.prep.notes;
     while (this.next < notes.length && notes[this.next].on < until) {
       const n = notes[this.next++];
       const voice = piano.play(n.pitch, n.vel, this.toCtx(n.on), n.soft);
       if (voice) {
-        piano.release(voice, this.toCtx(n.sound));
-        this.voices.push({ voice, end: n.sound });
+        piano.release(voice, this.toCtx(Math.min(n.sound, end)));
+        this.voices.push({ voice, end: Math.min(n.sound, end) });
       }
     }
     const t = this.now();
