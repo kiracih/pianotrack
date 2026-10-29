@@ -224,9 +224,11 @@ footer a { color: var(--text-2); }
 }
 /* The week as an octave (docs/DESIGN.md): C to B are Monday to Sunday. The keys stay
    ivory in both themes, so the fills use on-key colours that keep 3:1 against them. */
-:root { --oct-felt: #9b2335; --oct-brass: #a8822f; --oct-edge: #dcdbd4; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --oct-brass: #8c6a1f; --oct-edge: #120d0e; } }
-:root[data-theme="dark"] { --oct-brass: #8c6a1f; --oct-edge: #120d0e; }
+:root { --oct-felt: #9b2335; --oct-brass: #a8822f; --oct-gold: #6f5418; --oct-edge: #dcdbd4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --oct-brass: #8c6a1f; --oct-gold: #5c4510; --oct-edge: #120d0e; } }
+:root[data-theme="dark"] { --oct-brass: #8c6a1f; --oct-gold: #5c4510; --oct-edge: #120d0e; }
+/* A day at 1.5× the goal or more is deep brass with its multiple engraved on the key. */
+.oct-times { font-family: var(--serif); font-weight: 700; font-size: 15px; fill: #fffefa; pointer-events: none; }
 .o-week { background: transparent; border: 0; padding: 8px 0 16px; }
 .octave { max-width: 460px; }
 .o-week h2 span { margin-right: auto; }
@@ -496,9 +498,13 @@ function ring(pct, minutes, goalMin, seconds) {
 
 // --- the week as an octave ------------------------------------------------------
 // Seven white keys, C to B, are Monday to Sunday. Each fills with felt from the bottom
-// to min(minutes / goal, 1) and is brass when the goal is met. Today's key is outlined
+// to min(minutes / goal, 1) and is brass when the goal is met; from 1.5× the goal it is a
+// deeper brass with the multiple ("2×") engraved on it. Today's key is outlined
 // and presses down once per page load. The five black keys are decoration.
 let octavePressed = false;
+// goal_times (metrics.goal_times): the day as a multiple of the goal from 1.5×, else 0.
+const fmtTimes = (t) => `${t.toLocaleString()}×`;
+const metWords = (d, times) => times ? `, ${fmtTimes(times)} your goal` : d.goal_met ? ", goal met" : "";
 function weekOctave(week, goalSec, todayIso) {
   const KW = 50, H = 160, BW = 29, BH = 98, R = 4;
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -523,11 +529,15 @@ function weekOctave(week, goalSec, todayIso) {
     const g = el("g", { class: `oct-k${isToday ? " today" : ""}${later ? " later" : ""}`, tabindex: 0, role: "img" }, s);
     el("clipPath", { id: `oct-c${i}` }, g).appendChild(el("path", { d: keyPath(x) }));
     el("path", { d: keyPath(x), class: "oct-face" }, g);
-    const frac = goalSec ? Math.min(d.active_seconds / goalSec, 1) : 0;
+    const frac = goalSec ? Math.min(d.active_seconds / goalSec, 1) : 0, times = d.goal_met && d.goal_times || 0;
+    const met = times ? "var(--oct-gold)" : "var(--oct-brass)";
     if (frac > 0) {
       const h = Math.max(4, frac * H), fill = { x, y: H - h, width: KW, height: h, "clip-path": `url(#oct-c${i})` };
-      el("rect", { ...fill, fill: d.goal_met && !isToday ? "var(--oct-brass)" : "var(--oct-felt)" }, g);
-      if (d.goal_met && isToday) el("rect", { ...fill, fill: "var(--oct-brass)", class: "oct-brass" }, g);
+      el("rect", { ...fill, fill: d.goal_met && !isToday ? met : "var(--oct-felt)" }, g);
+      if (d.goal_met && isToday) el("rect", { ...fill, fill: met, class: "oct-brass" }, g);
+      // On today's key it appears with the brass, when the key goes down.
+      if (times) el("text", { x: x + KW / 2, y: H - 16, "text-anchor": "middle", class: `oct-times${isToday ? " oct-brass" : ""}`, "aria-hidden": "true" }, g)
+        .textContent = fmtTimes(times);
     }
     if (isToday) {
       el("rect", { x: x + 1, y: H - 3, width: KW - 2, height: 3, class: "oct-lip", "clip-path": `url(#oct-c${i})` }, g);
@@ -539,9 +549,9 @@ function weekOctave(week, goalSec, todayIso) {
     const label = later ? `${longDay.format(dt)}, still to come`
       : !d.active_seconds ? `${longDay.format(dt)}${isToday ? ", today" : ""}, no practice`
       : min === 0 ? `${longDay.format(dt)}${isToday ? ", today" : ""}, under a minute`
-      : `${longDay.format(dt)}${isToday ? ", today" : ""}, ${min} ${min === 1 ? "minute" : "minutes"}${d.goal_met ? ", goal met" : ""}`;
+      : `${longDay.format(dt)}${isToday ? ", today" : ""}, ${min} ${min === 1 ? "minute" : "minutes"}${metWords(d, times)}`;
     g.setAttribute("aria-label", label);
-    const html = `<b>${tipDay.format(dt)}</b><br>${later ? "still to come" : `${fmtDur(d.active_seconds)}, ${fmtNum(d.notes)} notes${d.goal_met ? ", goal met" : ""}`}`;
+    const html = `<b>${tipDay.format(dt)}</b><br>${later ? "still to come" : `${fmtDur(d.active_seconds)}, ${fmtNum(d.notes)} notes${metWords(d, times)}`}`;
     hover(g, html);
     g.addEventListener("focus", () => { const r = g.getBoundingClientRect(); showTip({ clientX: r.left + r.width / 2 - 12, clientY: r.top }, html); });
     g.addEventListener("blur", hideTip);

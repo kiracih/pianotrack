@@ -82,7 +82,8 @@ class Api:
             d = today - timedelta(days=i)
             v = days.get(d, empty)
             week.append({"date": d.isoformat(), "active_seconds": round(v["active_seconds"]),
-                         "notes": v["notes"], "goal_met": v["active_seconds"] >= goal})
+                         "notes": v["notes"], "goal_met": v["active_seconds"] >= goal,
+                         "goal_times": metrics.goal_times(v["active_seconds"], goal)})
         live = None
         for s in sessions:
             if not s["closed"]:
@@ -173,6 +174,7 @@ class Api:
             v = days.get(d, empty)
             week.append({"date": d.isoformat(), "active_seconds": round(v["active_seconds"]),
                          "notes": v["notes"], "goal_met": v["active_seconds"] >= goal,
+                         "goal_times": metrics.goal_times(v["active_seconds"], goal),
                          "later": d > today})
         total = sum(w["active_seconds"] for w in week)
         prev = sum(days.get(start - timedelta(days=i), empty)["active_seconds"] for i in range(1, 8))

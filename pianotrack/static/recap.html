@@ -94,9 +94,9 @@ const W = 1080, M = 80;
 // The keys stay ivory on both, as in the octave on the dashboard.
 const LOOKS = {
   ivory: { bg: "#fbfaf6", ink: "#1f1a1c", ink2: "#55514f", muted: "#6e6965", felt: "#9b2335",
-           brass: "#a8822f", brassText: "#7a5a1c", key: "#fffefa", edge: "#d4d2ca", black: "#1f1a1c", rule: "#e6e5df" },
+           brass: "#a8822f", gold: "#6f5418", brassText: "#7a5a1c", key: "#fffefa", edge: "#d4d2ca", black: "#1f1a1c", rule: "#e6e5df" },
   rosewood: { bg: "#1b1416", ink: "#f2ece4", ink2: "#c2b6b0", muted: "#988b86", felt: "#9b2335",
-              brass: "#8c6a1f", brassText: "#d6aa52", key: "#e9e2d8", edge: "#120d0e", black: "#120d0e", rule: "#33282a" },
+              brass: "#8c6a1f", gold: "#5c4510", brassText: "#d6aa52", key: "#e9e2d8", edge: "#120d0e", black: "#120d0e", rule: "#33282a" },
 };
 const KSEQ = ["#ebc3c9", "#d27d8b", "#9b2335", "#5e1320"];
 
@@ -133,9 +133,12 @@ function octave(r, c, x0, y0, w, h) {
     const path = `M${x + 2},${y0} H${x + kw - 2} V${y0 + h - R} q0,${R} -${R},${R} H${x + 2 + R} q-${R},0 -${R},-${R} Z`;
     s += `<clipPath id="k${i}"><path d="${path}"/></clipPath><path d="${path}" fill="${c.key}" stroke="${c.edge}" stroke-width="2"/>`;
     const frac = r.goal_seconds ? Math.min(d.active_seconds / r.goal_seconds, 1) : 0;
+    // From 1.5× the goal, deeper brass with the multiple engraved, as on the dashboard.
+    const times = d.goal_met && d.goal_times || 0;
     if (frac > 0) {
       const fh = Math.max(8, frac * h);
-      s += `<rect x="${x}" y="${y0 + h - fh}" width="${kw}" height="${fh}" fill="${d.goal_met ? c.brass : c.felt}" clip-path="url(#k${i})"/>`;
+      s += `<rect x="${x}" y="${y0 + h - fh}" width="${kw}" height="${fh}" fill="${d.goal_met ? (times ? c.gold : c.brass) : c.felt}" clip-path="url(#k${i})"/>`;
+      if (times) s += `<text x="${x + kw / 2}" y="${y0 + h - 30}" text-anchor="middle" font-family="${SERIF}" font-size="34" font-weight="700" fill="#fffefa">${times.toLocaleString()}×</text>`;
     }
     s += `<text x="${x + kw / 2}" y="${y0 + h + 48}" text-anchor="middle" font-family="${SANS}" font-size="30" font-weight="600" fill="${c.ink2}">${esc(narrow.format(day(d.date)))}</text>`;
     s += `<text x="${x + kw / 2}" y="${y0 + h + 86}" text-anchor="middle" font-family="${SANS}" font-size="26" fill="${c.muted}">${d.later ? "" : d.active_seconds >= 60 ? `${Math.round(d.active_seconds / 60)} min` : d.active_seconds ? "<1 min" : "–"}</text>`;

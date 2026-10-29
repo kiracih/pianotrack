@@ -288,5 +288,14 @@ class BackfillTest(TmpStore):
             httpd.server_close()
 
 
+class GoalTimesTest(unittest.TestCase):
+    def test_marks_days_well_over_the_goal(self):
+        self.assertEqual(metrics.goal_times(3600, 0), 0)
+        self.assertEqual(metrics.goal_times(1.4 * 900, 900), 0)
+        self.assertEqual(metrics.goal_times(1.5 * 900, 900), 1.5)
+        self.assertEqual(metrics.goal_times(1.97 * 900, 900), 2)
+        self.assertEqual(metrics.goal_times(3.1 * 900, 900), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -30,7 +30,10 @@ reverses toward light pink. Goal-met days use brass rather than the darkest step
 `--kseq` ramp (#EBC3C9, #D27D8B, #9B2335, #5E1320) is the same in both themes so "most"
 is always the darkest key (owner feedback, 2026-10-23). The octave's keys also stay ivory in
 both themes, so its fills use on-key colours: felt #9B2335 in both themes, brass #A8822F light
-and #8C6A1F dark (dark brass #D6AA52 is only 1.7:1 on an ivory key).
+and #8C6A1F dark (dark brass #D6AA52 is only 1.7:1 on an ivory key). A day at 1.5× the goal
+or more is deep brass, #6F5418 light and #5C4510 dark (7:1 and 9:1 on ivory), with its multiple
+("2×") engraved in ivory serif near the bottom of the key, so an outstanding day stands apart
+from one just over the goal.
 Do not use: pure #000 or #0b0b0b, the cream #F4F1EA, terracotta, blue/green "fitness"
 colours, gradients or soft grey card shadows.
 

@@ -256,6 +256,14 @@ def streaks(days, min_seconds, today=None):
     return {"current": cur, "longest": longest}
 
 
+def goal_times(active_seconds: float, goal_seconds: float) -> float:
+    """A day's practice as a multiple of the daily goal, to the nearest half, from 1.5x;
+    0 below that. The week's octave marks such days apart from ones just over the goal."""
+    if not goal_seconds or active_seconds < 1.5 * goal_seconds:
+        return 0
+    return round(2 * active_seconds / goal_seconds) / 2
+
+
 def invite(today_seconds: float, goal_seconds: float, streak_min_seconds: float, streak: int,
            days_since_last=None) -> str:
     """One calm line for Today: the next small step, never a scolding.
