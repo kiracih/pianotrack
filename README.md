@@ -80,7 +80,8 @@ that device. While paused it redraws only when you seek, resize or switch theme.
 are honoured, playback speed goes from 0.5× to 2×, and "skip pauses" squeezes long
 silences so you hear only the playing. **−5 / +5** step back and forward, **Loop**
 repeats 4 s either side of where you are (or of the spot a ▶ jumped to, such as a
-trouble spot) until you tap it again or seek outside it, shaded on the seek bar, and
+trouble spot) until you tap it again or seek outside it. While it loops, the seek bar
+zooms to the loop and 4 s either side, with the loop shaded and its times shown, and
 **Space** plays and pauses while a session is open. The piano samples ship with the app, so replay
 works without internet.
 

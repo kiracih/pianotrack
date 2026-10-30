@@ -9,6 +9,7 @@ const LOWEST = 21, HIGHEST = 108;
 const PAUSE_LIMIT = 3.0;   // "skip pauses" squeezes silences longer than this...
 const PAUSE_KEEP = 1.5;    // ...down to this
 const LOOKAHEAD = 0.25;    // seconds of audio scheduled ahead
+const ZOOM_PAD = 4;  // seconds of context either side of a loop on the seek bar
 const LOOP_HALF = 4;       // "Loop" repeats this many seconds either side of the spot
 const STEP = 5;            // the −5 s / +5 s buttons
 
@@ -181,7 +182,11 @@ class Replay {
     this.$(".rp-play").onclick = () => this.toggle();
     this.root.querySelectorAll(".rp-step").forEach((b) => b.onclick = () => { this.mark = null; this.seek(this.pos + +b.dataset.d); });
     this.$(".rp-loop").onclick = () => this.toggleLoop();
-    this.$(".rp-seek").oninput = (e) => { this.mark = null; this.seek(e.target.value / 1000 * (this.prep ? this.prep.duration : 0)); };
+    this.$(".rp-seek").oninput = (e) => {
+      if (!this.prep) return;
+      const [lo, hi] = this.span();
+      this.mark = null; this.seek(lo + e.target.value / 1000 * (hi - lo));
+    };
     this.$(".rp-speed").onchange = (e) => { const was = this.playing; this.pause(); this.speed = +e.target.value; if (was) this.play(); };
     this.$(".rp-skip input").onchange = (e) => {
       const frac = this.prep ? this.pos / this.prep.duration : 0;
@@ -286,18 +291,27 @@ class Replay {
     if (!this.playing) this.play();
   }
 
+  // The stretch of the session the seek bar spans: all of it, or while looping the
+  // loop and ZOOM_PAD seconds either side, so the loop fills half the bar.
+  span() {
+    const d = this.prep ? this.prep.duration : 0;
+    return this.loop ? [Math.max(0, this.loop.a - ZOOM_PAD), Math.min(d, this.loop.b + ZOOM_PAD)] : [0, d];
+  }
+
   setLoop(loop) {
     this.loop = loop;
     if (!this.$) return;
     const btn = this.$(".rp-loop"), band = this.$(".rp-band");
     btn.setAttribute("aria-pressed", loop ? "true" : "false");
     band.hidden = !loop;
+    this.$(".rp-seekbox").classList.toggle("rp-zoom", !!loop);
     if (loop) {
-      const d = this.prep.duration || 1;
+      const [lo, hi] = this.span(), w = hi - lo || 1;
       // The thumb is 16 px wide, so the track runs from 8 px to width − 8 px.
-      band.style.left = `calc(8px + (100% - 16px) * ${loop.a / d})`;
-      band.style.width = `calc((100% - 16px) * ${(loop.b - loop.a) / d})`;
+      band.style.left = `calc(8px + (100% - 16px) * ${(loop.a - lo) / w})`;
+      band.style.width = `calc((100% - 16px) * ${(loop.b - loop.a) / w})`;
     }
+    if (this.prep) this.draw();
   }
 
   // Back to A without stopping the clock: notes past B were never scheduled and
@@ -426,9 +440,12 @@ class Replay {
     const soft = n.some((x) => x.soft && x.on <= t && t < x.off);
     this.$(".rp-soft").classList.toggle("on", soft);
     const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    this.$(".rp-time").textContent = `${fmt(t)} / ${fmt(this.prep.duration)}`;
+    this.$(".rp-time").textContent = this.loop
+      ? `${fmt(t)} · loop ${fmt(this.loop.a)}–${fmt(this.loop.b)}`
+      : `${fmt(t)} / ${fmt(this.prep.duration)}`;
+    const [lo, hi] = this.span();
     if (document.activeElement !== this.$(".rp-seek"))
-      this.$(".rp-seek").value = this.prep.duration ? Math.round(1000 * t / this.prep.duration) : 0;
+      this.$(".rp-seek").value = hi > lo ? Math.round(1000 * (t - lo) / (hi - lo)) : 0;
   }
 }
 
