@@ -624,6 +624,8 @@ function trendLine(target, rows, key, unit, fixedMax, per = "day") {
   const s = svgRoot(W, H);
   const t0 = new Date(pts[0].date + "T12:00:00").getTime(), t1 = new Date(pts.at(-1).date + "T12:00:00").getTime();
   const vals = pts.map((p) => p[key]);
+  // Small values (stumbles a minute) keep a decimal, so "Now" agrees with the piece's line.
+  const dp = Math.max(...vals) < 10 ? 1 : 0;
   const max = fixedMax ?? Math.max(...vals) * 1.15, min = fixedMax ? 0 : 0;
   const x = (t) => pad.l + (W - pad.l - pad.r) * ((t - t0) / Math.max(t1 - t0, 1));
   const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - (v - min) / (max - min));
@@ -650,7 +652,7 @@ function trendLine(target, rows, key, unit, fixedMax, per = "day") {
     const r = s.getBoundingClientRect(), px = (e.clientX - r.left) * (W / r.width);
     let best = 0; xy.forEach(([cx], i) => { if (Math.abs(cx - px) < Math.abs(xy[best][0] - px)) best = i; });
     cross.setAttribute("x1", xy[best][0]); cross.setAttribute("x2", xy[best][0]); cross.setAttribute("opacity", 1);
-    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that ${per}, 7-${per} avg ${roll[best].toFixed(0)}${unit}`);
+    showTip(e, `<b>${fmtD(new Date(pts[best].date + "T12:00:00"))}</b><br>${vals[best]}${unit} that ${per}, 7-${per} avg ${roll[best].toFixed(dp)}${unit}`);
   };
   hit.addEventListener("mousemove", onMove);
   hit.addEventListener("touchmove", (e) => onMove(e.touches[0]), { passive: true });
@@ -660,8 +662,8 @@ function trendLine(target, rows, key, unit, fixedMax, per = "day") {
   const first = roll[Math.min(6, roll.length - 1)], lastV = roll.at(-1);
   const diff = lastV - first;
   const note = document.createElement("div"); note.className = "legend";
-  const change = Math.round(Math.abs(diff)) === 0 ? "no change" : `${diff > 0 ? "up" : "down"} ${Math.abs(diff).toFixed(0)}${unit}`;
-  note.textContent = `Now ${lastV.toFixed(0)}${unit} (7-${per} avg), ${change} over the period.`;
+  const change = Number(Math.abs(diff).toFixed(dp)) === 0 ? "no change" : `${diff > 0 ? "up" : "down"} ${Math.abs(diff).toFixed(dp)}${unit}`;
+  note.textContent = `Now ${lastV.toFixed(dp)}${unit} (7-${per} avg), ${change} over the period.`;
   box.appendChild(note);
 }
 
