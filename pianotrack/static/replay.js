@@ -152,6 +152,7 @@ class Replay {
     this.timer = null;
     this.raf = null;
     this.loop = null;   // {a, b} in player time while looping
+    this.drag = null;   // the seek bar's [from, to] while it is being dragged
     this.mark = null;   // where the last jump() landed; Loop centres on it
     this.starting = false; this.startToken = 0;  // a play() waiting for the piano
     this.build();
@@ -182,9 +183,14 @@ class Replay {
     this.$(".rp-play").onclick = () => this.toggle();
     this.root.querySelectorAll(".rp-step").forEach((b) => b.onclick = () => { this.mark = null; this.seek(this.pos + +b.dataset.d); });
     this.$(".rp-loop").onclick = () => this.toggleLoop();
-    this.$(".rp-seek").oninput = (e) => {
+    // A drag keeps the scale it started on, even when it leaves the loop and the
+    // bar goes back to the whole session; the thumb is redrawn once it is let go.
+    const bar = this.$(".rp-seek");
+    bar.onpointerdown = () => { this.drag = this.span(); };
+    bar.onpointerup = bar.onpointercancel = bar.onchange = () => { if (this.drag) { this.drag = null; this.draw(); } };
+    bar.oninput = (e) => {
       if (!this.prep) return;
-      const [lo, hi] = this.span();
+      const [lo, hi] = this.drag || this.span();
       this.mark = null; this.seek(lo + e.target.value / 1000 * (hi - lo));
     };
     this.$(".rp-speed").onchange = (e) => { const was = this.playing; this.pause(); this.speed = +e.target.value; if (was) this.play(); };
@@ -281,7 +287,7 @@ class Replay {
   // you are), until Loop is tapped again or you seek outside it.
   toggleLoop() {
     if (!this.prep) return;
-    if (this.loop) { this.setLoop(null); return; }
+    if (this.loop) { this.setLoop(null); this.draw(); return; }
     piano.unlock();
     // The spot a ▶ jumped to, unless playback has since moved well past it.
     const near = this.mark != null && Math.abs(this.pos - this.mark) <= 2 * LOOP_HALF;
@@ -304,14 +310,12 @@ class Replay {
     const btn = this.$(".rp-loop"), band = this.$(".rp-band");
     btn.setAttribute("aria-pressed", loop ? "true" : "false");
     band.hidden = !loop;
-    this.$(".rp-seekbox").classList.toggle("rp-zoom", !!loop);
     if (loop) {
       const [lo, hi] = this.span(), w = hi - lo || 1;
       // The thumb is 16 px wide, so the track runs from 8 px to width − 8 px.
       band.style.left = `calc(8px + (100% - 16px) * ${(loop.a - lo) / w})`;
       band.style.width = `calc((100% - 16px) * ${(loop.b - loop.a) / w})`;
     }
-    if (this.prep) this.draw();
   }
 
   // Back to A without stopping the clock: notes past B were never scheduled and
@@ -440,11 +444,9 @@ class Replay {
     const soft = n.some((x) => x.soft && x.on <= t && t < x.off);
     this.$(".rp-soft").classList.toggle("on", soft);
     const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    this.$(".rp-time").textContent = this.loop
-      ? `${fmt(t)} · loop ${fmt(this.loop.a)}–${fmt(this.loop.b)}`
-      : `${fmt(t)} / ${fmt(this.prep.duration)}`;
+    this.$(".rp-time").textContent = `${fmt(t)} / ${fmt(this.prep.duration)}`;
     const [lo, hi] = this.span();
-    if (document.activeElement !== this.$(".rp-seek"))
+    if (!this.drag)
       this.$(".rp-seek").value = hi > lo ? Math.round(1000 * (t - lo) / (hi - lo)) : 0;
   }
 }
