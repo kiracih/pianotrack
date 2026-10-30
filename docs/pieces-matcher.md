@@ -35,7 +35,11 @@ sessions, replay, `.mid` and `.csv` downloads are untouched.
    n-grams cover at least 20% of its own (and at least 6 of them). A wrong note
    spoils the five n-grams around it, so even a 15% error rate leaves roughly half
    of a segment's n-grams intact. Once a group has 5 segments it only uses n-grams
-   heard at least twice, so one-off slips don't pile up. Two settled groups whose
+   heard at least twice and in at least 3% of its segments, so one-off slips don't
+   pile up. Without the 3%, a group heard hundreds of times kept enough stray
+   n-grams to match any stepwise melody: on 120 simulated days it absorbed
+   sight-reading and scales and 7–12% of segments went to a wrong piece; with it,
+   1.6–2.7% on seeds 1–5 (2026-10-30). Two settled groups whose
    n-grams overlap by 60% or more are joined, which repairs a piece that started
    as two groups.
 
