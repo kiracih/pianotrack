@@ -294,9 +294,15 @@ Not legal advice; a patent attorney should confirm before money is spent.
 
 2026-10-30: iOS work started (owner go 2026-10-29). Private repo `kiracih/pianotrack-ios`:
 Swift package `PianoEngine`, `Vectors/` copied from this repo with `Vectors/SOURCE` and
-`tools/sync-vectors.sh`. Step 1 so far: the recorder; metrics and pieces next, then the
-capture test app. Swift builds run on the owner's Mac (Xcode 26.5); iPhone paired for
+`tools/sync-vectors.sh`. Swift builds run on the owner's Mac (Xcode 26.5); iPhone paired for
 wireless installs.
+- 2026-10-30: capture test app on the owner's iPhone (free Personal Team): Bluetooth MIDI from
+  the FP-30X works, including with the screen locked (silent-audio keep-awake). Owner: the Pi
+  stays supported, it is their reliable everyday recorder.
+- 2026-10-31: engine step 2, session and daily metrics, match every vector exactly (Python's
+  rounding reproduced). iOS step 3 begun: Today (invite line, ring, streak, week days,
+  consistency), the week as an octave, session pages (tempo, steadiness, timeline, dynamics,
+  key map, pedals), settings. Next: pieces in Swift, then Pi sync.
 
 1. **Phone-quality web app (now).** The current dashboard as an installable home
    screen app: phone-first layout (shipped 2026-10-22), design direction for web and
