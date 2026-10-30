@@ -302,7 +302,12 @@ wireless installs.
 - 2026-10-31: engine step 2, session and daily metrics, match every vector exactly (Python's
   rounding reproduced). iOS step 3 begun: Today (invite line, ring, streak, week days,
   consistency), the week as an octave, session pages (tempo, steadiness, timeline, dynamics,
-  key map, pedals), settings. Next: pieces in Swift, then Pi sync.
+  key map, pedals), settings.
+- 2026-10-31 (later): engine step 3, pieces in Swift, match every vector exactly (the most
+  played phrase follows CPython's set order on ties, reproduced in Swift). The app gains
+  Pieces (names saved with the music's n-grams) and session replay (the same Salamander
+  samples, sustain, soft pedal, speed, skip pauses). Plan steps 1, 2 and 5 done, 3 mostly;
+  next: Pi sync (step 4, needs per-device tokens on the Pi first, owner's go).
 
 1. **Phone-quality web app (now).** The current dashboard as an installable home
    screen app: phone-first layout (shipped 2026-10-22), design direction for web and
