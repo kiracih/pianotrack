@@ -172,3 +172,33 @@ From top to bottom:
 Ivory (light) and Rosewood (dark) looks; the keys stay ivory in both, as in the octave.
 No avatar, no location, no time of day. Nothing leaves the Pi unless the owner shares it.
 
+## Proposed 2026-10-30 (design lead): dates, the Today ring and SwiftUI
+
+**Dates and time.** The clock is always 24 h (`hourCycle: "h23"`), never AM/PM. Words in
+dates follow the interface language (English): the first `en-*` entry in
+`navigator.languages`, else en-GB ("Fri 30 Oct, 21:45"), so no "Eki Cuma" inside English
+copy. Weeks start on Monday; octave letters stay M T W T F S S. Durations use one style
+everywhere ("2 h 19 min") and the dashboard and week card round the same way. In the app,
+`Date.FormatStyle` with the system settings.
+
+**Engraved dynamics.** pp to ff in serif bold italic, at least 16 px rendered, in ink;
+percentages small tabular sans, only for non-empty buckets ("<1%"). The range is a
+hairpin: two 1.4 px ink strokes opening from the soft end to the loud end, between the
+session's p10 and p90 velocity.
+
+**Today ring.** A hairline felt track (1.5 pt, 25% opacity), dotted at 0 min with "Ready
+when you are" in serif; the progress arc is 10 pt with round caps from 12 o'clock, felt
+until the goal and brass once it is met. 160 pt wide screens, 128 pt on phones beside
+the tiles. Never a grey donut.
+
+**SwiftUI mapping.**
+
+| Web | SwiftUI |
+|---|---|
+| `--bg`, `--surface`, `--text`, `--text-2`, `--muted`, `--accent`, `--good`, `--good-text`, `--border` | Color assets Plaster, Ivory, Ebony, Graphite, GraphiteMuted, Felt, Brass, BrassText, Hairline (Any/Dark), generated from one token table |
+| `--oct-*`, `--kseq-1…4` | Single-appearance assets OctaveFelt, OctaveBrass, OctaveGold, KeySeq1–4 |
+| `--serif` | `.font(.system(size:, weight: .semibold, design: .serif))`, figures `.monospacedDigit()` |
+| Today ring | `Circle().trim(from: 0, to: p).stroke(lineWidth: 10, lineCap: .round)` rotated −90° over a 1.5 pt dashed `Circle()` |
+| This week octave | `OctaveShape`: 7 white keys (`UnevenRoundedRectangle`), a bottom-anchored fill of `min(min/goal, 1)`, 5 black keys on top, today outlined in Felt; also the small widget |
+| Dynamics | `Text("mf").font(.system(.title3, design: .serif).bold().italic())`, hairpin as a `Path` |
+

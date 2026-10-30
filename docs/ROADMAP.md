@@ -6,8 +6,8 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 the review builds bigger items from the plan below, one at a time, without asking; it
 still asks before stored-data changes, costs, data leaving the owner's devices, or the Pi.
 
-Last review: 2026-10-29 (built: replay Loop, demo guard; owner asks: outstanding days,
-week card keys in 3D). Previous: 2026-10-28, 2026-10-27, 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
+Last review: 2026-10-30 (built: seek bar zooms to the loop, trend decimals; iOS engine
+step 1 started; drift fix held back). Previous: 2026-10-29, 2026-10-28, 2026-10-27, 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
 2026-10-22 (app target added), 2026-10-21 (first run).
 
 **Plan to the iOS beta (2026-10-29, owner asked "when do we start the iOS app"):**
@@ -32,6 +32,14 @@ be heard in 3% of a piece's plays (and twice). Measured: wrong ≤ 2.7% on seeds
 days (right ≥ 96.8%), stumbles with no cause 56% → 35%, vectors unchanged. Then a 5-interval
 gap key (35% → 27%) and a 120-day gate in `pieces --check`. Changes grouping of real
 history (names follow the music), so it ships with a before/after check on the Pi's data.
+
+2026-10-30: built and **held back**. `--check` confirmed the numbers (wrong at 120 days
+6.9–11.8% → 1.6–2.7%), but on the 120-day demo the dashboard went from 7 pieces to 21:
+a scale split into two groups (48 + 47 plays) and 14 small groups of 3–5 plays appeared.
+`--check` counts wrong assignments, not splits, so the gate missed it. A share of all
+plays also drops a rarely played section (an ending heard 5 times in 200 plays) out of
+its own piece's core. Next try: the share counted per section or only for n-grams far
+from the core, plus a split metric in `--check` (pieces shown per real piece ≤ 1.2).
 
 ### 2. Does phone-only capture work? A 10-minute check (app path, no code)
 
@@ -175,28 +183,28 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
-Ideas found 2026-10-29 (best first; S = an evening). Ideas the PM builds without asking
+Ideas found 2026-10-30 (best first; S = an evening). Ideas the PM builds without asking
 are S, change no stored data and send nothing off the Pi.
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | Re-importing a .mid stores nothing new: uid = uuid5("mid/<sha256>/<k>"), prototype gives 1 row from 3 runs (high, S); `POST /api/sessions` upsert by uid, version (closed, end, notes), overlap ≥ 50% marks `dup_of` (high, M, schema v4, owner's go); "Recorded on Pi · FP-30X" / "Imported from x.mid" on the session (med, S) |
-| Today & habits | `usual_start` with a spread check: demo weekdays wander 07:11–21:38 (none), weekends 07:34 (high, S); `nudge()` text and quiet rules as a pure function (high, S engine, M iOS); Monday weekly note linking to /recap (med, S) |
-| Pieces | Core n-grams heard in 3% of plays (Now #1, high, S); 5-interval gap key (high, S, vectors change); 120-day + stumble-precision gate in `pieces --check` (med, S) |
-| Practice insight | Plain words on the stumbles chart: "Stops in pieces", one decimal (rounding shows 2.6 as 3), an always-visible line (high, S); "3 of 10 plays clean this week" instead of clean run seconds (high, S–M); weekly minutes per piece with the current week drawn "so far" (med, S) |
-| Replay & session detail | Zoom the seek bar to the loop: an 8 s band is 2.4 px at 390 px (high, S); falling notes stop at B while looping (med, S); Media Session play/pause/±5 for headphones (med, M) |
-| Trust & access | Per-segment cache for `piece_stumbles`/`piece_tempo`: 3.8 → 2.0 s per new session, +40 MB, identical JSON (high, M); hardened `pianotrack-demo.service` (ProtectHome, InaccessiblePaths, syscall filter; needs scoring on the Pi) (med, S, deploy/) |
-| Design (lead) | Figure row under the octave, drop "notes today", the octave rises 140 px (med, S, diff ready); "+27 bpm, faster, Piece C" as a figure (med, S); light falling-notes lane (diff still applies) (med, S); 24 h dates (DESIGN.md step 3) |
+| Capture & setup | Duplicates by note matching, not time overlap: same sitting on two devices matches 0.97–0.99, a different sitting at the same time 0.01–0.07; the time-overlap rule merged 60 of 60 different sittings (high, M, schema v4); clock offset per device pair from that match (med, S); "Recorded on Pi · FP-30X" on the session (med, S) |
+| Today & habits | `usual_start()` (median first start, weekday/weekend, settled only when the middle half spans ≤ 90 min) with vectors; demo starts wander 07:45–18:37 (high, S); `nudge()` as a schedule for iOS local notifications: time + text, quiet 22–08, pauses after 3 ignored days (high, S engine); optional "I usually practise at __" setting (med, S) |
+| Pieces | A missed note played in time is not a stumble: 21% of in-time misses count today (high, S, vectors change); a spot's pattern tolerates one wrong note, so pauses right after a slip are caught (high, S); clean Ode to Joy plays read 19% stumbles (dotted spot) (med, S) |
+| Practice insight | Simulator logs why each stop happened, `--check` reports stumble precision and recall (today 40–53% of real hesitations caught) (high, S); "fixed" stops (fixed at once, as top practisers do) shown apart from stumbles (high, S, vectors change); "Stops in pieces" replaces the flat Steadiness trend (high, S) |
+| Replay & session detail | A Loop button on each trouble spot: 3 passes at 0.75× (high, S–M); seek bar on its own full-width row (287 of 914 px today) (med, S); falling notes stop at B while looping (med, S) |
+| Trust & access | Per-segment cache for stumbles and tempo: pass 1.16 → 0.58 s, identical JSON (high, M); `/api/backup` gives the whole database to any home device without a login: per-device tokens (Bearer, revocable, QR pairing) before iOS sync (high, M, owner's go); hardened demo unit 9.0 → 1.0 in `systemd-analyze security` (med, S, deploy/) |
+| Design (lead) | 24 h clock and one date formatter (`hourCycle: "h23"`, English words, no "Eki Cuma"), SVG theme toggle (high, S); engraved dynamics: serif italic marks, hairpin p10–p90, no "0%" (med, S); Today ring as a hairline felt track, never a grey donut (med, S); dashboard says "2h 19m", week card "2 h 20 min" for the same week (med, S) |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Two simulated devices on one sitting (Bluetooth jitter 5–30 ms, 2% dropped): tune the overlap rule to zero false merges |
-| Today & habits | ring, streak, week, calendar, goals, reminders | Vectors for `usual_start` and `nudge`; whether the owner's real weekdays settle or need a chosen time |
-| Pieces | matcher, Pieces card, per-piece progress, naming | Wrong and missed notes behind a quarter of stumbles: does a missed note played in time count |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Whether deliberate stops right after a wrong note should count, before the Trends card changes |
-| Replay & session detail | player, keyboard, downloads, session page | Seek bar zoom while looping; a trouble-spot ▶ that starts a 3-pass loop at 0.75× |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Score the hardened demo unit and time the per-segment cache on the Pi |
-| Design (lead) | identity, layout, type, colour, motion, copy | 24 h dates and engraved dynamics (DESIGN.md step 3) |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | The iOS capture contract: fields of an uploaded session and which copy is kept after a merge; a 2-minute run recorded on both devices if the owner can |
+| Today & habits | ring, streak, week, calendar, goals, reminders | Draft the iOS scheduling contract for nudges (booked and cancelled, after a sync); `habits` summary on real data with the owner's go |
+| Pieces | matcher, Pieces card, per-piece progress, naming | A drift fix that doesn't split pieces: a split metric in `--check`, then the share per section; why clean Ode to Joy reads 19% stumbles |
+| Practice insight | trends, session metrics, zones, dynamics, key map | Whether going back a few bars without a pause (a restart) counts as a stumble |
+| Replay & session detail | player, keyboard, downloads, session page | Falling notes stop at B while looping; Media Session play/pause/±5 for headphones |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Cache memory on the full history; a short design for per-device sync tokens before iOS sync |
+| Design (lead) | identity, layout, type, colour, motion, copy | A stdlib token generator for the app's colour assets; first SwiftUI Today and octave next to the 390 px screenshot |
 
 ## App target
 
@@ -284,6 +292,12 @@ Not legal advice; a patent attorney should confirm before money is spent.
 
 ### Path from today's Pi + web dashboard (each step ships on its own)
 
+2026-10-30: iOS work started (owner go 2026-10-29). Private repo `kiracih/pianotrack-ios`:
+Swift package `PianoEngine`, `Vectors/` copied from this repo with `Vectors/SOURCE` and
+`tools/sync-vectors.sh`. Step 1 so far: the recorder; metrics and pieces next, then the
+capture test app. Swift builds run on the owner's Mac (Xcode 26.5); iPhone paired for
+wireless installs.
+
 1. **Phone-quality web app (now).** The current dashboard as an installable home
    screen app: phone-first layout (shipped 2026-10-22), design direction for web and
    app in docs/DESIGN.md (step 1 shipped 2026-10-24; its tokens map to SwiftUI), reminders. Proves which
@@ -363,6 +377,12 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
   Pi unless the owner opts in.
 
 ## Done
+
+- 2026-10-30 review: the seek bar zooms to the loop while looping (an 8 s loop went from
+  under 2 px to about 80 px on a phone); small trend values keep one decimal ("Now 3.3",
+  matching the piece's line). iOS: private repo `pianotrack-ios` with the Swift engine
+  package, recorder ported and tested against all four vector files (build on the Mac
+  pending).
 
 - 2026-10-29 review: Loop this spot in the replay (Loop ±4 s around a ▶ jump, −5 s / +5 s,
   Space plays, no double start while the piano loads); the public demo only replaces a
