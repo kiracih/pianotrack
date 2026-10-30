@@ -198,7 +198,7 @@ are S, change no stored data and send nothing off the Pi.
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | The iOS capture contract: fields of an uploaded session and which copy is kept after a merge; a 2-minute run recorded on both devices if the owner can |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Pulled forward (owner asked 2026-10-30): the iOS capture test app on the owner's iPhone by Sun 1 Nov (BLE pairing, live sessions with the Swift recorder, locked-screen check); then the upload contract |
 | Today & habits | ring, streak, week, calendar, goals, reminders | Draft the iOS scheduling contract for nudges (booked and cancelled, after a sync); `habits` summary on real data with the owner's go |
 | Pieces | matcher, Pieces card, per-piece progress, naming | A drift fix that doesn't split pieces: a split metric in `--check`, then the share per section; why clean Ode to Joy reads 19% stumbles |
 | Practice insight | trends, session metrics, zones, dynamics, key map | Whether going back a few bars without a pause (a restart) counts as a stumble |
