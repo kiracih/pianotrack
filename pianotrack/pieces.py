@@ -28,7 +28,6 @@ MATCH = 0.2  # share of a segment's n-grams that must be known to a piece
 MIN_HITS = 6  # and at least this many of them
 MERGE = 0.6  # core overlap at which two groups are taken to be one piece
 CORE_AFTER = 5  # segments heard before a piece ignores n-grams heard only once
-CORE_SHARE = 0.03  # and n-grams heard in fewer than this share of its plays
 PHRASE_MAX = 8.0  # seconds: a five-note phrase slower than this is a stop, not tempo
 PHRASES_MIN = 5  # timed phrases a segment needs before its tempo is trusted
 
@@ -126,10 +125,7 @@ class Matcher:
         if len(piece["segments"]) < self.core_after:
             return grams.keys()
         if piece.get("core") is None:
-            # A big group collects enough slips to match any stepwise melody; a share
-            # keeps its core to what the piece really is as its history grows.
-            least = max(2, CORE_SHARE * len(piece["segments"]))
-            piece["core"] = {g for g, c in grams.items() if c >= least}
+            piece["core"] = {g for g, c in grams.items() if c >= 2}
         return piece["core"]
 
     def add(self, seg):
