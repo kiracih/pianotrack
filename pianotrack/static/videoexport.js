@@ -1,12 +1,10 @@
-// PROTOTYPE: export a replay's falling notes as a video file, to lay over (or
+// Export a replay's falling notes as a video file, to lay over (or
 // beside) a phone video of the same playing. Everything happens in the browser
 // that asks for it: the Pi only serves the notes, as it does for the replay.
 //
-// Two looks:
-//   overlay  – flat, top-down notes across all 88 keys on a solid key colour
-//              (chroma green or black), so an editor can key it over camera
-//              footage and stretch it to the width of the real keyboard.
-//   view     – the dashboard's 3D falling notes, as a clip on its own.
+// The look is flat, top-down notes on a solid key colour (chroma green or black),
+// so an editor can key it over camera footage and stretch it to the width of the
+// real keyboard.
 //
 // The recording runs in real time (canvas.captureStream + MediaRecorder), with the
 // sampled piano mixed in so editors can line it up with the camera's sound.

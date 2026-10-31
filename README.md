@@ -88,6 +88,19 @@ works without internet.
 Every session can be downloaded as a `.mid` file (handy for replaying what you
 played) or as a CSV of notes. `/api/sessions.csv` exports the session list.
 
+**Video** turns a session's falling notes into an MP4, to lay over a video of your hands
+(Synthesia-style) in iMovie, CapCut or Final Cut. Background green (to key out) or black
+(for "screen" blend); landscape, portrait or square; all 88 keys (lines up with a whole
+keyboard filmed from above) or only the keys played; from the start or from where the
+replay is; the piano sound mixed in so an editor can line it up by sound. Pauses are
+kept so it runs in step with the camera, the clip starts 1.5 s before the first note and
+its file name carries the clock time of its first frame
+(`pianotrack-2026-10-27_21-14-05.3.mp4`). It is rendered in the browser that asks, in
+real time and up to 10 minutes; the Pi only serves the notes. Browsers that can't record
+MP4 save WebM.
+
+![Video export](docs/video-export.png)
+
 **Backups:** the whole history is copied every night (7 daily and 4 weekly copies), can
 be pulled onto a Mac automatically, downloaded from the dashboard, and restored with one
 command. See [Backups](#backups).
