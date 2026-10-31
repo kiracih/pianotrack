@@ -6,8 +6,9 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 the review builds bigger items from the plan below, one at a time, without asking; it
 still asks before stored-data changes, costs, data leaving the owner's devices, or the Pi.
 
-Last review: 2026-10-30 (built: seek bar zooms to the loop, trend decimals; iOS engine
-step 1 started; drift fix held back). Previous: 2026-10-29, 2026-10-28, 2026-10-27, 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
+Last review: 2026-10-31 (built: falling-notes video export from the session page (#20);
+iPhone keep-recording fix (#26); first iOS design canvas (#1); skills, essentials,
+monetization and ASO drafts in pianotrack-ios). Previous: 2026-10-30, 2026-10-29, 2026-10-28, 2026-10-27, 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
 2026-10-22 (app target added), 2026-10-21 (first run).
 
 **Plan to the iOS beta (2026-10-29, owner asked "when do we start the iOS app"):**
@@ -183,28 +184,35 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
-Ideas found 2026-10-30 (best first; S = an evening). Ideas the PM builds without asking
-are S, change no stored data and send nothing off the Pi.
+Ideas found 2026-10-31 (best first; S = an evening). From 31 Oct the backlog itself is
+the board in kiracih/pianotrack-ios (docs/BOARD.md there); ideas accepted for the plan
+are filed there as issues.
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | Duplicates by note matching, not time overlap: same sitting on two devices matches 0.97–0.99, a different sitting at the same time 0.01–0.07; the time-overlap rule merged 60 of 60 different sittings (high, M, schema v4); clock offset per device pair from that match (med, S); "Recorded on Pi · FP-30X" on the session (med, S) |
-| Today & habits | `usual_start()` (median first start, weekday/weekend, settled only when the middle half spans ≤ 90 min) with vectors; demo starts wander 07:45–18:37 (high, S); `nudge()` as a schedule for iOS local notifications: time + text, quiet 22–08, pauses after 3 ignored days (high, S engine); optional "I usually practise at __" setting (med, S) |
-| Pieces | A missed note played in time is not a stumble: 21% of in-time misses count today (high, S, vectors change); a spot's pattern tolerates one wrong note, so pauses right after a slip are caught (high, S); clean Ode to Joy plays read 19% stumbles (dotted spot) (med, S) |
-| Practice insight | Simulator logs why each stop happened, `--check` reports stumble precision and recall (today 40–53% of real hesitations caught) (high, S); "fixed" stops (fixed at once, as top practisers do) shown apart from stumbles (high, S, vectors change); "Stops in pieces" replaces the flat Steadiness trend (high, S) |
-| Replay & session detail | A Loop button on each trouble spot: 3 passes at 0.75× (high, S–M); seek bar on its own full-width row (287 of 914 px today) (med, S); falling notes stop at B while looping (med, S) |
-| Trust & access | Per-segment cache for stumbles and tempo: pass 1.16 → 0.58 s, identical JSON (high, M); `/api/backup` gives the whole database to any home device without a login: per-device tokens (Bearer, revocable, QR pairing) before iOS sync (high, M, owner's go); hardened demo unit 9.0 → 1.0 in `systemd-analyze security` (med, S, deploy/) |
-| Design (lead) | 24 h clock and one date formatter (`hourCycle: "h23"`, English words, no "Eki Cuma"), SVG theme toggle (high, S); engraved dynamics: serif italic marks, hairpin p10–p90, no "0%" (med, S); Today ring as a hairline felt track, never a grey donut (med, S); dashboard says "2h 19m", week card "2 h 20 min" for the same week (med, S) |
+| Capture & setup | iPhone sessions survive a kill (toggle remembered, open session saved every 10 s, restarted after a call): built for #26, on the Mac for its build (high, S); release held notes when a MIDI source disappears (med, S); a capture mode App Review accepts: silent background audio breaks guideline 2.5.4, so test Core Bluetooth MIDI with `bluetooth-central`, fallback a screen-awake "piano stand" mode (high, M–L, owner decides before TestFlight) |
+| Today & habits | Reminders booked on the phone: `usual_start()` + `nudge()` with vectors, cancelled once today's minimum is played, quiet 22–08, pause after 3 ignored days (high, S+S); a beginner's ring at the 5-minute minimum for the first 10 practice days, no percentages before 14 days (high, S); one planned rest day a week keeps the streak (Lally 2010, Duolingo freeze) (med, S–M, vectors change) |
+| Pieces | Drift fix that holds: 3% core share plus a 25% match for groups under 5 plays: wrong at 120 days 6.9–11.8% → 0.4–2.4% on 10 seeds, demo 7 → 9 pieces (shown per real piece 1.00–1.25), right at 30 days 96.4–98.5% → 94.8–98.2% (high, S, vectors change; #2); split metric in `--check` (S); scales under one "Technique" row (med, M) |
+| Practice insight | "Went back" detection: a restart without a pause ends the clean run but is not a stumble (Duke, Simmons & Cash 2009: top practisers fix errors at once) (high, S–M, vectors change); clean plays per piece this week on the piece page (high, S); time on the hard bit vs run-throughs (med, M) |
+| Replay & session detail | Falling notes + Loop on the iPhone from one pure layout function, reused by the iOS video export (#27) (high, M); sampler hardening: trylock clicks, no allocation on the audio thread, route changes, keep-awake off no longer stops a replay (med, S) |
+| Trust & access | An unreadable sessions.json is set aside, never overwritten (built with #26) (high, S); export/restore file through the share sheet (#13) (high, M); per-device pairing by QR and a revocable token before Pi sync (#7) (high, M, owner's go) |
+| Design (lead) | First design system and iPhone screens drafted ([canvas](https://claude.ai/artifact/AtmgnkrxUFSQkWYTaF3i4H), #1), waiting for the owner's review; then: tab bar and Today, Sessions and Session, Onboarding and Settings, one evening each |
+| Essentials | Local notifications only; analytics on the phone first, any remote one opt-in; MetricKit for crashes (pianotrack-ios docs/ESSENTIALS.md, #12) |
+| Monetization | Strava-style: recording free, Pro for history, pieces, replay, video and insights; StoreKit 2 only (docs/MONETIZATION.md, #9); waiting for the owner's own packages |
+| ASO | Music category, "the tracker that logs itself"; name shortlist Keystreak, Pianolog (docs/ASO.md, #10, #11) |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Pulled forward (owner asked 2026-10-30): the iOS capture test app on the owner's iPhone by Sun 1 Nov (BLE pairing, live sessions with the Swift recorder, locked-screen check); then the upload contract |
-| Today & habits | ring, streak, week, calendar, goals, reminders | Draft the iOS scheduling contract for nudges (booked and cancelled, after a sync); `habits` summary on real data with the owner's go |
-| Pieces | matcher, Pieces card, per-piece progress, naming | A drift fix that doesn't split pieces: a split metric in `--check`, then the share per section; why clean Ode to Joy reads 19% stumbles |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Whether going back a few bars without a pause (a restart) counts as a stumble |
-| Replay & session detail | player, keyboard, downloads, session page | Falling notes stop at B while looping; Media Session play/pause/±5 for headphones |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Cache memory on the full history; a short design for per-device sync tokens before iOS sync |
-| Design (lead) | identity, layout, type, colour, motion, copy | A stdlib token generator for the app's colour assets; first SwiftUI Today and octave next to the 390 px screenshot |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Spike: can a Core Bluetooth MIDI connection share the piano with the Core MIDI driver, and does it keep the app alive locked |
+| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` vectors and the iOS notification booking contract |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Drift fix (#2): split metric in `--check`, settle the beginner test case, vectors, Swift port |
+| Practice insight | trends, session metrics, zones, dynamics, key map | Prototype "went back" detection on a copy, with the simulator logging pauseless restarts |
+| Replay & session detail | player, keyboard, downloads, session page | The falling-notes layout function and its test (iPhone replay and #27) |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Export/restore file format (#13) |
+| Design (lead) | identity, layout, type, colour, motion, copy | The owner's comments on the canvas; then empty and first-day states, widgets, Dynamic Type, dark versions of every screen, App Store screenshot drafts |
+| Essentials | analytics, notifications, onboarding, crashes, permissions | Permission priming and the notification prompt timing in onboarding |
+| Monetization | packages, prices, trials, StoreKit | Build on the owner's packages once given; paywall screen in the design |
+| ASO | name, listing, keywords, screenshots | Keyword research for the shortlisted names (en, tr) |
 
 ## App target
 

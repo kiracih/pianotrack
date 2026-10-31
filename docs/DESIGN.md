@@ -202,3 +202,16 @@ the tiles. Never a grey donut.
 | This week octave | `OctaveShape`: 7 white keys (`UnevenRoundedRectangle`), a bottom-anchored fill of `min(min/goal, 1)`, 5 black keys on top, today outlined in Felt; also the small widget |
 | Dynamics | `Text("mf").font(.system(.title3, design: .serif).bold().italic())`, hairpin as a `Path` |
 
+## iOS app design system 2026-10-31
+
+The design canvas [Pianotrack iOS screens](https://claude.ai/artifact/AtmgnkrxUFSQkWYTaF3i4H)
+is the reference for the app (owner's review pending, board issue #1). Four tabs: Today,
+Sessions, Pieces, Settings. Type uses iOS text styles with `.fontDesign(.serif)` for
+titles and figures (figure 44, large title 34, section 22, card title 20, row 17
+semibold, detail 15, label 13). Spacing 4/8/12/16/24/32. Cards have corners of 4 on top
+and 10 at the bottom; buttons 12; plan cards 4/14. Every target is at least 44 pt. In
+the octave the black keys are 44% of the key height so the fills stay readable. Each
+screen has one primary felt button; secondary buttons are a felt outline. Recording,
+Today and the octave are never behind the paywall. Plan names, prices and trial length
+are placeholders until the owner decides. Design first: a new or changed screen is drawn
+on the canvas and approved before it is built in SwiftUI.
