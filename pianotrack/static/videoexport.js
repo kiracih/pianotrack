@@ -74,47 +74,60 @@ export function pickType(alpha) {
 }
 
 // Record `draw(t)` on `canvas` from `from` to `to` seconds of the replay, with the
-// piano scheduled on `piano` (replay.js's sampler) into the same file.
-// Resolves to a Blob. `onProgress(fraction)` while it runs.
+// piano scheduled on `piano` (replay.js's sampler) into the same file. Notes are
+// scheduled a second ahead as the clock runs, as the replay does, so a long session
+// doesn't build thousands of audio nodes at once. Resolves to a Blob, or null when
+// `signal` aborts it. `onProgress(fraction)` while it runs.
 export async function record({ canvas, draw, prep, from = 0, to = prep.duration, lead = 1.5, tail = 1.5,
-                               fps = 30, piano = null, alpha = false, onProgress = () => {} }) {
+                               fps = 30, piano = null, alpha = false, signal = null, onProgress = () => {} }) {
   const stream = canvas.captureStream(fps);
-  let dest = null;
-  if (piano) {
-    await piano.load();
-    dest = piano.ctx.createMediaStreamDestination();
+  if (piano) await piano.load();
+  const dest = piano ? piano.ctx.createMediaStreamDestination() : null;
+  const voices = [];
+  if (dest) {
     piano.out.connect(dest);
     dest.stream.getAudioTracks().forEach((tr) => stream.addTrack(tr));
   }
-  const mimeType = pickType(alpha);
-  const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 12e6 });
-  const parts = [];
-  rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
-  const done = new Promise((ok) => rec.onstop = ok);
+  try {
+    const mimeType = pickType(alpha);
+    const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 12e6 });
+    const parts = [];
+    rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
+    const done = new Promise((ok) => rec.onstop = ok);
 
-  const start = from - lead, end = to + tail;
-  draw(start);
-  rec.start(1000);
-  const clock = piano ? () => piano.ctx.currentTime : () => performance.now() / 1000;
-  const t0 = clock() + 0.1;
-  if (piano) {
-    for (const n of prep.notes) {
-      if (n.on < from || n.on > to) continue;
-      const v = piano.play(n.pitch, n.vel, t0 + (n.on - start), n.soft);
-      piano.release(v, t0 + (n.sound - start));
-    }
-  }
-  await new Promise((ok) => {
-    const tick = () => {
-      const t = start + Math.max(0, clock() - t0);
-      draw(Math.min(t, end));
-      onProgress(Math.min(1, (t - start) / (end - start)));
-      if (t >= end) ok(); else requestAnimationFrame(tick);
+    const start = from - lead, end = to + tail;
+    draw(start);
+    rec.start(1000);
+    const clock = piano ? () => piano.ctx.currentTime : () => performance.now() / 1000;
+    const t0 = clock() + 0.1;
+    let next = prep.notes.findIndex((n) => n.on >= from);
+    if (next < 0) next = prep.notes.length;
+    const schedule = (t) => {  // every note starting before t + 1 s
+      for (; piano && next < prep.notes.length && prep.notes[next].on <= Math.min(to, t + 1); next++) {
+        const n = prep.notes[next];
+        const v = piano.play(n.pitch, n.vel, t0 + (n.on - start), n.soft);
+        piano.release(v, t0 + (n.sound - start));
+        voices.push(v);
+        if (voices.length > 400) voices.shift();
+      }
     };
-    requestAnimationFrame(tick);
-  });
-  rec.stop();
-  await done;
-  if (dest) piano.out.disconnect(dest);
-  return new Blob(parts, { type: mimeType.split(";")[0] });
+    await new Promise((ok) => {
+      const tick = () => {
+        if (signal && signal.aborted) return ok();
+        const t = start + Math.max(0, clock() - t0);
+        schedule(t);
+        draw(Math.min(t, end));
+        onProgress(Math.min(1, (t - start) / (end - start)));
+        if (t >= end) ok(); else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    rec.stop();
+    await done;
+    return signal && signal.aborted ? null : new Blob(parts, { type: mimeType.split(";")[0] });
+  } finally {
+    if (signal && signal.aborted && piano) { for (const v of voices) piano.release(v, 0); piano.silence(); }
+    if (dest) piano.out.disconnect(dest);
+    stream.getTracks().forEach((tr) => tr.stop());
+  }
 }

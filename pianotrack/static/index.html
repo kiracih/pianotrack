@@ -1263,7 +1263,7 @@ loop();
 window.replay = new Replay(document.getElementById("replay"));
 // Video export: rendered in this browser (never on the Pi), up to 10 minutes.
 const VIDEO_MAX = 600;
-let vidUrl = null, vidBusy = false;
+let vidUrl = null, vidBusy = null;  // vidBusy: the running export's AbortController
 $("d-video").onclick = () => {
   if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
     alert("This browser can't record video. Try Safari or Chrome."); return;
@@ -1271,20 +1271,29 @@ $("d-video").onclick = () => {
   $("vid-msg").textContent = ""; $("vid-get").hidden = true;
   $("vid-dlg").showModal();
 };
-$("vid-dlg").addEventListener("close", () => { if (vidUrl) { URL.revokeObjectURL(vidUrl); vidUrl = null; } });
+$("vid-dlg").addEventListener("close", () => {
+  if (vidBusy) vidBusy.abort();  // closing the dialog stops the recording and its sound
+  if (vidUrl) { URL.revokeObjectURL(vidUrl); vidUrl = null; }
+});
 $("vid-go").onclick = async () => {
   const r = window.replay, f = $("vid-form").elements;
-  if (vidBusy || !r || !r.data) return;
-  vidBusy = true; $("vid-go").disabled = true; $("vid-get").hidden = true;
+  if (vidBusy || !r) return;
+  if (f.sound.checked) Replay.piano.unlock();  // inside the click: Safari starts audio only from a gesture
+  r.pause();  // the replay shares the piano: its notes would land in the file
+  const job = vidBusy = new AbortController();
+  $("vid-go").disabled = true; $("vid-get").hidden = true;
   try {
     const vx = await import("/videoexport.js");
+    await r.loading;
+    if (r.id !== selected || !r.data) throw new Error("The session is still loading. Try again in a moment.");
     const prep = Replay.prepare(r.data, false);  // camera time: pauses are never skipped
     if (!prep.notes.length) throw new Error("This session has no notes.");
     // The replay's position is in its own (maybe pause-skipped) time; find the same note.
     let from = 0;
     if (f.from.value === "here" && r.prep) {
       const i = r.firstIndexFrom(r.pos);
-      from = i < prep.notes.length ? prep.notes[i].on : 0;
+      if (i >= prep.notes.length) throw new Error("The replay is past the last note. Move it back, or choose the start.");
+      from = prep.notes[i].on;
     } else from = prep.notes[0].on;
     const to = Math.min(prep.duration, from + VIDEO_MAX);
     let lo = 21, hi = 108;
@@ -1300,7 +1309,8 @@ $("vid-go").onclick = async () => {
     const lead = 1.5;
     $("vid-msg").textContent = "Recording… 0%";
     const blob = await vx.record({ canvas, draw, prep, from, to, lead, piano: f.sound.checked ? Replay.piano : null,
-      onProgress: (p) => $("vid-msg").textContent = `Recording… ${Math.round(p * 100)}%` });
+      signal: job.signal, onProgress: (p) => $("vid-msg").textContent = `Recording… ${Math.round(p * 100)}%` });
+    if (!blob) return;  // closed while recording
     // Named after the Pi's clock time of the clip's first frame, to match the camera's.
     const t0 = new Date((r.data.start + from - lead) * 1000), p2 = (n) => String(n).padStart(2, "0");
     const stamp = `${t0.getFullYear()}-${p2(t0.getMonth() + 1)}-${p2(t0.getDate())}_${p2(t0.getHours())}-${p2(t0.getMinutes())}-${p2(t0.getSeconds())}.${Math.floor(t0.getMilliseconds() / 100)}`;
@@ -1313,7 +1323,7 @@ $("vid-go").onclick = async () => {
       + (prep.duration - from > VIDEO_MAX ? " Capped at 10 minutes." : "");
   } catch (e) {
     console.error(e); $("vid-msg").textContent = `Couldn't make the video: ${e.message || e}`;
-  } finally { vidBusy = false; $("vid-go").disabled = false; }
+  } finally { if (vidBusy === job) vidBusy = null; $("vid-go").disabled = false; }
 };
 // Falling notes load with three.js the first time a session opens, where WebGL works.
 let fallWait = false;

@@ -76,6 +76,10 @@ await page.waitForFunction(() => /^0:0[3-9]/.test(document.querySelector(".rp-ti
 await page.click(".rp-play");
 await (await page.$("#replay")).screenshot({ path: out + "replay.png" });
 await (await page.$("#detail-card")).screenshot({ path: out + "session.png" });
+
+// The video export dialog (not recording: that runs in real time).
+await page.click("#d-video");
+await (await page.$("#vid-dlg")).screenshot({ path: out + "video-export.png" });
 await page.close();
 
 // Phone, dark.
