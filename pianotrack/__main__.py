@@ -35,7 +35,7 @@ def _bluetooth(args):
         return None
     if not BleMidi.available():
         if choice != "auto":
-            logging.warning("bluetooth fallback needs bluetoothctl and aseqdump; it is off")
+            logging.warning("bluetooth fallback needs bluetoothctl and gatttool; it is off")
         return None
     return BleMidi(None if choice == "auto" else choice)
 
@@ -101,9 +101,14 @@ def cmd_devices(args):
     print(f"would use: {chosen}")
     from .bluetooth import BleMidi, DEFAULT_NAME, parse_devices, parse_info
     if not BleMidi.available():
-        print("bluetooth fallback: off (needs bluetoothctl and aseqdump)")
+        print("bluetooth fallback: off (needs bluetoothctl and gatttool)")
         return
     ble = BleMidi(args.bluetooth)
+    if args.pair and ble._ensure_powered() and ble._find():
+        if ble._info().get("Paired") == "yes":
+            print(f"bluetooth: {ble.address} is already paired")
+        else:
+            print(f"bluetooth: pairing {ble.address}:", "ok" if ble.pair() else "failed")
     power = parse_info(ble._ctl("show")[1]).get("PowerState", "no controller")
     print(f"bluetooth: controller {power}")
     for mac, name in parse_devices(ble._ctl("devices")[1]):
@@ -269,6 +274,8 @@ def main(argv=None):
     d = sub.add_parser("devices", help="list MIDI devices")
     d.add_argument("--device")
     d.add_argument("--bluetooth", default=None, help="MAC or name regex of the BLE piano")
+    d.add_argument("--pair", action="store_true",
+                   help="pair the Bluetooth piano now (piano's Bluetooth on, no phone connected)")
     d.set_defaults(func=cmd_devices)
 
     b = sub.add_parser("backfill", help="fill the database with simulated history")

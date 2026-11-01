@@ -17,7 +17,7 @@ Headless piano practice tracker for a Raspberry Pi (Roland FP-30X over USB). Pur
 ## Layout
 
 - `pianotrack/collector.py` reads /dev/snd/midiC*D* directly; `midi.py` parses bytes and .mid files.
-- `bluetooth.py` is the BLE MIDI fallback while USB is out (bluetoothctl + aseqdump); USB stays primary.
+- `bluetooth.py` is the BLE MIDI fallback while USB is out (bluetoothctl + gatttool, not BlueZ's MIDI driver, which the FP-30X breaks); USB stays primary.
 - `recorder.py` turns messages into sessions (180 s idle gap); `store.py` is SQLite.
 - `metrics.py` computes per-session and daily metrics; `server.py` serves the API and `static/`.
 - `static/index.html` is the dashboard; `static/replay.js` the replay player; `static/piano/` Salamander samples (CC-BY 3.0, keep ATTRIBUTION.md).

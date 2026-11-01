@@ -134,7 +134,7 @@ read-only report.
 
 ```
 FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ recorder ──▶ SQLite
-   └──BLE MIDI──▶ BlueZ ─▶ aseqdump ──┘ (only while USB is out)  │
+   └──BLE MIDI──▶ gatttool ───────────┘ (only while USB is out)  │
                      phone / laptop on wifi ◀── dashboard + API ◀──┘
 ```
 
@@ -143,15 +143,21 @@ FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ record
   waits and picks the device up again when it comes back, without a restart.
 * **Bluetooth fallback** (`bluetooth.py`). USB is always the primary input. While no
   USB piano is present (for example the FP-30X's USB port is recording audio on a
-  phone), the collector connects to the piano over Bluetooth LE MIDI with
-  `bluetoothctl`, and reads the ALSA sequencer port BlueZ makes for it through
-  `aseqdump`. Within a second of USB coming back it switches to USB and disconnects
-  Bluetooth. The piano allows a single BLE MIDI connection, so the Pi never holds it
-  while USB works: it disconnects it, checks every 30 s that BlueZ hasn't reconnected
+  phone), the collector connects to the piano over Bluetooth LE MIDI, and within a
+  second of USB coming back it switches to USB and drops Bluetooth. It talks GATT to
+  the piano itself with `gatttool`: BlueZ's own MIDI driver connects but never
+  receives a note from the FP-30X, because the piano cuts its 128-bit characteristic
+  UUIDs short and BlueZ doesn't recognise the MIDI characteristic. pianotrack finds it
+  from the characteristic declaration instead, switches its notifications on over an
+  encrypted link (the piano needs a one-time "Just Works" pairing, which it does on
+  its own), and decodes the BLE MIDI packets. The status only says connected once the
+  piano accepts. The piano allows a single BLE MIDI connection, so the Pi never holds
+  it while USB works: it disconnects, checks every 30 s that BlueZ hasn't reconnected
   on its own, and marks the piano untrusted so BlueZ only connects when asked. Failed
   attempts (piano off, or a phone already connected) retry after 5, 10, 20, 30, then
   every 60 s. Sessions recorded over Bluetooth carry the piano's Bluetooth name (e.g.
-  `FP-30X MIDI`) as their source, and the dashboard's status pill says "· Bluetooth".
+  `FP-30X MIDI`) as their source, and the dashboard's status pill says "· Bluetooth"
+  (or "· Bluetooth, waiting for notes" until the first note arrives).
 * **Recorder** (`recorder.py`) opens a session on the first note and closes it after
   3 minutes of silence. Sessions with fewer than 8 notes are discarded. Notes are
   written in batches every 2 s to spare the SD card.
@@ -209,7 +215,7 @@ open a raw MIDI port at a time, so stop anything else reading the piano.
 
 ### Bluetooth fallback
 
-Uses BlueZ and alsa-utils, which Raspberry Pi OS already has. Raspberry Pi OS often
+Uses BlueZ (`bluetoothctl`, `gatttool`), which Raspberry Pi OS already has. Raspberry Pi OS often
 ships with the Bluetooth radio switched off (rfkill), so turn it on once:
 
 ```bash
@@ -217,9 +223,9 @@ ships with the Bluetooth radio switched off (rfkill), so turn it on once:
 sudo systemctl restart pianotrack
 ```
 
-Pair the piano once if `devices` doesn't list a `bluetooth piano` line: turn on the
-piano's Bluetooth with no phone connected to it, run `bluetoothctl`, then `scan le` and
-`pair <MAC>`. After that the fallback is automatic (`--bluetooth auto`). Note that while
+The script also pairs the piano if it is in range with its Bluetooth on and no phone
+connected; otherwise pianotrack pairs on its first Bluetooth connection. After that the
+fallback is automatic (`--bluetooth auto`). Note that while
 USB is unplugged the Pi holds the piano's only BLE MIDI connection; plug USB back in, or
 run with `--bluetooth off`, to leave it to a phone app.
 
@@ -380,7 +386,7 @@ whenever the dashboard changes.
 `python3 -m pianotrack run --help`:
 
 * `--device` a regex for the ALSA card name (default: first non-virtual device, preferring Roland), or a path
-* `--bluetooth` the Bluetooth LE MIDI fallback while USB is unplugged: `auto` (default) finds a paired or nearby Roland/FP piano, or give its MAC address or a name regex; `off` turns it off. It is off anyway where `bluetoothctl` or `aseqdump` is missing
+* `--bluetooth` the Bluetooth LE MIDI fallback while USB is unplugged: `auto` (default) finds a paired or nearby Roland/FP piano, or give its MAC address or a name regex; `off` turns it off. It is off anyway where `bluetoothctl` or `gatttool` is missing
 * `--port` (8080), `--host` (0.0.0.0)
 * `--tunnel-port` (8081) the port cloudflared forwards to; it listens on 127.0.0.1 only and always asks for the password (0 turns it off)
 * `--allowed-host NAME` another name the home network uses for the Pi, besides its IP, hostname, `*.local` and `localhost` (repeatable)

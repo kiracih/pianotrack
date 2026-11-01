@@ -995,6 +995,8 @@ async function refresh() {
   if (sum.live) st.innerHTML = `<span class="dot live"></span><span>Recording</span>`;
   else if (sum.demo) st.innerHTML = `<span class="dot"></span><span>Demo · simulated practice</span>`;
   else if (!c) st.innerHTML = `<span class="dot"></span><span>Dashboard only</span>`;
+  else if (c.connected && c.transport === "bluetooth" && !(c.last_event >= c.since))
+    st.innerHTML = `<span class="dot"></span><span>${escapeHtml(c.name || "Piano")} · Bluetooth, waiting for notes</span>`;
   else if (c.connected) st.innerHTML = `<span class="dot on"></span><span>${escapeHtml(c.name || "Piano")} connected${c.transport === "bluetooth" ? " · Bluetooth" : ""}</span>`;
   else st.innerHTML = `<span class="dot"></span><span>Piano off</span>`;
 

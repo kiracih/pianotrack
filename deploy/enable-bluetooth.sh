@@ -2,9 +2,9 @@
 # Turn on the Pi's Bluetooth radio for pianotrack's BLE MIDI fallback.
 # Raspberry Pi OS often ships with Bluetooth soft-blocked by rfkill. This
 # unblocks it (systemd-rfkill keeps the choice across reboots), powers the
-# controller on, and lists the piano if BlueZ already knows it.
-# Pair the piano once if it is not listed: bluetoothctl, then
-#   scan le  ->  pair <MAC>   (with the piano's Bluetooth on and no phone connected)
+# controller on, and pairs the piano ("Just Works", no PIN) if it is in range
+# with its Bluetooth on and no phone connected. pianotrack also pairs on its
+# first Bluetooth connection if this step is skipped.
 # Usage: ./deploy/enable-bluetooth.sh
 set -euo pipefail
 
@@ -20,6 +20,6 @@ bluetoothctl power on || true
 bluetoothctl show | grep -E 'Powered|PowerState' || true
 echo
 cd "$(dirname "$0")/.."
-python3 -m pianotrack devices || true
+python3 -m pianotrack devices --pair || true
 echo
 echo "Restart the service to pick it up: sudo systemctl restart pianotrack"

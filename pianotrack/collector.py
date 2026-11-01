@@ -20,7 +20,6 @@ import select
 import threading
 import time
 
-from .bluetooth import parse_aseqdump
 from .midi import StreamParser
 from .recorder import Recorder
 
@@ -31,7 +30,7 @@ RETRY_SECONDS = 2.0
 # holds its single BLE connection). The last value repeats.
 BLE_BACKOFF = (5, 10, 20, 30, 60)
 USB_CHECK_SECONDS = 1.0     # how often a Bluetooth session looks for USB
-BLE_ALIVE_SECONDS = 5.0     # how often a Bluetooth session checks the link
+BLE_LINK_SECONDS = 30.0     # time allowed for the piano to accept notifications
 BLE_GUARD_SECONDS = 30.0    # how often, on USB, a stray BLE link is released
 # Kernel MIDI devices that are never a piano.
 _IGNORED = re.compile(r"midi through|thru", re.I)
@@ -95,7 +94,7 @@ class Collector:
             path = find_device(self.device_match)
             if path:
                 self._ble_failures, self._ble_next = 0, 0.0
-                if self.ble and self.ble.connected_by_us:
+                if self.ble and self.ble.state in ("connected", "linking"):
                     self._ble_release()
                 try:
                     self._read_device(path)
@@ -184,37 +183,27 @@ class Collector:
 
     def _read_bluetooth(self):
         try:
-            port = self.ble.connect()
+            ready = self.ble.connect()
         except Exception:
             log.exception("bluetooth: connect failed")
-            port = None
+            ready = False
+        proc = None
+        if ready:
+            try:
+                proc = self.ble.open_stream()
+            except OSError:
+                log.exception("bluetooth: could not start gatttool")
         self.status["bluetooth"] = self.ble.status()
-        if not port:
-            delay = BLE_BACKOFF[min(self._ble_failures, len(BLE_BACKOFF) - 1)]
-            self._ble_failures += 1
-            self._ble_next = time.monotonic() + delay
-            if self._ble_failures == 1:
-                log.info("bluetooth: not connected (%s); retrying with backoff",
-                         self.ble.last_error)
-            self._set_disconnected()
-            return
-        self._ble_failures = 0
-        usb_back = False
-        try:
-            proc = self.ble.open_stream(port)
-        except OSError:
-            log.exception("bluetooth: could not start aseqdump")
-            self._ble_release()
-            self._ble_next = time.monotonic() + BLE_BACKOFF[-1]
+        if not proc:
+            self._ble_failed()
             return
         name = self.ble.name or "Piano"
-        self.status.update(connected=True, device="bluetooth:" + (self.ble.address or port),
-                           name=name, transport="bluetooth", since=self.clock())
         self.recorder.source = name
         fd = proc.stdout.fileno()
         buf = b""
-        next_usb = next_alive = time.monotonic()
-        next_alive += BLE_ALIVE_SECONDS
+        usb_back = False
+        mono = time.monotonic()
+        next_usb, link_deadline = mono, mono + BLE_LINK_SECONDS
         try:
             while not self._stop.is_set():
                 ready, _, _ = select.select([fd], [], [], 0.5)
@@ -222,32 +211,52 @@ class Collector:
                 if ready:
                     data = os.read(fd, 4096)
                     if not data:
-                        log.info("bluetooth: event stream ended")
+                        log.info("bluetooth: link ended (%s)", self.ble.last_error or "gatttool exited")
                         break
                     *lines, buf = (buf + data).split(b"\n")
                     for line in lines:
-                        msg = parse_aseqdump(line.decode("utf-8", "replace"))
-                        if msg:
+                        was_linked = self.ble.linked
+                        msgs = self.ble.parse_line(line.decode("utf-8", "replace"))
+                        if self.ble.linked and not was_linked:
+                            # Only now is the piano really sending to us.
+                            self._ble_failures = 0
+                            self.status.update(connected=True, transport="bluetooth", name=name,
+                                               device="bluetooth:" + self.ble.address,
+                                               since=self.clock(), bluetooth=self.ble.status())
+                        for msg in msgs:
                             self.messages_seen += 1
                             self.recorder.handle(now, msg)
                             self.status["last_event"] = now
                 self.recorder.tick(now)
                 mono = time.monotonic()
+                if not self.ble.linked and mono >= link_deadline:
+                    self.ble.last_error = "the piano did not accept the connection in time"
+                    log.info("bluetooth: %s", self.ble.last_error)
+                    break
                 if mono >= next_usb:
                     next_usb = mono + USB_CHECK_SECONDS
                     if find_device(self.device_match):
                         log.info("bluetooth: USB is back, switching to it")
                         usb_back = True
                         break
-                if mono >= next_alive:
-                    next_alive = mono + BLE_ALIVE_SECONDS
-                    if not self.ble.find_port():
-                        log.info("bluetooth: link to %s dropped", name)
-                        break
         finally:
+            linked = self.ble.linked
             proc.kill()
             proc.wait()
+            proc.stdout.close()
             self._ble_release()
             self._set_disconnected()
         if not usb_back:
-            self._ble_next = time.monotonic() + BLE_BACKOFF[0]
+            if linked:
+                self._ble_next = time.monotonic() + BLE_BACKOFF[0]
+            else:
+                self._ble_failed()
+
+    def _ble_failed(self):
+        delay = BLE_BACKOFF[min(self._ble_failures, len(BLE_BACKOFF) - 1)]
+        self._ble_failures += 1
+        self._ble_next = time.monotonic() + delay
+        if self._ble_failures == 1:
+            log.info("bluetooth: not connected (%s); retrying with backoff", self.ble.last_error)
+        self.status["bluetooth"] = self.ble.status()
+        self._set_disconnected()
