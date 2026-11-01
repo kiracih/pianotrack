@@ -1,7 +1,8 @@
 # pianotrack
 
 A headless practice tracker for a digital piano, built for a Roland FP-30X plugged
-into a Raspberry Pi over USB. The Pi records every note you play, splits it into
+into a Raspberry Pi over USB (with Bluetooth MIDI as a fallback while the USB
+cable is used for something else). The Pi records every note you play, splits it into
 practice sessions, and serves a fitness-band style dashboard on your home network.
 No phone app, no cloud, no extra Python packages.
 
@@ -133,13 +134,24 @@ read-only report.
 
 ```
 FP-30X ──USB──▶ /dev/snd/midiC1D0 ──▶ collector ──▶ recorder ──▶ SQLite
-                                                                   │
+   └──BLE MIDI──▶ BlueZ ─▶ aseqdump ──┘ (only while USB is out)  │
                      phone / laptop on wifi ◀── dashboard + API ◀──┘
 ```
 
 * **Collector** (`collector.py`) reads the ALSA raw MIDI device directly and parses
-  the byte stream itself (`midi.py`). If the piano is switched off, it waits and
-  reconnects when it comes back.
+  the byte stream itself (`midi.py`). If the piano is switched off or unplugged, it
+  waits and picks the device up again when it comes back, without a restart.
+* **Bluetooth fallback** (`bluetooth.py`). USB is always the primary input. While no
+  USB piano is present (for example the FP-30X's USB port is recording audio on a
+  phone), the collector connects to the piano over Bluetooth LE MIDI with
+  `bluetoothctl`, and reads the ALSA sequencer port BlueZ makes for it through
+  `aseqdump`. Within a second of USB coming back it switches to USB and disconnects
+  Bluetooth. The piano allows a single BLE MIDI connection, so the Pi never holds it
+  while USB works: it disconnects it, checks every 30 s that BlueZ hasn't reconnected
+  on its own, and marks the piano untrusted so BlueZ only connects when asked. Failed
+  attempts (piano off, or a phone already connected) retry after 5, 10, 20, 30, then
+  every 60 s. Sessions recorded over Bluetooth carry the piano's Bluetooth name (e.g.
+  `FP-30X MIDI`) as their source, and the dashboard's status pill says "· Bluetooth".
 * **Recorder** (`recorder.py`) opens a session on the first note and closes it after
   3 minutes of silence. Sessions with fewer than 8 notes are discarded. Notes are
   written in batches every 2 s to spare the SD card.
@@ -194,6 +206,22 @@ git pull && sudo systemctl restart pianotrack    # update
 If `devices` shows nothing, check `aconnect -l` and `cat /proc/asound/cards`. The
 FP-30X needs to be connected with its **USB to Host** port. Only one program can
 open a raw MIDI port at a time, so stop anything else reading the piano.
+
+### Bluetooth fallback
+
+Uses BlueZ and alsa-utils, which Raspberry Pi OS already has. Raspberry Pi OS often
+ships with the Bluetooth radio switched off (rfkill), so turn it on once:
+
+```bash
+./deploy/enable-bluetooth.sh       # unblocks and powers on Bluetooth, lists the piano
+sudo systemctl restart pianotrack
+```
+
+Pair the piano once if `devices` doesn't list a `bluetooth piano` line: turn on the
+piano's Bluetooth with no phone connected to it, run `bluetoothctl`, then `scan le` and
+`pair <MAC>`. After that the fallback is automatic (`--bluetooth auto`). Note that while
+USB is unplugged the Pi holds the piano's only BLE MIDI connection; plug USB back in, or
+run with `--bluetooth off`, to leave it to a phone app.
 
 ## Reach it from outside your home
 
@@ -352,6 +380,7 @@ whenever the dashboard changes.
 `python3 -m pianotrack run --help`:
 
 * `--device` a regex for the ALSA card name (default: first non-virtual device, preferring Roland), or a path
+* `--bluetooth` the Bluetooth LE MIDI fallback while USB is unplugged: `auto` (default) finds a paired or nearby Roland/FP piano, or give its MAC address or a name regex; `off` turns it off. It is off anyway where `bluetoothctl` or `aseqdump` is missing
 * `--port` (8080), `--host` (0.0.0.0)
 * `--tunnel-port` (8081) the port cloudflared forwards to; it listens on 127.0.0.1 only and always asks for the password (0 turns it off)
 * `--allowed-host NAME` another name the home network uses for the Pi, besides its IP, hostname, `*.local` and `localhost` (repeatable)
@@ -365,7 +394,7 @@ Other commands: `backup [--backup-dir DIR]` copies the database now, `restore FI
 replaces the database with a backup, `recompute [--dry-run]` brings stored session metrics
 up to the current formulas (`run` does this in the background after it starts, while recording goes on; it first keeps a checked copy as
 `<db>.pre-metrics-v<N>.db`, writes every session in one transaction, and does nothing
-when all are current), and `devices`, `backfill`, `simulate`, `replay`
+when all are current), and `devices [--bluetooth MAC|NAME]` (USB devices, plus the Bluetooth controller and piano), `backfill`, `simulate`, `replay`
 (see above).
 
 The daily goal is set from the dashboard.
@@ -393,7 +422,7 @@ query values get 400 with an `error` message.
 | Endpoint | Returns |
 |---|---|
 | `GET /api/summary` | today (with `invite`, the line above the ring), week (per day `active_seconds`, `notes`, `goal_met`, `goal_times`), streak, `week_days` (played and target, Monday to today), `last_week` on Mondays only, else null (`start`, `played`, `target`, `met`, `active_seconds` for last Monday to Sunday), records, totals, live session, collector status, `demo` |
-| `GET /api/status` | collector state: piano connected, device, last MIDI event |
+| `GET /api/status` | collector state: piano connected, device, `transport` (`usb` or `bluetooth`), last MIDI event, and the Bluetooth fallback's `state`, address and last error |
 | `GET /api/auth` | `{"password_set": ..., "remote": ..., "demo": ...}` whether a remote password exists, whether this request came through the tunnel, and whether this is the read-only demo |
 | `POST /api/password` | `{"password": "..."}` sets the remote-access password (home network only, 8+ characters) |
 | `GET /login`, `POST /login`, `GET /logout` | sign-in page for tunnel visitors |

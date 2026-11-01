@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import random
+import re
 import signal
 import sys
 import threading
@@ -25,6 +26,20 @@ def _store(args):
     return Store(args.db)
 
 
+def _bluetooth(args):
+    """The Bluetooth LE MIDI fallback, or None. 'auto' turns it on where BlueZ
+    and alsa-utils are installed (Raspberry Pi OS has both)."""
+    from .bluetooth import BleMidi
+    choice = getattr(args, "bluetooth", "auto") or "auto"
+    if choice == "off":
+        return None
+    if not BleMidi.available():
+        if choice != "auto":
+            logging.warning("bluetooth fallback needs bluetoothctl and aseqdump; it is off")
+        return None
+    return BleMidi(None if choice == "auto" else choice)
+
+
 def cmd_run(args):
     if args.demo:
         # Fresh simulated history ending now; no piano, no backups, no password, no changes.
@@ -34,7 +49,9 @@ def cmd_run(args):
             sys.exit(f"demo refused: {e}")
         args.no_collector = args.no_backup = True
     store = _store(args)
-    collector = None if args.no_collector else Collector(store, args.device, args.idle_gap)
+    collector = None
+    if not args.no_collector:
+        collector = Collector(store, args.device, args.idle_gap, bluetooth=_bluetooth(args))
     backups = None if args.no_backup else backup.Backups(args.db, args.backup_dir, args.backup_time)
     api = Api(store, collector, backups, demo=args.demo)
 
@@ -82,6 +99,19 @@ def cmd_devices(args):
         print(f"{d}\t{card_name(d)}")
     chosen = find_device(args.device)
     print(f"would use: {chosen}")
+    from .bluetooth import BleMidi, DEFAULT_NAME, parse_devices, parse_info
+    if not BleMidi.available():
+        print("bluetooth fallback: off (needs bluetoothctl and aseqdump)")
+        return
+    ble = BleMidi(args.bluetooth)
+    power = parse_info(ble._ctl("show")[1]).get("PowerState", "no controller")
+    print(f"bluetooth: controller {power}")
+    for mac, name in parse_devices(ble._ctl("devices")[1]):
+        pattern = ble.address or ble.pattern or DEFAULT_NAME
+        if re.search(pattern, mac if ble.address else name, re.I):
+            info = parse_info(ble._ctl("info", mac)[1])
+            print(f"bluetooth piano: {mac}\t{name}\tpaired={info.get('Paired', '?')}"
+                  f" connected={info.get('Connected', '?')}")
 
 
 def cmd_backfill(args):
@@ -197,6 +227,9 @@ def main(argv=None):
 
     r = sub.add_parser("run", help="collect MIDI and serve the dashboard")
     r.add_argument("--device", help="ALSA card name regex, or a path such as a FIFO")
+    r.add_argument("--bluetooth", default="auto", metavar="auto|off|MAC|NAME",
+                   help="Bluetooth LE MIDI fallback while USB is unplugged: 'auto' finds a "
+                        "Roland/FP piano, or give its MAC or a name regex (default %(default)s)")
     r.add_argument("--host", default="0.0.0.0")
     r.add_argument("--port", type=int, default=8080)
     r.add_argument("--tunnel-port", type=int, default=8081,
@@ -233,6 +266,7 @@ def main(argv=None):
 
     d = sub.add_parser("devices", help="list MIDI devices")
     d.add_argument("--device")
+    d.add_argument("--bluetooth", default=None, help="MAC or name regex of the BLE piano")
     d.set_defaults(func=cmd_devices)
 
     b = sub.add_parser("backfill", help="fill the database with simulated history")
