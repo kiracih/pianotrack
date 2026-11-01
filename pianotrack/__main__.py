@@ -190,11 +190,13 @@ def cmd_pieces(args):
         matcher, segs = pieces.group(store)
         print(pieces.format_report(matcher, segs))
         r = pieces.evaluate(matcher, segs, log, simulate.REPERTOIRE)
-        ok = r["right"] >= 0.9 and r["wrong"] < 0.05
+        ok = r["right"] >= 0.9 and r["wrong"] < 0.05 and r["rows_per_piece"] <= 1.25
         print(f"\nsimulated beginner, {days} days, seed {args.seed}: "
               f"{r['piece_segments']} piece segments, {r['right']:.1%} on the right piece, "
               f"{r['wrong']:.1%} of all segments on a wrong one; groups per piece "
-              f"{r['groups_per_piece']}. Gate (>= 90% right, < 5% wrong): {'PASS' if ok else 'FAIL'}")
+              f"{r['groups_per_piece']}; Pieces card rows per real piece {r['rows_per_piece']:.2f} "
+              f"{r['rows_by_piece']}, plus {r['other_rows']} for exercises and new music. "
+              f"Gate (>= 90% right, < 5% wrong, <= 1.25 rows per piece): {'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1
     if not os.path.exists(args.db):
         sys.exit(f"no database at {args.db}")

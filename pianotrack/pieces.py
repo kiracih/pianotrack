@@ -653,6 +653,9 @@ def evaluate(matcher, segs, log, pieces):
     itself. New music (sight-reading) is wrong whenever it is grouped with
     anything, since each new piece is different. Segments of a piece that end up in a smaller second group of the
     same piece are neither: the piece was split, which is reported apart.
+    `rows_per_piece` is the Pieces card's rows per real piece on it; `other_rows` the
+    rows for exercises and new music (several scale rows can be right: the simulator
+    logs every scale as "scale").
     """
     for s in segs:
         s["truth"] = truth(s, log)
@@ -669,10 +672,17 @@ def evaluate(matcher, segs, log, pieces):
     wrong = sum(1 for s in segs if s["piece"] is not None and (
         names[s["piece"]] != s["truth"] or (s["truth"] == "new" and sizes[s["piece"]] > 1)))
     groups = Counter(names[i] for i in names if names[i] in pieces and sizes[i] >= 2)
+    # The Pieces card's rows (groups heard 3+ times), each named after what most of its
+    # segments really were. Rows per real piece over 1 means a piece shows as several.
+    rows = Counter(names[i] for i in names if sizes[i] >= 3)
+    on_card = {name: rows[name] for name in pieces if rows[name]}
     return {
         "segments": len(segs),
         "piece_segments": len(piece_segs),
         "right": right / max(1, len(piece_segs)),
         "wrong": wrong / max(1, len(segs)),
         "groups_per_piece": {name: groups.get(name, 0) for name in sorted(pieces)},
+        "rows_per_piece": sum(on_card.values()) / max(1, len(on_card)),
+        "rows_by_piece": dict(sorted(on_card.items())),
+        "other_rows": sum(n for name, n in rows.items() if name not in pieces),
     }

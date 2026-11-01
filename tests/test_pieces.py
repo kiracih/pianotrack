@@ -85,6 +85,8 @@ class GateTest(unittest.TestCase):
         self.assertGreater(r["piece_segments"], 200)
         self.assertGreaterEqual(r["right"], 0.9, r)
         self.assertLess(r["wrong"], 0.05, r)
+        self.assertEqual(set(r["rows_by_piece"]), set(simulate.REPERTOIRE), r)  # all on the card
+        self.assertLessEqual(r["rows_per_piece"], 1.25, r)  # none split into many rows
         return matcher, segs
 
     def test_beginner_gate(self):

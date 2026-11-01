@@ -404,7 +404,9 @@ The daily goal is set from the dashboard.
 * `--days N` only the last N days (default: all history)
 * `--sessions` also list every segment with the piece it matched
 * `--check` run on simulated beginner practice instead of the database and print
-  the right/wrong rates; `--seed` picks the simulation
+  the right/wrong rates and how many rows the Pieces card shows per real piece (over 1
+  means a piece shows as several; gate at most 1.25), plus the rows for exercises and new music;
+  `--seed` picks the simulation
 
 `backfill` and `simulate` take `--beginner` to play the simulator's small repertoire
 the way a learner does.
