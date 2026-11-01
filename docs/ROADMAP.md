@@ -184,35 +184,36 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
-Ideas found 2026-10-31 (best first; S = an evening). From 31 Oct the backlog itself is
-the board in kiracih/pianotrack-ios (docs/BOARD.md there); ideas accepted for the plan
-are filed there as issues.
+Ideas found 2026-11-01 (best first; S = an evening). The backlog itself is the board in
+kiracih/pianotrack-ios (docs/BOARD.md there); ideas accepted for the plan are filed there.
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | iPhone sessions survive a kill (toggle remembered, open session saved every 10 s, restarted after a call): built for #26, on the Mac for its build (high, S); release held notes when a MIDI source disappears (med, S); a capture mode App Review accepts: silent background audio breaks guideline 2.5.4, so test Core Bluetooth MIDI with `bluetooth-central`, fallback a screen-awake "piano stand" mode (high, M–L, owner decides before TestFlight) |
-| Today & habits | Reminders booked on the phone: `usual_start()` + `nudge()` with vectors, cancelled once today's minimum is played, quiet 22–08, pause after 3 ignored days (high, S+S); a beginner's ring at the 5-minute minimum for the first 10 practice days, no percentages before 14 days (high, S); one planned rest day a week keeps the streak (Lally 2010, Duolingo freeze) (med, S–M, vectors change) |
-| Pieces | Drift fix that holds: 3% core share plus a 25% match for groups under 5 plays: wrong at 120 days 6.9–11.8% → 0.4–2.4% on 10 seeds, demo 7 → 9 pieces (shown per real piece 1.00–1.25), right at 30 days 96.4–98.5% → 94.8–98.2% (high, S, vectors change; #2); split metric in `--check` (S); scales under one "Technique" row (med, M) |
-| Practice insight | "Went back" detection: a restart without a pause ends the clean run but is not a stumble (Duke, Simmons & Cash 2009: top practisers fix errors at once) (high, S–M, vectors change); clean plays per piece this week on the piece page (high, S); time on the hard bit vs run-throughs (med, M) |
-| Replay & session detail | Falling notes + Loop on the iPhone from one pure layout function, reused by the iOS video export (#27) (high, M); sampler hardening: trylock clicks, no allocation on the audio thread, route changes, keep-awake off no longer stops a replay (med, S) |
-| Trust & access | An unreadable sessions.json is set aside, never overwritten (built with #26) (high, S); export/restore file through the share sheet (#13) (high, M); per-device pairing by QR and a revocable token before Pi sync (#7) (high, M, owner's go) |
-| Design (lead) | First design system and iPhone screens drafted ([canvas](https://claude.ai/artifact/AtmgnkrxUFSQkWYTaF3i4H), #1), waiting for the owner's review; then: tab bar and Today, Sessions and Session, Onboarding and Settings, one evening each |
-| Essentials | Local notifications only; analytics on the phone first, any remote one opt-in; MetricKit for crashes (pianotrack-ios docs/ESSENTIALS.md, #12) |
-| Monetization | Strava-style: recording free, Pro for history, pieces, replay, video and insights; StoreKit 2 only (docs/MONETIZATION.md, #9); waiting for the owner's own packages |
-| ASO | Music category, "the tracker that logs itself"; name shortlist Keystreak, Pianolog (docs/ASO.md, #10, #11) |
+| Capture & setup | Owner chose 1 Nov: screen-awake practice replaces the silent background audio (built on branch review/2026-11-01, waits for the Mac's `swift test`); onboarding "connect your piano" with a 2.5.14 consent card, Bluetooth asked on Pair, "Try with sample practice" for reviewers (#4, high, S–M); Core Bluetooth MIDI spike with `bluetooth-central` for truly locked capture (high, M, later) |
+| Today & habits | `usual_start()` + `nudge()` with vectors (midnight wrap, quiet 22–08, pause after 3 ignored days) and the local-notification booking contract (#3, high, S+S); a beginner's ring at the 5-minute minimum for the first 10 days (high, S); port rest passes to Python (med, S–M, vectors change) |
+| Pieces | Card rows per real piece now in `--check` (built, 51edcda); drift fix: 3% core share plus a 25% match for groups under 5 plays, on 10 seeds (#2, high, S, vectors change); Swift port of the fix (M) |
+| Practice insight | "Went back" detection: the simulator first logs pauseless restarts, then a backward jump within 2–3 notes ends the clean run without a stumble (high, S–M, vectors change); clean plays per piece this week (high, S) |
+| Replay & session detail | A pure falling-notes `layout()` with a Python twin and a replay-layout vector, used by the iPhone replay and the video export (#27, high, M); sampler hardening (med, S) |
+| Trust & access | Export file format v1 (JSON with a session `uid`, merge by uid, never overwrite; ShareLink and fileImporter; Pi `GET /api/export`) (#13, high, M); QR pairing for Pi sync (#7, owner's go) |
+| Design (lead) | Canvas "Plink keys and week octave" ([canvas](https://claude.ai/artifact/VhDMraGyEBfCvMRCrJ5VYS)): Plink A Duet (two white-key legs, black-key head; #32) and the week as a Quiet octave (#31), both waiting for the owner's pick |
+| Essentials | Onboarding order: consent card, Bluetooth on Pair, `.provisional` notifications after the first session; MetricKit kept on the phone, ASC opt-in analytics; no SDK |
+| Monetization | Paywall checklist for 3.1.2 and Schedule 2 (`SubscriptionStoreView`, Restore, Terms and Privacy, billed price most prominent, shown after value); 3 package questions waiting for the owner (#9) |
+| ASO | Keystreak clear in App Store and web search (trademark check is the owner's); Pianoly dropped (Pianolytics); Mewstro's cat mascot is close to Plink, so lead with "No timer. It logs itself." (#10, #11) |
+| App review | Fixed on the branch: silent audio (2.5.4), idle Live Activity, privacy manifests, export compliance. Open before TestFlight: app icon (#5), reviewer demo and consent (#4), privacy policy URL, Salamander licence link (pianotrack-ios docs/APP-REVIEW.md) |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Spike: can a Core Bluetooth MIDI connection share the piano with the Core MIDI driver, and does it keep the app alive locked |
-| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` vectors and the iOS notification booking contract |
-| Pieces | matcher, Pieces card, per-piece progress, naming | Drift fix (#2): split metric in `--check`, settle the beginner test case, vectors, Swift port |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Prototype "went back" detection on a copy, with the simulator logging pauseless restarts |
-| Replay & session detail | player, keyboard, downloads, session page | The falling-notes layout function and its test (iPhone replay and #27) |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Export/restore file format (#13) |
-| Design (lead) | identity, layout, type, colour, motion, copy | The owner's comments on the canvas; then empty and first-day states, widgets, Dynamic Type, dark versions of every screen, App Store screenshot drafts |
-| Essentials | analytics, notifications, onboarding, crashes, permissions | Permission priming and the notification prompt timing in onboarding |
-| Monetization | packages, prices, trials, StoreKit | Build on the owner's packages once given; paywall screen in the design |
-| ASO | name, listing, keywords, screenshots | Keyword research for the shortlisted names (en, tr) |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Onboarding flow design (#4): consent, connect your piano, sample practice |
+| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` vectors in Python |
+| Pieces | matcher, Pieces card, per-piece progress, naming | The drift fix on 10 seeds with the new rows-per-piece numbers |
+| Practice insight | trends, session metrics, zones, dynamics, key map | Pauseless restarts in the simulator, then the detector's first numbers |
+| Replay & session detail | player, keyboard, downloads, session page | The `layout()` function and its vector |
+| Trust & access | backups, remote login, privacy, Pi speed, reliability | Export format spec and a `uid` on Swift sessions |
+| Design (lead) | identity, layout, type, colour, motion, copy | Build the owner's Plink and octave picks; then the app icon from the new Plink (#5) |
+| Essentials | analytics, notifications, onboarding, crashes, permissions | The consent and permission cards in the onboarding design |
+| Monetization | packages, prices, trials, StoreKit | The owner's packages, then the paywall screen design |
+| ASO | name, listing, keywords, screenshots | Screenshot storyboard around "logs itself" |
+| App review | Review Guidelines, HIG, privacy | Check onboarding and the new Plink against 2.1, 2.5.14 and 5.2; the privacy policy text |
 
 ## App target
 
