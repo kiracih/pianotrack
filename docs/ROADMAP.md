@@ -184,36 +184,36 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
-Ideas found 2026-11-02 (best first; S = an evening). The backlog itself is the board in
-kiracih/pianotrack-ios (docs/BOARD.md there); ideas accepted for the plan are filed there.
+Ideas found 2026-11-04 (best first; S = an evening). The owner uses only the iOS app since
+2 Nov; the backlog is the board in kiracih/pianotrack-ios (docs/BOARD.md there).
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | Now Playing built 2 Nov (full-screen live keyboard, screen stays awake, opens on the first note; owner request); review fixes on branch review/2026-11-02 wait for the Mac's `swift test`; onboarding ending in "Play a few notes" that opens Now Playing, "connect your piano" with a 2.5.14 consent card, Bluetooth asked on Pair, "Try with sample practice" for reviewers (#4, high, S–M); Core Bluetooth MIDI spike with `bluetooth-central` for truly locked capture (high, M, later) |
-| Today & habits | `usual_start()` + `nudge()` with vectors (midnight wrap, quiet 22–08, pause after 3 ignored days) and the local-notification booking contract (#3, high, S+S); a beginner's ring at the 5-minute minimum for the first 10 days (high, S); port rest passes to Python (med, S–M, vectors change) |
-| Pieces | Card rows per real piece now in `--check` (built, 51edcda); drift fix: 3% core share plus a 25% match for groups under 5 plays, on 10 seeds (#2, high, S, vectors change); Swift port of the fix (M) |
-| Practice insight | "Went back" detection: the simulator first logs pauseless restarts, then a backward jump within 2–3 notes ends the clean run without a stumble (high, S–M, vectors change); clean plays per piece this week (high, S) |
-| Replay & session detail | A pure falling-notes `layout()` with a Python twin and a replay-layout vector, used by the iPhone replay and the video export (#27, high, M); sampler hardening (med, S) |
-| Trust & access | Export file format v1 (JSON with a session `uid`, merge by uid, never overwrite; ShareLink and fileImporter; Pi `GET /api/export`) (#13, high, M); QR pairing for Pi sync (#7, owner's go) |
-| Design (lead) | Trio Plink and the Quiet octave built and on the phone (#31, #32); robin mascot alternative "Perch" ([canvas](https://claude.ai/artifact/58N31mz33sXGpJ7m2NrfQY), #34) waits for the owner with the name research (#35); Now Playing polish (#36): Dynamic Type for the timer and key labels |
-| Essentials | Onboarding order: consent card, Bluetooth on Pair, `.provisional` notifications after the first session; MetricKit kept on the phone, ASC opt-in analytics; no SDK |
-| Monetization | Paywall checklist for 3.1.2 and Schedule 2 (`SubscriptionStoreView`, Restore, Terms and Privacy, billed price most prominent, shown after value); 3 package questions waiting for the owner (#9) |
-| ASO | Screenshot storyboard led by Now Playing (live keys sell "logs itself"); name research for "Robin Piano" (#35); Keystreak clear in App Store and web search (trademark check is the owner's); Pianoly dropped (Pianolytics); Mewstro's cat mascot is close to Plink, so lead with "No timer. It logs itself." (#10, #11) |
-| App review | Now Playing checked: screen-awake only while visible or a piano is online (no background mode), Escape and Reduce Motion handled; earlier fixes merged (2.5.4, Live Activity, privacy manifests, export compliance). Open before TestFlight: app icon (#5), reviewer demo and consent (#4), privacy policy URL, Salamander licence link (pianotrack-ios docs/APP-REVIEW.md) |
+| Capture & setup | Rejoin the Bluetooth piano after iOS relaunches the app (built on branch review/2026-11-04, #48); onboarding with consent, connect, goal, "Try with sample practice" in Release for reviewers, ending in Now Playing (#4, high, M); "Disconnect piano" setting and a 30 s scan limit, since the FP-30X takes one Bluetooth connection (med, S) |
+| Today & habits | `usual_start()` + `nudge()` in Python with a `nudge.json` vector (midnight wrap, 08–22 clamp, silent after 3 ignored days) (#3, high, S), then the iOS booking (one pending request, `.provisional` after session 1); one streak count on Today, the strip moves to History (med, S) |
+| Pieces | Drift fix built (0b1d988, Swift port on the branch): wrong 0.4–2.4% on 10 seeds; stable piece keys so History chips don't jump after a regroup (high, S–M); label scale and sight-reading groups as exercises (med, M) |
+| Practice insight | Clean plays this week per piece on Insights (high, S–M, a Python metric first); Records card (longest clean run, best week, steadiest tempo) (med-high, S); trend arrows, last 4 weeks vs the 8 before (med, S–M); the "went back" detector needs pauseless restarts in the simulator first |
+| Replay & session detail | Crash paths fixed on the branch (#47: pitch under 20, 0 Hz output, non-finite times); faster plan for very long sessions (med, S–M); video export with a shared render core (#27, L) |
+| Trust & access | Unread history never overwritten (built on the branch, #46); export format v1 with a deterministic uid, Python first (#13, high, M); Files-app access and an opt-in iCloud Drive copy of the export (med, S–M) |
+| Design (lead) | iPad layout canvas ([canvas](https://claude.ai/artifact/PGNLd6CqxpuNWnQfe9FdmU), #41): sidebar tabs, History split view, Insights two columns, Now Playing with all 88 keys in landscape; 7 owner questions (iOS 18 minimum recommended). Navigation A built 3264924 ([canvas](https://claude.ai/artifact/6daM4HRCHXjwTVfiH95mSw)) |
+| Essentials | MetricKit crash inbox kept on the phone with "Send report" (opt-in, nothing leaves otherwise) (high, S); a one-line card before the Bluetooth pairing prompt (5.1.1) (S) |
+| Monetization | Free/Plus per tab as a proposal for #9: Today free, History 30 days free, Insights one free card; paywall after value, 7-day trial; 3 owner questions (history window, price/lifetime/Turkey, Family Sharing) |
+| ASO | Name first: "Pianotrack" sits next to two live "Piano Tracker" apps, so "Robin Piano: Practice Tracker" gains; 6-frame storyboard led by Now Playing; claim "logs any digital piano, even with the phone locked" (Yamaha Piano Diary also logs MIDI) |
+| App review | `bluetooth-central` needs a reviewer video (2.1, 2.5.4, high until done); measure an hour of active-sensing wakes (2.4.2); rows added to pianotrack-ios docs/APP-REVIEW.md |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Onboarding flow design (#4) ending in Now Playing; the owner's Now Playing feedback |
-| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` vectors in Python |
-| Pieces | matcher, Pieces card, per-piece progress, naming | The drift fix on 10 seeds with the new rows-per-piece numbers |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Pauseless restarts in the simulator, then the detector's first numbers |
-| Replay & session detail | player, keyboard, downloads, session page | The `layout()` function and its vector |
-| Trust & access | backups, remote login, privacy, Pi speed, reliability | Export format spec and a `uid` on Swift sessions |
-| Design (lead) | identity, layout, type, colour, motion, copy | The owner's mascot pick (Trio or robin), then the app icon from it (#5) |
-| Essentials | analytics, notifications, onboarding, crashes, permissions | The consent and permission cards in the onboarding design |
-| Monetization | packages, prices, trials, StoreKit | The owner's packages, then the paywall screen design |
-| ASO | name, listing, keywords, screenshots | Name research result (#35) and the Now Playing screenshot set |
-| App review | Review Guidelines, HIG, privacy | Check onboarding and the new Plink against 2.1, 2.5.14 and 5.2; the privacy policy text |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | The owner's locked-recording test (30 min, one app kill, one piano power cycle, battery); onboarding screens design |
+| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` in Python with vectors; weekly summary notification |
+| Pieces | matcher, Pieces card, per-piece progress, naming | Stable piece keys (Python, then Swift) |
+| Practice insight | trends, session metrics, zones, dynamics, key map | Pauseless restarts in the simulator; the clean-plays metric in Python |
+| Replay & session detail | player, keyboard, downloads, session page | A shared render core for live replay and video export |
+| Trust & access | backups, privacy, reliability | A restore drill and the v1 export uid in Python |
+| Design (lead) | identity, layout, type, colour, motion, copy | The owner's iPad answers and mascot pick; onboarding screens |
+| Essentials | analytics, notifications, onboarding, crashes, permissions | MetricKit crash inbox design and the pairing pre-permission card |
+| Monetization | packages, prices, trials, StoreKit | Microphone capture (#45) as a Plus feature; the owner's package answers |
+| ASO | name, listing, keywords, screenshots | Preview video storyboard and Turkish metadata |
+| App review | Review Guidelines, HIG, privacy | Reviewer demo path and review-notes video text |
 
 ## App target
 
@@ -397,6 +397,12 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
   Pi unless the owner opts in.
 
 ## Done
+
+- 2026-11-04 review (for 3 Nov): owner items done and closed: screen-locked Bluetooth
+  recording (#43), most used keys in 3D (#42), Now Playing (#36), replay pedal crash (#44),
+  navigation A with Today / History / Insights and a Settings sheet (3264924). Pieces drift
+  fix in the engine (0b1d988). On branch review/2026-11-04 for the Mac: history safety
+  (#46), replay crash paths (#47), Bluetooth rejoin after relaunch (#48), drift fix port.
 
 - 2026-10-30 review: the seek bar zooms to the loop while looping (an 8 s loop went from
   under 2 px to about 80 px on a phone); small trend values keep one decimal ("Now 3.3",
