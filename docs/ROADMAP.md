@@ -184,36 +184,36 @@ From 2026-10-24 the daily review runs one agent per section plus a design lead i
 parallel (owner request 2026-10-23); the PM picks what to build. Each agent's focus for
 the next review is set here at the end of every review.
 
-Ideas found 2026-11-04 (best first; S = an evening). The owner uses only the iOS app since
-2 Nov; the backlog is the board in kiracih/pianotrack-ios (docs/BOARD.md there).
+Ideas found 2026-11-04, evening review (best first; S = an evening). The owner uses only the iOS
+app (iPhone and iPad) since 2 Nov; the backlog is the board in kiracih/pianotrack-ios (docs/BOARD.md there).
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | Rejoin the Bluetooth piano after iOS relaunches the app (built on branch review/2026-11-04, #48); onboarding with consent, connect, goal, "Try with sample practice" in Release for reviewers, ending in Now Playing (#4, high, M); "Disconnect piano" setting and a 30 s scan limit, since the FP-30X takes one Bluetooth connection (med, S) |
-| Today & habits | `usual_start()` + `nudge()` in Python with a `nudge.json` vector (midnight wrap, 08–22 clamp, silent after 3 ignored days) (#3, high, S), then the iOS booking (one pending request, `.provisional` after session 1); one streak count on Today, the strip moves to History (med, S) |
-| Pieces | Drift fix built (0b1d988, Swift port on the branch): wrong 0.4–2.4% on 10 seeds; stable piece keys so History chips don't jump after a regroup (high, S–M); label scale and sight-reading groups as exercises (med, M) |
-| Practice insight | Clean plays this week per piece on Insights (high, S–M, a Python metric first); Records card (longest clean run, best week, steadiest tempo) (med-high, S); trend arrows, last 4 weeks vs the 8 before (med, S–M); the "went back" detector needs pauseless restarts in the simulator first |
-| Replay & session detail | Crash paths fixed on the branch (#47: pitch under 20, 0 Hz output, non-finite times); faster plan for very long sessions (med, S–M); video export with a shared render core (#27, L) |
-| Trust & access | Unread history never overwritten (built on the branch, #46); export format v1 with a deterministic uid, Python first (#13, high, M); Files-app access and an opt-in iCloud Drive copy of the export (med, S–M) |
-| Design (lead) | iPad layout canvas ([canvas](https://claude.ai/artifact/PGNLd6CqxpuNWnQfe9FdmU), #41): sidebar tabs, History split view, Insights two columns, Now Playing with all 88 keys in landscape; 7 owner questions (iOS 18 minimum recommended). Navigation A built 3264924 ([canvas](https://claude.ai/artifact/6daM4HRCHXjwTVfiH95mSw)) |
-| Essentials | MetricKit crash inbox kept on the phone with "Send report" (opt-in, nothing leaves otherwise) (high, S); a one-line card before the Bluetooth pairing prompt (5.1.1) (S) |
-| Monetization | Free/Plus per tab as a proposal for #9: Today free, History 30 days free, Insights one free card; paywall after value, 7-day trial; 3 owner questions (history window, price/lifetime/Turkey, Family Sharing) |
-| ASO | Name first: "Pianotrack" sits next to two live "Piano Tracker" apps, so "Robin Piano: Practice Tracker" gains; 6-frame storyboard led by Now Playing; claim "logs any digital piano, even with the phone locked" (Yamaha Piano Diary also logs MIDI) |
-| App review | `bluetooth-central` needs a reviewer video (2.1, 2.5.4, high until done); measure an hour of active-sensing wakes (2.4.2); rows added to pianotrack-ios docs/APP-REVIEW.md |
+| Capture & setup | First run (#4, high, M): canvas [Plink First Run](https://claude.ai/artifact/VdR2skTD34PHmVCDTAaMdu) waits for the owner; iPhone and iPad compete for the piano's one Bluetooth link (#62, high, M); a "Connection check" row in Settings (med, S) |
+| Today & habits | `usual_start()` + `nudge()` in Python with a `nudge.json` vector, then one `.provisional` request on iOS (#3, high, S+S); "Today counts" tick for a short day (in the #4 canvas, med, S); rest passes into Python (med, S) |
+| Pieces | Stable keys refined (#50, high, M: bucket key = earliest first play or `n:<nameKey>`, keep the key in vectors); renames stamp every matching name under sync (in #61, S); `nameKey` in Python (low, S) |
+| Practice insight | Clean plays built in Python (b93b19f); Swift port and Insights card (#63, high, S); "then and now" on the piece page (high, S–M, canvas first) |
+| Replay & session detail | iPad wide layout, time index instead of a per-frame filter, Loop (#64, high, S–M); shared `NoteFrame` render core for #27 (high, M) |
+| Trust & access | Sync reconcile pass (#61, high, S–M); "Not my practice" and a pause switch with sync tombstones (#65, med-high, M); export v1 (#13) |
+| Design (lead) | Rename sweep built on branch review/2026-11-04-plink; flat icon pass (no gradient, dark rim) proposed, the owner just picked the icon, so it waits; voice rule: Plink speaks first person, system copy says "Plink" |
+| Essentials | MetricKit crash inbox (#49, high, S); day-one checklist for the paid program (dSYMs, Organizer, TestFlight "What to Test") (med, S) |
+| Monetization | Sync stays free (recommended, #9); StoreKit 2 skeleton with a local `.storekit` file, nothing gated (high, M, waits for the owner's go); 3 Turkey pricing options for the owner |
+| ASO | Metadata v1 en-US/tr/en-GB drafted on #10; 6-frame storyboard at 1320×2868 and 2064×2752; Turkish caption overlays (owner checks) |
+| App review | Reviewer demo is DEBUG-only (high, fixed by #4's sample practice); `remote-notification` only with sync on; name and icon rows added (branch review/2026-11-04-plink) |
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | The owner's locked-recording test (30 min, one app kill, one piano power cycle, battery); onboarding screens design |
-| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` in Python with vectors; weekly summary notification |
-| Pieces | matcher, Pieces card, per-piece progress, naming | Stable piece keys (Python, then Swift) |
-| Practice insight | trends, session metrics, zones, dynamics, key map | Pauseless restarts in the simulator; the clean-plays metric in Python |
-| Replay & session detail | player, keyboard, downloads, session page | A shared render core for live replay and video export |
-| Trust & access | backups, privacy, reliability | A restore drill and the v1 export uid in Python |
-| Design (lead) | identity, layout, type, colour, motion, copy | The owner's iPad answers and mascot pick; onboarding screens |
-| Essentials | analytics, notifications, onboarding, crashes, permissions | MetricKit crash inbox design and the pairing pre-permission card |
-| Monetization | packages, prices, trials, StoreKit | Microphone capture (#45) as a Plus feature; the owner's package answers |
-| ASO | name, listing, keywords, screenshots | Preview video storyboard and Turkish metadata |
-| App review | Review Guidelines, HIG, privacy | Reviewer demo path and review-notes video text |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Build #4 once the canvas is approved; #62 design (which device records) |
+| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` in Python with vectors (#3) |
+| Pieces | matcher, Pieces card, per-piece progress, naming | #50 stable keys in Python, then Swift |
+| Practice insight | trends, session metrics, zones, dynamics, key map | #63 Swift port of clean plays and the Insights card |
+| Replay & session detail | player, keyboard, downloads, session page | #64 time index and iPad layout |
+| Trust & access | backups, privacy, reliability | #61 sync reconcile pass with unit tests |
+| Design (lead) | identity, layout, type, colour, motion, copy | Owner feedback on the first-run canvas; Insights clean-plays card |
+| Essentials | analytics, notifications, onboarding, crashes, permissions | #49 MetricKit crash inbox |
+| Monetization | packages, prices, trials, StoreKit | StoreKit skeleton spec once the owner answers #9 |
+| ASO | name, listing, keywords, screenshots | Full-size simulator screenshots for the storyboard |
+| App review | Review Guidelines, HIG, privacy | Review notes text and the locked-recording video script |
 
 ## App target
 
@@ -398,6 +398,14 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-11-04 evening review. Owner items:
+  - iPad support installed (#41);
+  - the Plink icon picked and installed (#5, 6c5165c);
+  - the name "Plink Piano: Practice Tracker" approved (#11). The in-app text rename is on branch review/2026-11-04-plink and waits for the Mac and "install".
+  - iCloud sync built behind a switch until enrolment (9809207, docs/SYNC.md in pianotrack-ios). The owner is enrolling in the developer program; the ID check was rejected and is with Apple support.
+  - Closed #2, #46, #47 and #48, which are installed. #34 robin not planned.
+  Built: clean plays per piece in the engine (b93b19f). Designed: the first-run canvas (#4).
+  Filed: #61 to #65. The repo-split questions are dropped until the owner raises them.
 - 2026-11-04 review (for 3 Nov): owner items done and closed: screen-locked Bluetooth
   recording (#43), most used keys in 3D (#42), Now Playing (#36), replay pedal crash (#44),
   navigation A with Today / History / Insights and a Settings sheet (3264924). Pieces drift
