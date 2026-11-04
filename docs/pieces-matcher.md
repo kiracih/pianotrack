@@ -86,3 +86,14 @@ matches; the four pieces never match each other.
 * Scales and arpeggios form their own groups. They show in the report as pieces
   until a later step names them.
 * Hands-separate practice of the left hand alone will form its own group.
+
+## Drift fix (2026-11-04, #2 in pianotrack-ios)
+
+Over months a big piece used to keep every n-gram heard twice and absorbed scales and
+sight-reading (6.9–11.8% wrong segments at 120 days on 10 seeds). Now a settled piece's core
+keeps only n-grams heard in at least `CORE_SHARE` (3%) of its segments, and a young group
+(under `CORE_AFTER` segments) needs a `YOUNG_MATCH` (25%) overlap, so what the big piece no
+longer absorbs doesn't scatter into many small groups. 120 days, seeds 1–10: wrong 0.4–2.4%,
+right 96.8–99.4%, Pieces card rows per real piece 1.00–1.25. Trade-off: two sloppy plays at
+different speeds can start as two groups (they share ~21%) until the piece has been heard a
+few times.

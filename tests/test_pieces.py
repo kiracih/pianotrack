@@ -28,11 +28,16 @@ class MatcherTest(unittest.TestCase):
         return segs[0]
 
     def test_transposed_or_faster_still_matches(self):
-        for kw in ({"transpose": 5}, {"transpose": -3}, {"tempo": 1.2},
-                   {"tempo": 1.2, "beginner": True}):
+        for kw in ({"transpose": 5}, {"transpose": -3}, {"tempo": 1.2}):
             m = pieces.Matcher()
             first = m.add(self.play("Minuet in G", 1, beginner=True))
             self.assertEqual(m.add(self.play("Minuet in G", 2, **kw)), first, kw)
+        # Two sloppy plays at different speeds share only ~21% of their n-grams, under the
+        # young-group bar (YOUNG_MATCH, #2); once the piece has been heard a few times, a
+        # sloppy faster play still joins it.
+        m = pieces.Matcher()
+        first = [m.add(self.play("Minuet in G", 10 + i, beginner=True)) for i in range(pieces.CORE_AFTER)][0]
+        self.assertEqual(m.add(self.play("Minuet in G", 2, tempo=1.2, beginner=True)), first)
 
     def test_piece_tempo_follows_the_melody_without_jumps(self):
         # Beginner plays of one piece from 0.7x to 1.3x speed, left hand included.

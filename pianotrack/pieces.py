@@ -13,6 +13,7 @@ share of its n-grams to match, not all of them.
 import hashlib
 import inspect
 import json
+import math
 import statistics
 import zlib
 from collections import Counter, defaultdict
@@ -28,6 +29,12 @@ MATCH = 0.2  # share of a segment's n-grams that must be known to a piece
 MIN_HITS = 6  # and at least this many of them
 MERGE = 0.6  # core overlap at which two groups are taken to be one piece
 CORE_AFTER = 5  # segments heard before a piece ignores n-grams heard only once
+# Drift (#2): a big piece kept every n-gram heard twice, so over months it absorbed scales
+# and sight-reading. Its core keeps n-grams heard in at least this share of its segments...
+CORE_SHARE = 0.03
+# ...and a young group (under CORE_AFTER segments) needs a closer match, so the music the
+# big piece no longer absorbs doesn't scatter into many small groups.
+YOUNG_MATCH = 0.25
 PHRASE_MAX = 8.0  # seconds: a five-note phrase slower than this is a stop, not tempo
 PHRASES_MIN = 5  # timed phrases a segment needs before its tempo is trusted
 
@@ -120,12 +127,14 @@ class Matcher:
         self.index = defaultdict(set)  # n-gram -> pieces that contain it
 
     def core(self, piece):
-        """A piece's n-grams, minus one-off slips once it has been heard enough."""
+        """A piece's n-grams, minus slips once it has been heard enough: the ones heard in
+        at least CORE_SHARE of its segments (and at least twice)."""
         grams = piece["grams"]
         if len(piece["segments"]) < self.core_after:
             return grams.keys()
         if piece.get("core") is None:
-            piece["core"] = {g for g, c in grams.items() if c >= 2}
+            need = max(2, math.ceil(CORE_SHARE * len(piece["segments"])))
+            piece["core"] = {g for g, c in grams.items() if c >= need}
         return piece["core"]
 
     def add(self, seg):
@@ -141,7 +150,8 @@ class Matcher:
             p = self.pieces[i]
             common = fp & self.core(p)
             score = len(common) / len(fp)
-            if len(common) >= self.min_hits and score >= self.match:
+            need = max(self.match, YOUNG_MATCH) if len(p["segments"]) < self.core_after else self.match
+            if len(common) >= self.min_hits and score >= need:
                 hits.append((score, i))
         if not hits:
             self.pieces.append({"grams": Counter(fp), "segments": [seg]})
