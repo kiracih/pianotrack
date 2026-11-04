@@ -437,6 +437,7 @@ STUMBLE_MIN = 0.4  # and at least this many seconds longer than usual
 STUMBLE_LOW = 0.3  # "usual" = this quantile of the spot's gaps, how it goes when it goes well
 STUMBLE_FALLBACK = 3.0  # x the play's typical gap, at a spot the piece doesn't know
 TROUBLE_RECENT = 10  # trouble spots come from this many latest sessions of a piece
+CLEAN_SHARE = 0.8  # a clean play has this share of the melody notes of the piece's full plays
 TROUBLE_MIN = 3  # stumbles at one spot before it is a trouble spot
 
 
@@ -561,6 +562,11 @@ def pieces_view(matcher, named=(), session_starts=None):
         segs = sorted(g["segments"], key=lambda s: s["start"])
         tempo = piece_tempo(segs)
         stumbles = piece_stumbles(segs)
+        # A clean play: a whole play with no stumble. A long stop ends a segment instead
+        # of counting as a stumble, and drilling a few bars makes short segments, so a
+        # play must also have most of the melody notes of the piece's full plays (its
+        # 90th percentile by melody notes, which doesn't depend on tempo).
+        clean_floor = CLEAN_SHARE * _quantile([len(s["melody"]) for s in segs], 0.9)
         best_run = None
         per = {}
         for k, s in enumerate(segs):
@@ -570,7 +576,9 @@ def pieces_view(matcher, named=(), session_starts=None):
             t0 = (session_starts or {}).get(s["session"], s["start"])
             h.setdefault("offset", round(max(s["start"] - 1.0, t0) - t0, 2))
             h["active_seconds"] += s["active"]
-            h["stumbles"] = h.get("stumbles", 0) + stumble_count(stumbles[k])
+            n = stumble_count(stumbles[k])
+            h["stumbles"] = h.get("stumbles", 0) + n
+            h["clean_plays"] = h.get("clean_plays", 0) + (n == 0 and len(s["melody"]) >= clean_floor)
             run, run_at = clean_run(s, stumbles[k])
             if run > h.get("clean_run", -1.0):
                 h["clean_run"] = run
@@ -609,6 +617,7 @@ def pieces_view(matcher, named=(), session_starts=None):
             "opening": {"session": rep["session"], "offset": round(max(at - 1.0, rep["start"]) - t0, 2),
                         "notes": list(motif)},
             "history": history,
+            "clean_plays": sum(h["clean_plays"] for h in history),
             # The longest stretch ever played without a stumble, and where to hear it.
             "best_run": {"seconds": round(best_run[0]), "session": best_run[1],
                          "offset": round(best_run[2], 2)},

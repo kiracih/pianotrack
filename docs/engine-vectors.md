@@ -78,7 +78,7 @@ Rules the recorder follows (see `pianotrack/recorder.py`):
   3+ times), each play scaled by its median ratio to those (when it has 8+ known gaps).
   A gap is a stumble when it is over 2× the usual and 0.4 s longer (at an unknown spot:
   3× the play's median gap; a spot whose usual gap is 0 counts as unknown); stumbling gaps
-  within 2 notes of the previous one count as one stumble. `clean_run` is the longest
+  within 2 notes of the previous one count as one stumble. `clean_plays` counts plays with no stumble and at least 0.8 × the piece's 90th-percentile melody note count (`_quantile`: sorted, index min(n-1, int(0.9n))), since a long stop ends a segment instead of counting as a stumble and drilled bars make short segments; the piece also has the total. `clean_run` is the longest
   melody stretch between stumbling gaps; it and `best_run` play from 1 s before that
   stretch (`clean_run_offset`, `best_run.offset`); `trouble` counts the five melody notes up to each stumble
   over the piece's last 10 sessions (3+ stumbles, at most 3 spots, `passes` = times

@@ -347,6 +347,28 @@ class StumblesTest(unittest.TestCase):
         self.assertEqual(pieces.stumble_count([3, 4, 6, 9]), 2)  # 3-6 is one stumble
         self.assertEqual(spots[0]["notes"], [p for _, p in segs[4]["melody"][i - 4:i + 1]])
 
+    def test_clean_plays_count_whole_plays_without_a_stumble(self):
+        # 4 clean plays at 0.6x to 1.2x, 4 with a stumble, then a play broken by a 6 s stop
+        # (a new segment each side, neither with a stumble) and 3 drills of the opening
+        # bars: none of those last are whole plays.
+        segs = self.plays(4) + self.plays(4, pause_at=20) + self.plays(1, pause_at=30, pause=6.0)
+        self.assertEqual(len(segs), 10)  # the stop split the broken play in two
+        for i in range(3):
+            ev, _ = simulate.perform(random.Random(20 + i), 0.0, simulate.REPERTOIRE["Minuet in G"],
+                                     tempo=0.8, left_hand=False)
+            on = sorted(t for t, m in ev if m[0] & 0xF0 == 0x90)
+            segs += played([(t, m) for t, m in ev if t < on[28]])
+        m = pieces.Matcher()
+        for i, s in enumerate(segs):
+            s["session"], s["start"] = i + 1, 1000.0 * (i + 1)
+            m.add(s)
+        (row,) = pieces.pieces_view(m)
+        by = {h["session"]: h["clean_plays"] for h in row["history"]}
+        self.assertEqual([by[i + 1] for i in range(8)], [1] * 4 + [0] * 4)
+        self.assertEqual([by.get(i + 1, 0) for i in range(8, len(segs))], [0] * (len(segs) - 8))
+        self.assertGreaterEqual(len(by), 11)  # the pieces of plays did match the piece
+        self.assertEqual(row["clean_plays"], 4)
+
     def test_a_held_note_the_music_asks_for_is_no_stumble(self):
         # Fur Elise holds notes for 1.5 and 3 beats between runs of eighths.
         segs = []
