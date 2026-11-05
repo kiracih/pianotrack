@@ -90,3 +90,21 @@ Integers and strings should match exactly. Metrics are already rounded (mostly t
 0.1); allow a difference of one unit in the last decimal for floats, since
 floating-point summation order can differ between languages. Pieces should match
 exactly in grouping, labels and per-session history; offsets within 0.01 s.
+
+
+## nudge.json (practice reminders)
+
+A different shape from the MIDI vectors: `cases`, each with `first_starts` (minutes after
+local midnight of the first session on each of the last days played, newest last), `now`,
+`played_today`, `streak_min`, `streak` and `ignored`, and `expected` with `usual_start`
+(minutes or null) and `nudge` (`{"at", "kind"}` or null). `constants` holds the rule's numbers.
+The rules are in `pianotrack/reminders.py`:
+- `usual_start` is the circular medoid of the last 14 practice days (not calendar days), needing at
+  least 3: the input start with the smallest total distance around the clock to the others, the
+  smallest minutes value on a tie. Outside 08:00–22:00 it moves to the nearer bound around the
+  clock, so 00:05 becomes 22:00.
+- `nudge` is 30 minutes after the usual start, never after 22:00 (so a usual start after 21:30 is
+  reminded at 22:00). It is silent when today already counts (some practice and at least the streak
+  minimum, so a 0-minute goal still needs a note), when the time has passed, or after 3 ignored
+  reminders in a row. The app resets `ignored` to 0 on any day with practice.
+- `kind` is "streak" from a 2-day streak, else "habit".

@@ -21,6 +21,11 @@ class VectorsTest(unittest.TestCase):
                 for key in fresh["expected"]:
                     self.assertEqual(stored["expected"][key], fresh["expected"][key], key)
 
+    def test_nudge_vector_matches(self):
+        from pianotrack import reminders
+        with open(os.path.join(vectors.OUT_DIR, "nudge.json")) as f:
+            self.assertEqual(json.load(f), json.loads(vectors.dumps(reminders.vector())))
+
     def test_vectors_cover_the_engine(self):
         edges = json.load(open(os.path.join(vectors.OUT_DIR, "recorder-edges.json")))["expected"]
         self.assertEqual(len(edges["sessions"]), 3)  # the 5-note session is discarded

@@ -578,7 +578,9 @@ def pieces_view(matcher, named=(), session_starts=None):
             h["active_seconds"] += s["active"]
             n = stumble_count(stumbles[k])
             h["stumbles"] = h.get("stumbles", 0) + n
-            h["clean_plays"] = h.get("clean_plays", 0) + (n == 0 and len(s["melody"]) >= clean_floor)
+            whole = len(s["melody"]) >= clean_floor
+            h["plays"] = h.get("plays", 0) + whole  # whole plays, clean or not: the share's base
+            h["clean_plays"] = h.get("clean_plays", 0) + (n == 0 and whole)
             run, run_at = clean_run(s, stumbles[k])
             if run > h.get("clean_run", -1.0):
                 h["clean_run"] = run
@@ -617,6 +619,7 @@ def pieces_view(matcher, named=(), session_starts=None):
             "opening": {"session": rep["session"], "offset": round(max(at - 1.0, rep["start"]) - t0, 2),
                         "notes": list(motif)},
             "history": history,
+            "plays": sum(h["plays"] for h in history),
             "clean_plays": sum(h["clean_plays"] for h in history),
             # The longest stretch ever played without a stumble, and where to hear it.
             "best_run": {"seconds": round(best_run[0]), "session": best_run[1],

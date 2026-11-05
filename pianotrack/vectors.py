@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 
-from . import metrics, pieces, simulate
+from . import metrics, pieces, reminders, simulate
 from .recorder import Recorder
 from .store import Store
 
@@ -211,4 +211,8 @@ def write_all(out_dir=None):
         with open(path, "w") as f:
             f.write(dumps(build(name)))
         written.append(path)
+    path = os.path.join(out_dir, "nudge.json")
+    with open(path, "w") as f:
+        f.write(dumps(reminders.vector()))
+    written.append(path)
     return written

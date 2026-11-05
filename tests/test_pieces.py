@@ -368,6 +368,7 @@ class StumblesTest(unittest.TestCase):
         self.assertEqual([by.get(i + 1, 0) for i in range(8, len(segs))], [0] * (len(segs) - 8))
         self.assertGreaterEqual(len(by), 11)  # the pieces of plays did match the piece
         self.assertEqual(row["clean_plays"], 4)
+        self.assertEqual(row["plays"], 8)  # the 4 with a stumble are whole plays too
 
     def test_a_held_note_the_music_asks_for_is_no_stumble(self):
         # Fur Elise holds notes for 1.5 and 3 beats between runs of eighths.
