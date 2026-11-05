@@ -6,7 +6,7 @@ outcomes: **practise better**, **practise more**, or **easier setup**. Effort is
 the review builds bigger items from the plan below, one at a time, without asking; it
 still asks before stored-data changes, costs, data leaving the owner's devices, or the Pi.
 
-Last review: 2026-10-31 (built: falling-notes video export from the session page (#20);
+Last review: 2026-11-05 (built: practice reminder rule in Python with the nudge.json vector (5291cf6); Swift port of reminders and clean plays plus privacy copy on branch review/2026-11-05). Earlier: 2026-10-31 (built: falling-notes video export from the session page (#20);
 iPhone keep-recording fix (#26); first iOS design canvas (#1); skills, essentials,
 monetization and ASO drafts in pianotrack-ios). Previous: 2026-10-30, 2026-10-29, 2026-10-28, 2026-10-27, 2026-10-26 (every recording of a piece, welcome back), 2026-10-25 (Pieces added incrementally, Today invite line), 2026-10-24 (piano-room look step 1, "then → now" per piece), 2026-10-23,
 2026-10-22 (app target added), 2026-10-21 (first run).
@@ -189,10 +189,10 @@ app (iPhone and iPad) since 2 Nov; the backlog is the board in kiracih/pianotrac
 
 | Section | Ideas waiting (impact, effort) |
 |---|---|
-| Capture & setup | First run (#4, high, M): canvas [Plink First Run](https://claude.ai/artifact/VdR2skTD34PHmVCDTAaMdu) waits for the owner; iPhone and iPad compete for the piano's one Bluetooth link (#62, high, M); a "Connection check" row in Settings (med, S) |
-| Today & habits | `usual_start()` + `nudge()` in Python with a `nudge.json` vector, then one `.provisional` request on iOS (#3, high, S+S); "Today counts" tick for a short day (in the #4 canvas, med, S); rest passes into Python (med, S) |
+| Capture & setup | First-run bugs and sample reachable (#68, high, S); iPhone and iPad compete for the piano's one Bluetooth link (#62, high, M); a "Connection check" row in Settings (med, S) |
+| Today & habits | #3 app side: provisional ask after the first real session, rolling 3 one-shot notifications, Settings → Reminders (high, S); one reminder per person across devices (KV store, med, S); "Today counts" tick for a short day (in the #4 canvas, med, S); rest passes into Python (med, S) |
 | Pieces | Stable keys refined (#50, high, M: bucket key = earliest first play or `n:<nameKey>`, keep the key in vectors); renames stamp every matching name under sync (in #61, S); `nameKey` in Python (low, S) |
-| Practice insight | Clean plays built in Python (b93b19f); Swift port and Insights card (#63, high, S); "then and now" on the piece page (high, S–M, canvas first) |
+| Practice insight | Clean plays ported to Swift on review/2026-11-05; Insights card first in Insights, "3 of 9 clean", 3 empty states (#63, high, S); "then and now" on the piece page (high, S–M, canvas first) |
 | Replay & session detail | iPad wide layout, time index instead of a per-frame filter, Loop (#64, high, S–M); shared `NoteFrame` render core for #27 (high, M) |
 | Trust & access | Sync reconcile pass (#61, high, S–M); "Not my practice" and a pause switch with sync tombstones (#65, med-high, M); export v1 (#13) |
 | Design (lead) | Rename sweep built on branch review/2026-11-04-plink; flat icon pass (no gradient, dark rim) proposed, the owner just picked the icon, so it waits; voice rule: Plink speaks first person, system copy says "Plink" |
@@ -203,10 +203,10 @@ app (iPhone and iPad) since 2 Nov; the backlog is the board in kiracih/pianotrac
 
 | Section | Covers | Next review's focus |
 |---|---|---|
-| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | Build #4 once the canvas is approved; #62 design (which device records) |
-| Today & habits | ring, streak, week, calendar, goals, reminders | `usual_start` / `nudge` in Python with vectors (#3) |
+| Capture & setup | collector, devices, sessions, Bluetooth, install, onboarding, Pi-free capture | #68 first-run fixes; #62 per-device "Record Bluetooth on this device" |
+| Today & habits | ring, streak, week, calendar, goals, reminders | #3 notification scheduling in the app |
 | Pieces | matcher, Pieces card, per-piece progress, naming | #50 stable keys in Python, then Swift |
-| Practice insight | trends, session metrics, zones, dynamics, key map | #63 Swift port of clean plays and the Insights card |
+| Practice insight | trends, session metrics, zones, dynamics, key map | #63 Insights card (engine port done on the branch) |
 | Replay & session detail | player, keyboard, downloads, session page | #64 time index and iPad layout |
 | Trust & access | backups, privacy, reliability | #61 sync reconcile pass with unit tests |
 | Design (lead) | identity, layout, type, colour, motion, copy | Owner feedback on the first-run canvas; Insights clean-plays card |
@@ -398,6 +398,14 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-11-05 review.
+  - Built: the practice reminder rule in Python: `usual_start` and `nudge`, the nudge.json vector, and whole `plays` per piece (5291cf6).
+  - On branch review/2026-11-05 (e82fdc3, waiting for `swift test` on the Mac):
+    - the Swift `Reminders` engine (#3);
+    - clean plays in Swift (#63);
+    - the privacy copy now says "your devices and your own iCloud only if sync is on";
+    - the iPad first run drops the Lock Screen line.
+  - Filed #68 (first-run bugs, sample reachable after "connect later") and #69 (privacy policy page, needs the owner's Pages click).
 - 2026-11-04 evening review. Owner items:
   - iPad support installed (#41);
   - the Plink icon picked and installed (#5, 6c5165c);
