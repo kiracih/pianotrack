@@ -398,6 +398,17 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-11-06 review.
+  - The Pi is discontinued (owner, 5 Nov). This repo's engine is frozen, and engine work lands in Swift in pianotrack-ios.
+  - Shipped and installed:
+    - reminders (#3, closed): daily, streak saver, come-back nudges, weekly recap, sound choice, quiet while open;
+    - device timestamps for every note, which fixed overlapping keys in replay (#72, closed, 1e87a56).
+  - The website is live at kiracih.github.io/plink-website: home, privacy and terms.
+  - On branch review/2026-11-06, waiting for the Mac:
+    - the streak chip no longer clips (#70);
+    - privacy and terms links in Settings (#69);
+    - 14 daily reminder lines.
+  - Clean plays (#63) is still on review/2026-11-05-cleanplays.
 - 2026-11-05 review.
   - Built: the practice reminder rule in Python: `usual_start` and `nudge`, the nudge.json vector, and whole `plays` per piece (5291cf6).
   - On branch review/2026-11-05 (e82fdc3, waiting for `swift test` on the Mac):
