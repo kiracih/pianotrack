@@ -398,6 +398,8 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-11-08 review. Export and import design canvas (pianotrack-ios #13, https://claude.ai/artifact/GFT85YEU9RsCDDNQgTnxMp) waits for the owner. Mac build briefs on #13, #49 crash inbox and #62 one piano between two devices. ASO metadata for de, ja and en-GB (#75).
+- 2026-11-07 review. First-run fixes (#68) merged and installed on the iPhone and iPad. Store metadata, launch markets and the brand-name rule are in pianotrack-ios docs/ASO.md. Website guides for search and AI assistants are on plink-website. Filed #76 falling notes, #80 manual practice; #13 is now owner-asked export and import. Pi leftovers #7 and #21 closed. Owner rules: code is built on the Mac; every thread picks from Backlog.
 - 2026-11-06 review.
   - The Pi is discontinued (owner, 5 Nov). This repo's engine is frozen, and engine work lands in Swift in pianotrack-ios.
   - Shipped and installed:
