@@ -360,6 +360,7 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Decided and rejected
 
+- 2026-11-09, owner: no "clean plays" in the product for now (pianotrack-ios #63 closed). The term is poor and the classification may be wrong.
 - 2026-10-29: **Owner answers on the roadmap doc:** the review builds the plan's bigger
   items without asking; pieces drift fix approved (before/after on a copy of the Pi's
   data first); merge and split pieces approved (new corrections table); streak reminder
@@ -398,6 +399,8 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-11-10 review. Design canvas for leave out and pause (pianotrack-ios #65, https://claude.ai/artifact/9BeACvavfz4kexDsEkSkDo) waits for the owner. #13 and #80 closed. Guides and ASO keywords updated for manual practice (plink-website 200cdb3, pianotrack-ios 34f0309).
+- 2026-11-09 and 10. Plink 0.2.0: export and import (#13), German, Japanese and Turkish in the app (#74 step 1), versioning starts (0.x.x in test, CHANGELOG and tag per build). Plink 0.3.0: manual practice (#80), with a timer, add past practice up to 7 days, Control Center and Siri. Both installed on the iPhone and iPad.
 - 2026-11-08 review. Export and import design canvas (pianotrack-ios #13, https://claude.ai/artifact/GFT85YEU9RsCDDNQgTnxMp) waits for the owner. Mac build briefs on #13, #49 crash inbox and #62 one piano between two devices. ASO metadata for de, ja and en-GB (#75).
 - 2026-11-07 review. First-run fixes (#68) merged and installed on the iPhone and iPad. Store metadata, launch markets and the brand-name rule are in pianotrack-ios docs/ASO.md. Website guides for search and AI assistants are on plink-website. Filed #76 falling notes, #80 manual practice; #13 is now owner-asked export and import. Pi leftovers #7 and #21 closed. Owner rules: code is built on the Mac; every thread picks from Backlog.
 - 2026-11-06 review.
