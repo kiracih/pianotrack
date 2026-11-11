@@ -399,6 +399,7 @@ GitHub under MIT since 2026-10-20, which counts as prior disclosure for a patent
 
 ## Done
 
+- 2026-11-11. Plink 0.3.1 ("steady" replaces "clean", owner 10 Nov) and 0.4.0: leave out and timed pause, plus the Bluetooth pairing note (pianotrack-ios #65, closed). Guides for Yamaha Smart Pianist and Kawai PianoRemote on the site (#82, plink-website 0a00882). Design canvas for falling notes in Replay (#76, https://claude.ai/artifact/LjB2TDTqy3Hb2mz3YiuA9z) waits for the owner. The iPhone build's free signing lapsed and was renewed; it runs to 18 Nov.
 - 2026-11-10 review. Design canvas for leave out and pause (pianotrack-ios #65, https://claude.ai/artifact/9BeACvavfz4kexDsEkSkDo) waits for the owner. #13 and #80 closed. Guides and ASO keywords updated for manual practice (plink-website 200cdb3, pianotrack-ios 34f0309).
 - 2026-11-09 and 10. Plink 0.2.0: export and import (#13), German, Japanese and Turkish in the app (#74 step 1), versioning starts (0.x.x in test, CHANGELOG and tag per build). Plink 0.3.0: manual practice (#80), with a timer, add past practice up to 7 days, Control Center and Siri. Both installed on the iPhone and iPad.
 - 2026-11-08 review. Export and import design canvas (pianotrack-ios #13, https://claude.ai/artifact/GFT85YEU9RsCDDNQgTnxMp) waits for the owner. Mac build briefs on #13, #49 crash inbox and #62 one piano between two devices. ASO metadata for de, ja and en-GB (#75).
